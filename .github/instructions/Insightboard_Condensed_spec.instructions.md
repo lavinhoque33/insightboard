@@ -21,9 +21,15 @@ A production‑grade, portfolio‑ready project that aggregates data from multip
 1. **STOP and explain** all changes made in that phase
 2. **List files created/modified** with brief description of each
 3. **Summarize what was accomplished** and how it fits into the overall architecture
-4. **Ask user for confirmation** before proceeding to the next phase
-5. **Wait for explicit user approval** (e.g., "continue", "proceed", "yes") before moving forward
-6. **Never implement more than one major phase** without user confirmation
+4. **UPDATE THIS INSTRUCTION FILE** with current progress:
+   - Mark completed phases with ✅
+   - Update the "Last Updated" timestamp
+   - Add new files to the "FILES CREATED" section
+   - Update "NEXT STEP" with what comes next
+   - Document any architectural decisions made
+5. **Ask user for confirmation** before proceeding to the next phase
+6. **Wait for explicit user approval** (e.g., "continue", "proceed", "yes") before moving forward
+7. **Never implement more than one major phase** without user confirmation
 
 **Examples of What Requires Todo Entries**:
 
