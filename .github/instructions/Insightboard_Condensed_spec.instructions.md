@@ -1,6 +1,145 @@
+---
+applyTo: '**'
+---
+
 # InsightBoard — A Full‑Stack, Cloud‑Ready Dashboard (Rust backend + Vue 3)
 
 A production‑grade, portfolio‑ready project that aggregates data from multiple external APIs (GitHub, Weather, News, Crypto, Status pings) into a customizable dashboard. Built to showcase:
+
+## 🎯 IMPLEMENTATION PROTOCOL
+
+**MANDATORY TODO LIST USAGE**: When implementing this project, you MUST use the todo list tool extensively for systematic progress tracking:
+
+1. **Create Todo Entries for ALL Lists**: Any enumerated list, feature set, or multi-step process MUST have corresponding todo list entries
+2. **One Todo Per Item**: Each widget, API endpoint, component, configuration file, or feature gets its own todo entry
+3. **Granular Tracking**: Break down large tasks into atomic, completable units
+4. **Status Management**: Mark items as in-progress when starting, completed immediately upon finishing
+5. **Progressive Implementation**: Work through todos sequentially, never skip ahead
+
+**Examples of What Requires Todo Entries**:
+
+-   Each of the 5 MVP widgets (GitHub, Weather, News, Crypto, Status)
+-   Each API endpoint in the API Design section
+-   Each database table in the schema
+-   Each configuration file mentioned
+-   Each frontend component or view
+-   Each test suite or CI/CD workflow
+-   Each deployment step
+
+**Todo List Best Practices**:
+
+-   Create comprehensive todo list BEFORE starting implementation
+-   Update status in real-time as you work
+-   Never complete multiple items at once - complete individually
+-   Add newly discovered tasks immediately
+-   Use descriptive titles that indicate the specific work
+
+---
+
+## 📊 CURRENT IMPLEMENTATION STATUS
+
+**Last Updated**: October 31, 2025
+
+**Overall Progress**: 🔴 NOT STARTED
+
+### Phase 1: Project Foundation ⬜ NOT STARTED
+
+-   [ ] Backend Rust project initialization (Cargo.toml with dependencies)
+-   [ ] Frontend Vue 3 project setup (Vite + TypeScript)
+-   [ ] Docker compose for local Postgres & Redis
+-   [ ] Environment configuration files (.env.example)
+-   [ ] Basic project structure and directories
+
+### Phase 2: Backend Core ⬜ NOT STARTED
+
+-   [ ] Database connection and SQLx setup
+-   [ ] Redis cache client setup
+-   [ ] Configuration management (config.rs)
+-   [ ] Database migrations (users, dashboards tables)
+-   [ ] Basic Axum server with health check endpoint
+
+### Phase 3: Authentication ⬜ NOT STARTED
+
+-   [ ] User registration endpoint (POST /api/auth/register)
+-   [ ] User login endpoint (POST /api/auth/login)
+-   [ ] JWT token generation and validation
+-   [ ] Auth middleware for protected routes
+-   [ ] Current user endpoint (GET /api/me)
+
+### Phase 4: Dashboard Management ⬜ NOT STARTED
+
+-   [ ] Get user dashboards endpoint (GET /api/dashboards)
+-   [ ] Create dashboard endpoint (POST /api/dashboards)
+-   [ ] Update dashboard endpoint (PUT /api/dashboards/:id)
+-   [ ] Delete dashboard endpoint (DELETE /api/dashboards/:id)
+
+### Phase 5: Widget Implementations ⬜ NOT STARTED
+
+-   [ ] GitHub widget backend (GET /api/data/github)
+-   [ ] Weather widget backend (GET /api/data/weather)
+-   [ ] News widget backend (GET /api/data/news)
+-   [ ] Crypto widget backend (GET /api/data/crypto)
+-   [ ] Status ping widget backend (GET /api/data/status)
+
+### Phase 6: Frontend Foundation ⬜ NOT STARTED
+
+-   [ ] API service layer (axios setup)
+-   [ ] Pinia store setup (auth, dashboard stores)
+-   [ ] Vue Router configuration
+-   [ ] Authentication views (Login, Register)
+-   [ ] Protected route guards
+
+### Phase 7: Frontend Dashboard UI ⬜ NOT STARTED
+
+-   [ ] Dashboard list view
+-   [ ] Dashboard editor view
+-   [ ] Widget registry system
+-   [ ] GridStack drag-and-drop integration
+-   [ ] Widget configuration modal
+
+### Phase 8: Widget Components ⬜ NOT STARTED
+
+-   [ ] GitHub widget component
+-   [ ] Weather widget component
+-   [ ] News widget component
+-   [ ] Crypto widget component
+-   [ ] Status widget component
+
+### Phase 9: Polish & Features ⬜ NOT STARTED
+
+-   [ ] Auto-refresh functionality
+-   [ ] Loading states and error handling
+-   [ ] Responsive design
+-   [ ] Dark mode support (optional)
+-   [ ] Widget settings persistence
+
+### Phase 10: Testing & CI/CD ⬜ NOT STARTED
+
+-   [ ] Backend unit tests
+-   [ ] Backend integration tests
+-   [ ] Frontend component tests (Vitest)
+-   [ ] E2E tests (Playwright)
+-   [ ] GitHub Actions CI workflow
+
+### Phase 11: Deployment Prep ⬜ NOT STARTED
+
+-   [ ] Dockerfile for backend
+-   [ ] Production build configuration
+-   [ ] AWS Lambda packaging
+-   [ ] Terraform/CloudFormation templates
+-   [ ] Deployment documentation
+
+**NEXT STEP**: Begin Phase 1 by initializing the backend Rust project with Cargo.toml
+
+**INSTRUCTIONS FOR NEW CHAT SESSIONS**:
+
+1. Read this status section to understand current progress
+2. Check the last completed phase
+3. Start from the first uncompleted item in the next phase
+4. Update this section after completing each major milestone
+5. Mark phases as: ⬜ NOT STARTED | 🟡 IN PROGRESS | ✅ COMPLETED
+
+---
 
 -   **Rust backend** (Axum) with async concurrency, caching, rate limiting, auth, and clean architecture.
 -   **Vue 3 frontend** with a pluggable **widget** system, drag‑and‑drop layout, and real‑time refresh.
