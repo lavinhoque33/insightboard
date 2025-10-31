@@ -104,35 +104,57 @@ InsightBoard normalizes and caches data from third‑party APIs (GitHub, Weather
 
 -   **Rust** 1.70+ (`rustup`)
 -   **Node.js** 18+ & **pnpm**
--   **Docker** (for local Postgres & Redis)
+-   **Docker** & **Docker Compose** (for local Postgres & Redis)
 -   **Git**
 
 ### Installation
 
 ```bash
 # Clone repository
-git clone https://github.com/yourusername/insightboard.git
+git clone https://github.com/lavinhoque33/insightboard.git
 cd insightboard
 
-# Configure environment
-cp .env.example .env
-# Edit .env with your API keys
-
-# Start services (Docker)
+# 1. Start Docker services (Postgres + Redis)
 docker-compose up -d
 
-# Backend setup
+# Wait for services to be healthy (check with: docker-compose ps)
+
+# 2. Configure environment
+cp .env.example .env
+# Edit .env with your API keys (optional for basic functionality)
+
+# 3. Run database migrations
 cd backend
+cargo install sqlx-cli --no-default-features --features postgres
+sqlx migrate run
+
+# 4. Build backend
 cargo build
 
-# Frontend setup
+# 5. Frontend setup (in a new terminal)
 cd ../frontend
 pnpm install
 ```
 
 ### Running Locally
 
-**Terminal 1 — Backend (Rust)**
+**Terminal 1 — Docker Services**
+
+```bash
+# Start Postgres and Redis
+docker-compose up
+
+# Or run in detached mode:
+docker-compose up -d
+
+# Check service health:
+docker-compose ps
+
+# View logs:
+docker-compose logs -f
+```
+
+**Terminal 2 — Backend (Rust)**
 
 ```bash
 cd backend
@@ -140,7 +162,7 @@ cargo run
 # Runs on http://localhost:8080
 ```
 
-**Terminal 2 — Frontend (Vue)**
+**Terminal 3 — Frontend (Vue)**
 
 ```bash
 cd frontend
@@ -151,12 +173,32 @@ pnpm dev
 ### Verify Everything Works
 
 ```bash
-# Health check
+# Check Docker services are running
+docker-compose ps
+
+# Health check backend
 curl http://localhost:8080/healthz
 # Expected: "ok"
 
+# Test database connection
+psql postgres://postgres:postgres@localhost:5432/insightboard -c "SELECT 1"
+
+# Test Redis connection
+redis-cli -u redis://127.0.0.1:6379 ping
+# Expected: "PONG"
+
 # Frontend
 open http://localhost:5173
+```
+
+### Stopping Services
+
+```bash
+# Stop all services
+docker-compose down
+
+# Stop and remove volumes (clean slate)
+docker-compose down -v
 ```
 
 ---
@@ -165,37 +207,63 @@ open http://localhost:5173
 
 ### Environment Variables
 
-Create `.env` in project root:
+Copy `.env.example` to `.env` and configure:
+
+```bash
+cp .env.example .env
+```
+
+**Minimal configuration for local development** (using Docker Compose):
 
 ```env
-# Backend
+# Server
 APP_PORT=8080
-APP_ENV=development
-LOG_LEVEL=debug
 
-# Database
-DATABASE_URL=postgres://postgres:postgres@localhost:5432/insight
+# Database (Docker Compose default)
+DATABASE_URL=postgres://postgres:postgres@localhost:5432/insightboard
 
-# Cache
+# Redis (Docker Compose default)
 REDIS_URL=redis://127.0.0.1:6379
 
-# Authentication
-JWT_SECRET=your-super-secret-key-change-in-prod
-JWT_EXPIRY_HOURS=24
+# Authentication (change in production!)
+JWT_SECRET=dev-secret-change-in-production
 
-# External APIs (get keys from respective services)
+# Logging
+RUST_LOG=info,insightboard=debug
+```
+
+**Optional API keys** (required for specific widgets):
+
+```env
+# GitHub Widget - Get at: https://github.com/settings/tokens
+GITHUB_API_TOKEN=ghp_yourtoken
+
+# Weather Widget - Get at: https://openweathermap.org/api
 OPENWEATHER_API_KEY=your_key_here
-NEWSAPI_API_KEY=your_key_here
-GITHUB_API_TOKEN=your_token_here
-COINMARKETCAP_API_KEY=your_key_here
 
-# AWS (for production deployment)
+# News Widget - Get at: https://newsapi.org/
+NEWSAPI_API_KEY=your_key_here
+```
+
+**Production configuration:**
+
+```env
+# Use production database (Neon/Supabase)
+DATABASE_URL=postgres://user:password@host:5432/dbname?sslmode=require
+
+# Use production Redis (Upstash)
+REDIS_URL=rediss://default:password@host:port
+
+# Strong JWT secret (generate with: openssl rand -base64 32)
+JWT_SECRET=your-random-generated-secret
+
+# AWS credentials
 AWS_REGION=us-east-1
 AWS_ACCESS_KEY_ID=
 AWS_SECRET_ACCESS_KEY=
 ```
 
-> **Pro Tip**: Never commit `.env` — use `.env.example` for defaults and document required keys.
+> **Security Note**: Never commit `.env` to version control. The `.gitignore` file is configured to exclude it. Always use `.env.example` as a template.
 
 ---
 
