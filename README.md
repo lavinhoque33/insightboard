@@ -673,9 +673,7 @@ This project is licensed under the **MIT License** — see [LICENSE](LICENSE) fi
 
 ## 📞 Support
 
--   📧 Email: [your-email@example.com]
--   🐦 Twitter: [@yourhandle]
--   💬 Discord: [Join our community]
+-   📧 Email: [ihoque33@yahoo.com]
 -   🐛 Issues: [GitHub Issues](https://github.com/yourusername/insightboard/issues)
 
 ---
