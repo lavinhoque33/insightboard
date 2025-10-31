@@ -102,11 +102,84 @@ git --version
 # Windows: Download from https://git-scm.com/
 ```
 
-#### 3. **Text Editor or IDE**
+#### 3. **Rust Toolchain** (for backend development)
+
+**What is Rust?**
+Rust is the programming language used for the InsightBoard backend. The Rust toolchain includes the compiler (`rustc`), package manager (`cargo`), and standard library.
+
+**Installation via rustup (recommended):**
+
+```bash
+# Install rustup (Rust installer and version manager)
+curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh
+
+# Follow the prompts - use default options for standard installation
+
+# Reload your shell configuration
+source $HOME/.cargo/env
+
+# Verify installation
+rustc --version
+# Expected: rustc 1.70+ or higher
+
+cargo --version
+# Expected: cargo 1.70+ or higher
+```
+
+**What gets installed:**
+
+-   `rustc` - The Rust compiler
+-   `cargo` - Rust's package manager and build tool
+-   `rustup` - Tool to manage Rust versions
+-   Standard library and documentation
+
+**Platform-specific notes:**
+
+**Linux:**
+
+-   May need build essentials: `sudo apt-get install build-essential`
+-   OpenSSL development libraries (required for backend): `sudo apt-get install libssl-dev pkg-config`
+
+**macOS:**
+
+-   Requires Xcode Command Line Tools: `xcode-select --install`
+
+**Windows:**
+
+-   Requires Visual Studio C++ Build Tools
+-   Download from: https://visualstudio.microsoft.com/visual-cpp-build-tools/
+
+#### 4. **sqlx-cli** (for database migrations)
+
+**What is sqlx-cli?**
+The SQLx CLI is a command-line tool for running database migrations. It's required to set up the initial database schema.
+
+**Installation:**
+
+```bash
+# Install sqlx-cli with PostgreSQL support only
+cargo install sqlx-cli --no-default-features --features postgres
+
+# This may take 1-2 minutes to compile
+
+# Verify installation
+sqlx --version
+# Expected: sqlx-cli 0.7+ or higher
+```
+
+**When do you need this?**
+
+-   First-time setup (to run database migrations)
+-   Creating new migrations
+-   You only need to install this once per development machine
+
+#### 5. **Text Editor or IDE**
 
 Recommended options:
 
 -   **VS Code** with Rust and Docker extensions
+    -   Install `rust-analyzer` extension for code completion
+    -   Install `Docker` extension for container management
 -   **IntelliJ IDEA** with Rust plugin
 -   **Vim/Neovim** with rust-analyzer
 
@@ -766,6 +839,8 @@ InsightBoard/
 
 Follow these steps to get your development environment running:
 
+> **📝 Note on Prerequisites**: Before starting, ensure you have installed all required software from the [Prerequisites](#prerequisites) section above. This includes Docker, Rust, sqlx-cli, and Git. These are **one-time installations** per development machine.
+
 ### Step 1: Clone the Repository
 
 ```bash
@@ -773,7 +848,27 @@ git clone https://github.com/lavinhoque33/insightboard.git
 cd insightboard
 ```
 
-### Step 2: Verify Docker is Running
+### Step 2: Verify Prerequisites
+
+**Check that all required tools are installed:**
+
+```bash
+# Verify Docker
+docker --version && docker compose version
+
+# Verify Rust
+rustc --version && cargo --version
+
+# Verify sqlx-cli
+sqlx --version
+
+# Verify Git
+git --version
+```
+
+**If any of these commands fail**, go back to the [Prerequisites](#prerequisites) section and install the missing tools.
+
+### Step 3: Verify Docker is Running
 
 ```bash
 # Check Docker daemon is running
@@ -783,7 +878,7 @@ docker ps
 # If you see an error, start Docker Desktop or run: sudo systemctl start docker
 ```
 
-### Step 3: Create Your Environment File
+### Step 4: Create Your Environment File
 
 ```bash
 # Copy example to .env
@@ -805,7 +900,9 @@ RUST_LOG=info,insightboard=debug
 
 **Optional: Add API keys if you want to test specific widgets**
 
-### Step 4: Start Docker Services
+### Step 5: Start Docker Services
+
+> **🔄 Daily Step**: This step and the following steps are what you'll do each time you start development. Steps 1-4 are one-time setup.
 
 ```bash
 # Start PostgreSQL and Redis
@@ -835,7 +932,7 @@ docker compose up -d
  ✔ Container insightboard-redis         Started
 ```
 
-### Step 5: Verify Services Are Running
+### Step 6: Verify Services Are Running
 
 ```bash
 # Check container status
@@ -853,7 +950,9 @@ docker compose ps
 -   Health checks are passing
 -   Services are ready to accept connections
 
-### Step 6: Test Database Connection
+### Step 7: Test Database Connection
+
+> **⚠️ One-Time Step**: This is optional verification. Skip to Step 9 if you want to proceed quickly.
 
 ```bash
 # Connect to PostgreSQL
@@ -871,7 +970,9 @@ SELECT version();
 \q
 ```
 
-### Step 7: Test Redis Connection
+### Step 8: Test Redis Connection
+
+> **⚠️ One-Time Step**: This is optional verification. Skip to Step 9 if you want to proceed quickly.
 
 ```bash
 # Connect to Redis
@@ -886,7 +987,9 @@ PING
 exit
 ```
 
-### Step 8: Run Database Migrations
+### Step 9: Run Database Migrations
+
+> **📝 One-Time Step**: Migrations only need to be run once (or when new migrations are added).
 
 ```bash
 # Install sqlx-cli (first time only)
@@ -919,7 +1022,9 @@ psql postgres://postgres:postgres@localhost:5432/insightboard
 #  public | dashboards  | table | postgres
 ```
 
-### Step 9: Build and Run Backend
+### Step 10: Build and Run Backend
+
+> **🔄 Daily Step**: This is what you'll run each time you want to start the backend server.
 
 ```bash
 # Still in backend directory
@@ -944,7 +1049,9 @@ cargo run
 # 2024-10-31T15:30:00.126Z INFO insightboard: Server ready to accept connections
 ```
 
-### Step 10: Test the Backend
+### Step 11: Test the Backend
+
+> **✅ Verification Step**: Quick check to ensure everything is working.
 
 **Open a new terminal and test the health endpoint:**
 
@@ -966,6 +1073,73 @@ curl -X POST http://localhost:8080/api/auth/register \
 ```
 
 **Save the token for testing protected endpoints!**
+
+---
+
+## 📋 Setup Summary: One-Time vs Daily Steps
+
+### One-Time Setup (Do Once Per Machine)
+
+These steps only need to be done once when setting up a new development machine:
+
+1. **Install Prerequisites** (from [Prerequisites](#prerequisites) section)
+
+    - Docker & Docker Compose
+    - Git
+    - Rust toolchain (rustup, cargo, rustc)
+    - sqlx-cli
+    - Text editor/IDE
+
+2. **Clone Repository** (Step 1)
+
+    ```bash
+    git clone https://github.com/lavinhoque33/insightboard.git
+    ```
+
+3. **Create Environment File** (Step 4)
+
+    ```bash
+    cp .env.example .env
+    # Edit .env with your configuration
+    ```
+
+4. **Run Database Migrations** (Step 9)
+    ```bash
+    cd backend
+    sqlx migrate run
+    ```
+
+### Daily Development Workflow
+
+These steps are what you'll do each time you start working on the project:
+
+1. **Start Docker Services** (Step 5)
+
+    ```bash
+    docker compose up -d
+    ```
+
+2. **Start Backend Server** (Step 10)
+
+    ```bash
+    cd backend
+    cargo run
+    ```
+
+3. **Stop Services When Done**
+    ```bash
+    # Stop backend: Ctrl+C in terminal
+    # Stop Docker services:
+    docker compose down
+    ```
+
+### Optional Verification Steps
+
+These are useful for debugging but not required for daily development:
+
+-   Test database connection (Step 7)
+-   Test Redis connection (Step 8)
+-   Test backend endpoints (Step 11)
 
 ---
 
