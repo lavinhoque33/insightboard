@@ -65,6 +65,9 @@ docker-compose.override.yml
 Thumbs.db
 *~
 
+# Local tools (e.g., downloaded Node)
+.tools/
+
 # ============================================
 # Temporary files
 # ============================================
@@ -74,6 +77,7 @@ temp/
 *.bak
 *.swp
 *.swo
+*.pid
 
 # ============================================
 # Testing

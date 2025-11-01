@@ -53,7 +53,7 @@ const handleLogout = () => {
 							</span>
 							<button
 								@click="handleLogout"
-								class="text-gray-700 hover:text-gray-900 px-3 py-2 rounded-md text-sm font-medium"
+								class="btn btn-ghost text-sm"
 							>
 								Logout
 							</button>
@@ -67,7 +67,7 @@ const handleLogout = () => {
 							</router-link>
 							<router-link
 								to="/register"
-								class="bg-primary-600 text-white hover:bg-primary-700 px-4 py-2 rounded-md text-sm font-medium"
+								class="btn btn-primary text-sm"
 							>
 								Sign Up
 							</router-link>
@@ -83,5 +83,5 @@ const handleLogout = () => {
 </template>
 
 <style>
-/* Global styles can be added here */
+	/* Global styles can be added here */
 </style>

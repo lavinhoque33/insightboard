@@ -1,22 +1,20 @@
 <template>
-	<div class="min-h-screen bg-gray-50">
-		<!-- Header -->
-		<header class="bg-white shadow">
-			<div
-				class="max-w-7xl mx-auto py-6 px-4 sm:px-6 lg:px-8 flex justify-between items-center"
-			>
-				<h1 class="text-3xl font-bold text-gray-900">My Dashboards</h1>
-				<button
-					@click="handleCreateDashboard"
-					:disabled="dashboardStore.loading"
-					class="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-primary-600 hover:bg-primary-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary-500 disabled:opacity-50 disabled:cursor-not-allowed"
-				>
-					<svg
-						class="h-5 w-5 mr-2"
-						xmlns="http://www.w3.org/2000/svg"
-						viewBox="0 0 20 20"
-						fill="currentColor"
-					>
+  <div class="min-h-screen bg-gray-50">
+    <!-- Header -->
+    <header class="page-header">
+      <div class="container-page py-6 flex justify-between items-center">
+        <h1 class="page-title">My Dashboards</h1>
+        <button
+          @click="handleCreateDashboard"
+          :disabled="dashboardStore.loading"
+          class="btn btn-primary disabled:opacity-50 disabled:cursor-not-allowed"
+        >
+          <svg
+            class="h-5 w-5 mr-2"
+            xmlns="http://www.w3.org/2000/svg"
+            viewBox="0 0 20 20"
+            fill="currentColor"
+          >
 						<path
 							fill-rule="evenodd"
 							d="M10 3a1 1 0 011 1v5h5a1 1 0 110 2h-5v5a1 1 0 11-2 0v-5H4a1 1 0 110-2h5V4a1 1 0 011-1z"
@@ -29,7 +27,7 @@
 		</header>
 
 		<!-- Main Content -->
-		<main class="max-w-7xl mx-auto py-6 sm:px-6 lg:px-8">
+    <main class="container-page py-6">
 			<!-- Loading State -->
 			<div
 				v-if="loading && !dashboardStore.dashboards.length"
@@ -86,16 +84,16 @@
 					Get started by creating a new dashboard.
 				</p>
 				<div class="mt-6">
-					<button
-						@click="handleCreateDashboard"
-						class="inline-flex items-center px-4 py-2 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-primary-600 hover:bg-primary-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary-500"
-					>
-						<svg
-							class="h-5 w-5 mr-2"
-							xmlns="http://www.w3.org/2000/svg"
-							viewBox="0 0 20 20"
-							fill="currentColor"
-						>
+          <button
+            @click="handleCreateDashboard"
+            class="btn btn-primary"
+          >
+            <svg
+              class="h-5 w-5 mr-2"
+              xmlns="http://www.w3.org/2000/svg"
+              viewBox="0 0 20 20"
+              fill="currentColor"
+            >
 							<path
 								fill-rule="evenodd"
 								d="M10 3a1 1 0 011 1v5h5a1 1 0 110 2h-5v5a1 1 0 11-2 0v-5H4a1 1 0 110-2h5V4a1 1 0 011-1z"
@@ -139,19 +137,19 @@
 
 							<!-- Actions -->
 							<div class="mt-4 flex space-x-3">
-								<router-link
-									:to="`/dashboards/${dashboard.id}`"
-									class="inline-flex items-center px-3 py-2 border border-transparent text-sm leading-4 font-medium rounded-md text-white bg-primary-600 hover:bg-primary-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary-500"
-								>
-									Open
-								</router-link>
-								<button
-									@click="handleDeleteDashboard(dashboard.id)"
-									:disabled="deleting"
-									class="inline-flex items-center px-3 py-2 border border-gray-300 shadow-sm text-sm leading-4 font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary-500 disabled:opacity-50 disabled:cursor-not-allowed"
-								>
-									Delete
-								</button>
+            <router-link
+              :to="`/dashboards/${dashboard.id}`"
+              class="btn btn-primary text-sm leading-4"
+            >
+              Open
+            </router-link>
+            <button
+              @click="handleDeleteDashboard(dashboard.id)"
+              :disabled="deleting"
+              class="btn btn-secondary text-sm leading-4 disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              Delete
+            </button>
 							</div>
 						</div>
 					</div>
