@@ -2005,6 +2005,692 @@ await api.post('http://localhost:8080/api/auth/login', ...)
 
 ---
 
+## Phase 7: Widget System & Dashboard Editor
+
+### Overview
+
+Phase 7 introduces the complete widget system with drag-and-drop dashboard editing, five functional widgets, and a dynamic configuration system. This is the heart of InsightBoard's functionality.
+
+### Architecture Components
+
+#### 1. Widget Registry System (`stores/widgets.ts`)
+
+The widget registry is a centralized store that manages all available widget types and their configurations.
+
+**What is a Widget?**
+
+A widget is a self-contained, configurable component that displays data from external APIs (GitHub, Weather, News, etc.). Think of it like an app on your phone - each has its own purpose, settings, and display.
+
+**Key Concepts:**
+
+```typescript
+// Widget Type Definition - The "blueprint" for a widget
+interface WidgetType {
+	id: string; // Unique identifier (e.g., "github", "weather")
+	name: string; // Display name
+	description: string; // User-facing description
+	icon: string; // Emoji or icon class
+	component: Component; // Vue component to render
+	defaultConfig: Record<string, any>; // Default settings
+	configSchema: WidgetConfigField[]; // Form fields for configuration
+	defaultSize: { w: number; h: number }; // Grid dimensions
+	refreshInterval?: number; // Auto-refresh in seconds
+}
+
+// Widget Instance - A specific widget placed on a dashboard
+interface WidgetInstance {
+	id: string; // Unique instance ID (generated)
+	type: string; // Widget type ID (links to WidgetType)
+	config: Record<string, any>; // User's configuration
+	layout: { x: number; y: number; w: number; h: number }; // Position
+}
+```
+
+**How Registration Works:**
+
+```typescript
+// In widgetRegistry.ts
+const widgetStore = useWidgetStore();
+
+widgetStore.registerWidget({
+	id: 'github',
+	name: 'GitHub Activity',
+	component: GitHubWidget, // ← The actual Vue component
+	defaultConfig: { username: '' }, // ← What user needs to configure
+	configSchema: [
+		{
+			// ← How to render the config form
+			key: 'username',
+			label: 'GitHub Username',
+			type: 'text',
+			required: true,
+			validation: (value) => {
+				// Custom validation logic
+				if (!/^[a-z\d-]{1,39}$/i.test(value)) {
+					return 'Invalid username format';
+				}
+				return null;
+			},
+		},
+	],
+	defaultSize: { w: 4, h: 3 }, // 4 columns wide, 3 rows tall
+	refreshInterval: 300, // Refresh every 5 minutes
+});
+```
+
+**Why This Design?**
+
+-   **Extensibility**: Adding a new widget is as simple as registering it
+-   **Type Safety**: TypeScript ensures all widgets follow the same contract
+-   **Configuration**: Each widget defines its own settings dynamically
+-   **Validation**: Built-in validation prevents invalid configurations
+
+#### 2. Base Widget Component (`BaseWidget.vue`)
+
+All widgets wrap themselves in `BaseWidget`, which provides:
+
+-   ✅ Header with title and last update time
+-   ✅ Refresh button with loading spinner
+-   ✅ Settings menu (configure, remove)
+-   ✅ Loading state with skeleton
+-   ✅ Error state with retry button
+-   ✅ Consistent styling and UX
+
+**How It Works:**
+
+```vue
+<script setup lang="ts">
+// Child widget emits events, BaseWidget handles UI
+interface Emits {
+	(e: 'refresh'): void; // User clicked refresh
+	(e: 'configure'): void; // User clicked configure
+	(e: 'remove'): void; // User clicked remove
+}
+</script>
+
+<template>
+	<div class="widget-base">
+		<!-- Header with title, timestamp, actions -->
+		<div class="widget-header">
+			<h3>{{ title }}</h3>
+			<button @click="emit('refresh')">🔄</button>
+		</div>
+
+		<!-- Loading/Error/Content -->
+		<div v-if="loading">Loading...</div>
+		<div v-else-if="error">{{ error }}</div>
+		<div v-else>
+			<slot />
+			<!-- Child widget renders here -->
+		</div>
+	</div>
+</template>
+```
+
+**Why This Pattern?**
+
+-   **DRY (Don't Repeat Yourself)**: Common UI logic in one place
+-   **Consistency**: All widgets look and behave the same
+-   **Maintainability**: Fix a bug once, it's fixed everywhere
+
+#### 3. Individual Widget Components
+
+Each widget is a specialized Vue component that:
+
+1. **Fetches data** from the API
+2. **Displays data** in a meaningful way
+3. **Handles auto-refresh** using intervals
+4. **Emits events** for user actions
+
+**Example: GitHub Widget (`GitHubWidget.vue`)**
+
+```vue
+<script setup lang="ts">
+import { ref, onMounted, watch } from 'vue';
+import BaseWidget from '../BaseWidget.vue';
+import { fetchGitHubData } from '../../api/widgets';
+
+interface Props {
+	config: { username: string }; // Widget configuration
+	refreshInterval?: number; // Seconds between refreshes
+}
+
+const props = defineProps<Props>();
+const events = ref([]);
+const loading = ref(false);
+const error = ref(null);
+
+const loadData = async () => {
+	loading.value = true;
+	error.value = null;
+	try {
+		events.value = await fetchGitHubData(props.config.username);
+	} catch (err) {
+		error.value = err.message;
+	} finally {
+		loading.value = false;
+	}
+};
+
+// Auto-refresh setup
+let timer = null;
+watch(
+	() => props.refreshInterval,
+	(interval) => {
+		if (timer) clearInterval(timer);
+		if (interval > 0) {
+			timer = setInterval(loadData, interval * 1000);
+		}
+	},
+	{ immediate: true },
+);
+
+onMounted(loadData);
+</script>
+
+<template>
+	<BaseWidget
+		:title="`GitHub: ${config.username}`"
+		:loading="loading"
+		:error="error"
+		@refresh="loadData"
+		@configure="$emit('configure')"
+		@remove="$emit('remove')"
+	>
+		<!-- Widget-specific UI -->
+		<div v-for="event in events" :key="event.id">
+			{{ event.type }} - {{ event.repo.name }}
+		</div>
+	</BaseWidget>
+</template>
+```
+
+**Key Features:**
+
+-   **Props-driven configuration**: Parent passes `config` object
+-   **Auto-refresh**: Uses `setInterval` based on `refreshInterval` prop
+-   **Error handling**: Displays errors through BaseWidget
+-   **Event emission**: Notifies parent of user actions
+
+#### 4. Widget Configuration Modal (`WidgetConfigModal.vue`)
+
+A dynamic form that renders based on a widget's `configSchema`.
+
+**How It Works:**
+
+```typescript
+// Widget defines schema
+configSchema: [
+  {
+    key: 'username',
+    label: 'GitHub Username',
+    type: 'text', // Input type
+    required: true,
+    placeholder: 'e.g., octocat',
+    helpText: 'Enter your GitHub username',
+    validation: (value) => value ? null : 'Required field'
+  },
+  {
+    key: 'showPrivate',
+    label: 'Show Private Repos',
+    type: 'checkbox',
+    helpText: 'Include private repositories'
+  }
+]
+
+// Modal renders form dynamically
+<input v-if="field.type === 'text'" v-model="formData[field.key]" />
+<input v-else-if="field.type === 'checkbox'" type="checkbox" v-model="formData[field.key]" />
+<select v-else-if="field.type === 'select'" v-model="formData[field.key]">
+  <option v-for="opt in field.options" :value="opt.value">{{ opt.label }}</option>
+</select>
+```
+
+**Supported Field Types:**
+
+-   `text`: Single-line text input
+-   `number`: Numeric input with validation
+-   `textarea`: Multi-line text input
+-   `select`: Dropdown with options
+-   `checkbox`: Boolean toggle
+-   `url`: URL input with validation
+
+**Validation Flow:**
+
+1. User edits form
+2. On save, modal validates each field
+3. If errors, show error messages
+4. If valid, emit `@save` event with config
+5. Parent updates widget config and saves dashboard
+
+#### 5. Dashboard Editor View (`DashboardEditorView.vue`)
+
+The main view that ties everything together with GridStack for drag-and-drop layout.
+
+**What is GridStack?**
+
+GridStack is a JavaScript library that provides drag-and-drop grid layouts. Think of it like organizing windows on your desktop - you can move, resize, and rearrange items.
+
+**Key Features:**
+
+-   📐 **12-column grid system**: Widgets span 1-12 columns
+-   🖱️ **Drag-and-drop**: Click and drag to reposition
+-   📏 **Resize**: Drag corners to resize
+-   💾 **Auto-save**: Changes save automatically after 2 seconds
+-   🔄 **Persistence**: Layout stored in database
+
+**How It Works:**
+
+```vue
+<script setup lang="ts">
+import { GridStack } from 'gridstack';
+import 'gridstack/dist/gridstack.min.css';
+
+const gridInstance = ref(null);
+const widgets = ref([]); // Widget instances
+
+// Initialize GridStack
+const initializeGrid = () => {
+	gridInstance.value = GridStack.init({
+		cellHeight: 80, // Each row is 80px tall
+		margin: 10, // 10px gap between widgets
+		column: 12, // 12-column grid
+		animate: true, // Smooth animations
+	});
+
+	// Listen for changes (drag, resize)
+	gridInstance.value.on('change', () => {
+		scheduleAutoSave(); // Debounced save
+	});
+};
+
+// Add widget to grid
+const addWidget = (typeId) => {
+	const widget = widgetStore.createWidgetInstance(typeId);
+	widgets.value.push(widget);
+
+	gridInstance.value.addWidget({
+		id: widget.id,
+		x: 0,
+		y: 0,
+		w: 4,
+		h: 3,
+	});
+};
+
+// Save layout to database
+const saveDashboard = async () => {
+	const gridItems = gridInstance.value.getGridItems();
+
+	// Update widget positions from grid
+	gridItems.forEach((el) => {
+		const widget = widgets.value.find((w) => w.id === el.id);
+		const node = el.gridstackNode;
+		widget.layout = {
+			x: node.x,
+			y: node.y,
+			w: node.w,
+			h: node.h,
+		};
+	});
+
+	// Save to backend
+	await dashboardStore.updateDashboard(dashboardId, {
+		layout: { widgets: widgets.value },
+	});
+};
+</script>
+
+<template>
+	<div class="dashboard-editor">
+		<!-- Top bar with Add Widget button -->
+		<div class="toolbar">
+			<button @click="showWidgetPicker = true">+ Add Widget</button>
+		</div>
+
+		<!-- GridStack container -->
+		<div ref="gridContainer" class="grid-stack">
+			<div
+				v-for="widget in widgets"
+				:key="widget.id"
+				class="grid-stack-item"
+				:gs-x="widget.layout.x"
+				:gs-y="widget.layout.y"
+				:gs-w="widget.layout.w"
+				:gs-h="widget.layout.h"
+			>
+				<div class="grid-stack-item-content">
+					<component
+						:is="getWidgetComponent(widget.type)"
+						:config="widget.config"
+						@configure="configureWidget(widget.id)"
+						@remove="removeWidget(widget.id)"
+					/>
+				</div>
+			</div>
+		</div>
+	</div>
+</template>
+```
+
+**GridStack Layout Persistence:**
+
+```typescript
+// Database stores layout as JSONB
+{
+  "widgets": [
+    {
+      "id": "widget-123",
+      "type": "github",
+      "x": 0,     // Column position (0-11)
+      "y": 0,     // Row position
+      "w": 4,     // Width in columns
+      "h": 3,     // Height in rows
+      "config": { "username": "octocat" }
+    }
+  ]
+}
+```
+
+#### 6. API Integration (`api/widgets.ts`)
+
+Each widget type has a corresponding API function that fetches data from the backend.
+
+**Structure:**
+
+```typescript
+// GitHub data fetcher
+export const fetchGitHubData = async (username: string) => {
+	const response = await apiClient.get('/data/github', {
+		params: { username },
+	});
+	return response.data;
+};
+
+// Weather data fetcher
+export const fetchWeatherData = async (city: string) => {
+	const response = await apiClient.get('/data/weather', {
+		params: { city },
+	});
+	return response.data;
+};
+```
+
+**Benefits:**
+
+-   **Centralized**: All API calls in one place
+-   **Type-safe**: Return types match backend responses
+-   **Reusable**: Multiple widgets can use same API
+-   **Cached**: Backend handles caching automatically
+
+### Data Flow Diagram
+
+```
+User Action (Add Widget)
+    ↓
+Dashboard Editor
+    ↓
+Widget Store (Create Instance)
+    ↓
+GridStack (Add to Grid)
+    ↓
+Widget Component (Render)
+    ↓
+API Call (Fetch Data)
+    ↓
+Backend (Return Cached or Fresh Data)
+    ↓
+Widget Updates UI
+    ↓
+Auto-Save Triggers (After 2s)
+    ↓
+Dashboard Store (Update DB)
+```
+
+### Widget Lifecycle
+
+1. **Registration**: Widget type registered in `widgetRegistry.ts`
+2. **Creation**: User clicks "Add Widget" → creates instance
+3. **Rendering**: Vue renders widget component in grid
+4. **Configuration**: User opens settings → modal shows config form
+5. **Data Loading**: Widget calls API endpoint
+6. **Auto-Refresh**: Timer triggers periodic refreshes
+7. **Persistence**: Layout/config saved to database
+8. **Removal**: User deletes widget → removed from grid and DB
+
+### Adding a New Widget (Step-by-Step)
+
+**Step 1: Create Widget Component**
+
+```vue
+<!-- src/components/widgets/MyWidget.vue -->
+<script setup lang="ts">
+import { ref, onMounted } from 'vue';
+import BaseWidget from '../BaseWidget.vue';
+import { fetchMyData } from '../../api/widgets';
+
+interface Props {
+	config: { myParam: string };
+	refreshInterval?: number;
+}
+
+const props = defineProps<Props>();
+const data = ref(null);
+const loading = ref(false);
+const error = ref(null);
+
+const loadData = async () => {
+	loading.value = true;
+	try {
+		data.value = await fetchMyData(props.config.myParam);
+	} catch (err) {
+		error.value = err.message;
+	} finally {
+		loading.value = false;
+	}
+};
+
+onMounted(loadData);
+</script>
+
+<template>
+	<BaseWidget
+		title="My Widget"
+		:loading="loading"
+		:error="error"
+		@refresh="loadData"
+		@configure="$emit('configure')"
+		@remove="$emit('remove')"
+	>
+		<div>{{ data }}</div>
+	</BaseWidget>
+</template>
+```
+
+**Step 2: Add API Function**
+
+```typescript
+// src/api/widgets.ts
+export const fetchMyData = async (param: string) => {
+	const response = await apiClient.get('/data/my-widget', {
+		params: { param },
+	});
+	return response.data;
+};
+```
+
+**Step 3: Register Widget**
+
+```typescript
+// src/composables/widgetRegistry.ts
+import MyWidget from '../components/widgets/MyWidget.vue';
+
+widgetStore.registerWidget({
+	id: 'my-widget',
+	name: 'My Custom Widget',
+	description: 'Does something awesome',
+	icon: '🚀',
+	component: MyWidget,
+	defaultConfig: { myParam: '' },
+	configSchema: [
+		{
+			key: 'myParam',
+			label: 'Parameter',
+			type: 'text',
+			required: true,
+		},
+	],
+	defaultSize: { w: 4, h: 3 },
+	refreshInterval: 300,
+});
+```
+
+**Step 4: Implement Backend Endpoint**
+
+```rust
+// backend/src/widgets/my_widget.rs
+pub async fn my_widget_handler(
+    Query(params): Query<MyWidgetQuery>,
+) -> impl IntoResponse {
+    // Fetch data from external API or database
+    let data = fetch_external_data(&params.param).await?;
+    Json(data)
+}
+```
+
+**Step 5: Done!**
+
+Widget automatically appears in "Add Widget" picker and works like all others.
+
+### Common Patterns & Best Practices
+
+#### Auto-Refresh Pattern
+
+```typescript
+let refreshTimer: number | null = null;
+
+const setupAutoRefresh = () => {
+	if (refreshTimer) clearInterval(refreshTimer);
+
+	if (props.refreshInterval > 0) {
+		refreshTimer = window.setInterval(() => {
+			loadData();
+		}, props.refreshInterval * 1000);
+	}
+};
+
+// Watch for changes to refreshInterval
+watch(() => props.refreshInterval, setupAutoRefresh, { immediate: true });
+
+// Cleanup on unmount
+onBeforeUnmount(() => {
+	if (refreshTimer) clearInterval(refreshTimer);
+});
+```
+
+#### Error Handling Pattern
+
+```typescript
+const loadData = async () => {
+	loading.value = true;
+	error.value = null; // Clear previous errors
+
+	try {
+		data.value = await fetchData();
+	} catch (err: any) {
+		error.value = err.message || 'Failed to load data';
+		console.error('Widget error:', err);
+	} finally {
+		loading.value = false;
+	}
+};
+```
+
+#### Debounced Auto-Save Pattern
+
+```typescript
+let autoSaveTimer: number | null = null;
+
+const scheduleAutoSave = () => {
+	if (autoSaveTimer) clearTimeout(autoSaveTimer);
+
+	// Wait 2 seconds after last change before saving
+	autoSaveTimer = window.setTimeout(() => {
+		saveDashboard();
+	}, 2000);
+};
+```
+
+### Troubleshooting
+
+#### Widget Not Appearing
+
+-   ✅ Check widget is registered in `widgetRegistry.ts`
+-   ✅ Verify `initializeWidgets()` called in `main.ts`
+-   ✅ Check component import path is correct
+
+#### API Calls Failing
+
+-   ✅ Verify backend endpoint exists and is running
+-   ✅ Check Vite proxy configuration in `vite.config.ts`
+-   ✅ Inspect Network tab in browser DevTools
+-   ✅ Ensure authentication token is being sent
+
+#### GridStack Layout Not Saving
+
+-   ✅ Check `gridInstance.value.on('change')` is set up
+-   ✅ Verify `saveDashboard()` updates correct dashboard
+-   ✅ Check database JSONB column accepts layout structure
+
+#### Widget Not Refreshing
+
+-   ✅ Verify `refreshInterval` prop is passed to widget
+-   ✅ Check `setupAutoRefresh()` is called with correct interval
+-   ✅ Ensure interval timer is cleared on unmount
+
+### Performance Considerations
+
+#### Lazy Loading Widgets
+
+```typescript
+// Dynamically import widgets only when needed
+const GitHubWidget = defineAsyncComponent(
+	() => import('./components/widgets/GitHubWidget.vue'),
+);
+```
+
+#### Debouncing Grid Updates
+
+```typescript
+// Don't save on every pixel movement
+let saveTimeout = null;
+gridInstance.value.on('change', () => {
+	clearTimeout(saveTimeout);
+	saveTimeout = setTimeout(saveDashboard, 2000);
+});
+```
+
+#### Caching API Responses
+
+Backend already caches responses with Redis. Frontend can add additional caching:
+
+```typescript
+const cache = new Map();
+
+const fetchWithCache = async (key, fetcher, ttl = 300000) => {
+	const cached = cache.get(key);
+	if (cached && Date.now() - cached.timestamp < ttl) {
+		return cached.data;
+	}
+
+	const data = await fetcher();
+	cache.set(key, { data, timestamp: Date.now() });
+	return data;
+};
+```
+
+---
+
 ## Conclusion
 
 You now understand:
@@ -2016,7 +2702,16 @@ You now understand:
 -   ✅ How Vue Router handles navigation
 -   ✅ How components communicate
 -   ✅ How authentication flows through the app
+-   ✅ **How the widget system works with GridStack**
+-   ✅ **How to add new widgets to the dashboard**
+-   ✅ **How configuration and persistence work**
 
 **The architecture is modular, type-safe, and scalable.** Each piece has a clear responsibility, making the codebase maintainable as it grows.
 
-**Next Phase:** Implement the dashboard editor with drag-and-drop widgets!
+**Phase 7 Complete!** The dashboard editor with drag-and-drop widgets is fully functional.
+
+**Next Steps:**
+
+-   Testing and CI/CD (Phase 10)
+-   Deployment preparation (Phase 11)
+-   Production optimization and monitoring
