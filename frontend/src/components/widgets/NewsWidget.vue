@@ -69,10 +69,7 @@ const formatTime = (dateString: string): string => {
 	return `${Math.floor(diff / 86400)} days ago`;
 };
 
-const truncateText = (text: string, maxLength: number): string => {
-	if (text.length <= maxLength) return text;
-	return text.substring(0, maxLength) + '...';
-};
+// Removed unused truncateText helper to satisfy noUnusedLocals
 
 onMounted(() => {
 	loadData();

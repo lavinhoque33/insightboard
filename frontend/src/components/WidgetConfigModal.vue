@@ -1,7 +1,7 @@
 /** * Widget Configuration Modal * Dynamic form for editing widget settings
 based on widget schema */
 <script setup lang="ts">
-import { ref, computed, watch } from 'vue';
+import { ref, watch } from 'vue';
 import type { WidgetConfigField } from '../stores/widgets';
 
 interface Props {

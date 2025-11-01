@@ -3,7 +3,8 @@
  * Defines all application routes and navigation guards
  */
 
-import { createRouter, createWebHistory, RouteRecordRaw } from 'vue-router';
+import { createRouter, createWebHistory } from 'vue-router';
+import type { RouteRecordRaw } from 'vue-router';
 import { useAuthStore } from '../stores/auth';
 import LoginView from '../views/LoginView.vue';
 import RegisterView from '../views/RegisterView.vue';
@@ -57,6 +58,9 @@ const router = createRouter({
 // Navigation guard for authentication
 router.beforeEach((to, from, next) => {
 	const authStore = useAuthStore();
+
+	// Mark 'from' as intentionally unused to satisfy noUnusedParameters
+	void from;
 
 	// Check if route requires authentication
 	if (to.meta.requiresAuth && !authStore.isAuthenticated) {

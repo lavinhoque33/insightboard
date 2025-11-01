@@ -2,7 +2,8 @@
  * Axios client configuration with interceptors for authentication and error handling
  */
 
-import axios, {
+import axios from 'axios';
+import type {
 	AxiosError,
 	AxiosInstance,
 	InternalAxiosRequestConfig,

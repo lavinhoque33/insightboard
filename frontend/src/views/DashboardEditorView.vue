@@ -1,11 +1,12 @@
 /** * Dashboard Editor View * Allows users to add, configure, move, and remove
 widgets on their dashboard */
 <script setup lang="ts">
-import { ref, computed, onMounted, onBeforeUnmount, watch } from 'vue';
+import { ref, computed, onMounted, onBeforeUnmount } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import { useDashboardStore } from '../stores/dashboard';
 import { useWidgetStore } from '../stores/widgets';
 import type { WidgetInstance } from '../stores/widgets';
+import type { WidgetType as WidgetKind } from '../types';
 import 'gridstack/dist/gridstack.min.css';
 import { GridStack } from 'gridstack';
 import WidgetConfigModal from '../components/WidgetConfigModal.vue';
@@ -179,17 +180,15 @@ const saveDashboard = async () => {
 		}
 
 		await dashboardStore.updateDashboard(dashboard.value.id, {
-			layout: {
-				widgets: widgets.value.map((w) => ({
-					id: w.id,
-					type: w.type,
-					x: w.layout.x,
-					y: w.layout.y,
-					w: w.layout.w,
-					h: w.layout.h,
-					config: w.config,
-				})),
-			},
+			widgets: widgets.value.map((w) => ({
+				id: w.id,
+				type: w.type as WidgetKind,
+				x: w.layout.x,
+				y: w.layout.y,
+				w: w.layout.w,
+				h: w.layout.h,
+				config: w.config,
+			})),
 		});
 	} catch (error: any) {
 		console.error('Failed to save dashboard:', error);
