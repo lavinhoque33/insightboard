@@ -8,20 +8,163 @@
 
 ## Table of Contents
 
-1. [Overview](#overview)
-2. [Technology Stack Explained](#technology-stack-explained)
-3. [Project Structure](#project-structure)
-4. [Type System (TypeScript)](#type-system-typescript)
-5. [API Layer Architecture](#api-layer-architecture)
-6. [State Management with Pinia](#state-management-with-pinia)
-7. [Routing System](#routing-system)
-8. [Component Architecture](#component-architecture)
-9. [Styling with TailwindCSS](#styling-with-tailwindcss)
-10. [Authentication Flow](#authentication-flow)
-11. [Data Flow Diagrams](#data-flow-diagrams)
-12. [Best Practices & Patterns](#best-practices--patterns)
-13. [Common Scenarios](#common-scenarios)
-14. [Troubleshooting](#troubleshooting)
+1. [Quick Start](#quick-start)
+2. [Overview](#overview)
+3. [Technology Stack Explained](#technology-stack-explained)
+4. [Project Structure](#project-structure)
+5. [Type System (TypeScript)](#type-system-typescript)
+6. [API Layer Architecture](#api-layer-architecture)
+7. [State Management with Pinia](#state-management-with-pinia)
+8. [Routing System](#routing-system)
+9. [Component Architecture](#component-architecture)
+10. [Styling with TailwindCSS](#styling-with-tailwindcss)
+11. [Authentication Flow](#authentication-flow)
+12. [Data Flow Diagrams](#data-flow-diagrams)
+13. [Best Practices & Patterns](#best-practices--patterns)
+14. [Common Scenarios](#common-scenarios)
+15. [Troubleshooting](#troubleshooting)
+
+---
+
+## Quick Start
+
+### Critical Setup Requirements
+
+Before the frontend can run, **three configuration files must be properly set up**. Missing any of these will cause the app to crash or fail silently.
+
+#### 1. Application Initialization (`main.ts`)
+
+The `main.ts` file is the entry point that initializes Vue, Pinia, and Router.
+
+**✅ Correct Setup:**
+
+```typescript
+import { createApp } from 'vue';
+import { createPinia } from 'pinia';
+import router from './router';
+import App from './App.vue';
+import './style.css';
+
+const app = createApp(App);
+const pinia = createPinia();
+
+// CRITICAL: Install plugins before mounting
+app.use(pinia); // ← State management
+app.use(router); // ← Navigation
+app.mount('#app');
+```
+
+**❌ Common Mistake:**
+
+```typescript
+// DON'T: This skips plugin installation
+createApp(App).mount('#app'); // ← Pinia and Router won't work!
+```
+
+**Why This Matters:** Without `app.use(pinia)` and `app.use(router)`, components cannot access stores or routing, causing errors like:
+
+-   `Cannot access 'useAuthStore' before initialization`
+-   `Cannot read property '$router' of undefined`
+
+---
+
+#### 2. Development Proxy (`vite.config.ts`)
+
+The Vite config must proxy API requests to the backend to avoid CORS errors.
+
+**✅ Correct Setup:**
+
+```typescript
+import { defineConfig } from 'vite';
+import vue from '@vitejs/plugin-vue';
+
+export default defineConfig({
+	plugins: [vue()],
+	server: {
+		proxy: {
+			'/api': {
+				target: 'http://localhost:8080', // Backend server
+				changeOrigin: true,
+			},
+		},
+	},
+});
+```
+
+**Why This Matters:** Without the proxy:
+
+-   Frontend runs on `localhost:5173`
+-   Backend runs on `localhost:8080`
+-   Browser blocks cross-origin requests (CORS error)
+-   All API calls return 404 or CORS errors
+
+**How It Works:**
+
+```
+Request: POST /api/auth/login
+         ↓ (Vite intercepts)
+Forwarded to: http://localhost:8080/api/auth/login
+         ↓ (Backend responds)
+Response returned to frontend
+```
+
+---
+
+#### 3. TailwindCSS Integration (`style.css`)
+
+TailwindCSS requires specific directives at the top of your CSS file.
+
+**✅ Correct Setup:**
+
+```css
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* Your custom styles below */
+body {
+	margin: 0;
+	font-family: system-ui, sans-serif;
+}
+```
+
+**❌ Common Mistake:**
+
+```css
+/* DON'T: Missing @tailwind directives */
+body {
+	background: white;
+}
+/* Tailwind classes like 'bg-blue-600' won't work! */
+```
+
+**Why This Matters:** The `@tailwind` directives tell PostCSS to generate Tailwind's utility classes. Without them:
+
+-   `class="bg-blue-600"` has no effect
+-   All Tailwind utilities are missing
+-   Only custom CSS works
+
+---
+
+### Running the Frontend
+
+```bash
+# Install dependencies
+npm install
+
+# Start dev server (runs on localhost:5173)
+npm run dev
+
+# Ensure backend is also running (localhost:8080)
+# Otherwise API calls will fail
+```
+
+**Verify Setup:**
+
+1. Dev server starts without errors ✅
+2. Navigate to `http://localhost:5173` ✅
+3. Console has no red errors ✅
+4. Tailwind styles are visible (colors, spacing) ✅
 
 ---
 
@@ -1740,6 +1883,95 @@ export default defineConfig({
 -   Press `Ctrl+Shift+P`
 -   Type "Restart TypeScript Server"
 -   Press Enter
+
+### Issue: App crashes on load with "Cannot access useAuthStore"
+
+**Cause:** Pinia not initialized in `main.ts`
+
+**Solution:** Ensure plugins are installed before mounting
+
+```typescript
+// main.ts - CORRECT ORDER
+const app = createApp(App);
+const pinia = createPinia();
+
+app.use(pinia); // ← Must be BEFORE mount
+app.use(router); // ← Must be BEFORE mount
+app.mount('#app');
+```
+
+### Issue: Tailwind classes don't work
+
+**Cause:** Missing `@tailwind` directives in `style.css`
+
+**Solution:** Add directives at the top of `style.css`
+
+```css
+/* style.css - Must be at the TOP */
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* Your custom styles below */
+```
+
+After adding, restart the dev server:
+
+```bash
+# Stop: Ctrl+C
+# Start: npm run dev
+```
+
+### Issue: All API calls return 404 in development
+
+**Causes:**
+
+1. Backend server not running
+2. Proxy misconfigured
+
+**Solutions:**
+
+**Check 1: Backend is running**
+
+```bash
+curl http://localhost:8080/healthz
+# Should return: ok
+```
+
+**Check 2: Proxy correctly configured**
+
+```typescript
+// vite.config.ts must have server.proxy section
+server: {
+  proxy: {
+    '/api': { target: 'http://localhost:8080', changeOrigin: true }
+  }
+}
+```
+
+**Check 3: API calls use relative paths**
+
+```typescript
+// ✅ Correct - uses proxy
+await api.post('/api/auth/login', ...)
+
+// ❌ Wrong - bypasses proxy
+await api.post('http://localhost:8080/api/auth/login', ...)
+```
+
+### Issue: White screen with no errors in console
+
+**Debugging steps:**
+
+1. Check browser console (F12) for any warnings
+2. Verify `<div id="app"></div>` exists in `index.html`
+3. Check network tab - did `main.ts` load?
+4. Try hard refresh: `Ctrl+Shift+R` (Windows/Linux) or `Cmd+Shift+R` (Mac)
+5. Clear Vite cache and restart:
+    ```bash
+    rm -rf node_modules/.vite
+    npm run dev
+    ```
 
 ---
 
