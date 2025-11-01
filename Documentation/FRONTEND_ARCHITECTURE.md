@@ -1379,27 +1379,55 @@ const formatDate = (dateString: string): string => {
 
 ## Styling with TailwindCSS
 
-### Configuration (`tailwind.config.js`)
+### Tailwind v4 Setup (CSS-first)
 
-```javascript
+TailwindCSS v4 favors a CSS-first configuration instead of `tailwind.config.js` for most theming. This project uses the recommended v4 setup so classes work in both dev and prod.
+
+1. Global stylesheet directives in `src/style.css`:
+
+```css
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* Theme tokens (v4) */
+@theme {
+	--color-primary-50: #eff6ff;
+	--color-primary-100: #dbeafe;
+	--color-primary-200: #bfdbfe;
+	--color-primary-300: #93c5fd;
+	--color-primary-400: #60a5fa;
+	--color-primary-500: #3b82f6;
+	--color-primary-600: #2563eb; /* Main brand color */
+	--color-primary-700: #1d4ed8;
+	--color-primary-800: #1e40af;
+	--color-primary-900: #1e3a8a;
+}
+```
+
+2. Vite plugin in `vite.config.ts` (improves class detection in Vue SFCs):
+
+```ts
+import tailwind from '@tailwindcss/vite';
+import vue from '@vitejs/plugin-vue';
+
+export default defineConfig({
+	plugins: [tailwind(), vue()],
+});
+```
+
+3. PostCSS configuration in `postcss.config.js`:
+
+```js
+import tailwind from '@tailwindcss/postcss';
+import autoprefixer from 'autoprefixer';
+
 export default {
-	content: ['./index.html', './src/**/*.{vue,js,ts,jsx,tsx}'],
-	theme: {
-		extend: {
-			colors: {
-				primary: {
-					50: '#eff6ff',
-					100: '#dbeafe',
-					// ... full color scale
-					600: '#2563eb', // Main brand color
-					700: '#1d4ed8',
-					// ...
-				},
-			},
-		},
-	},
+	plugins: [tailwind(), autoprefixer()],
 };
 ```
+
+Note: A legacy `tailwind.config.js` exists in the repo from earlier versions. With v4, prefer `@theme` in CSS for colors/tokens. The config file may be ignored by v4 for most settings.
 
 ### Using Custom Colors
 
@@ -1412,7 +1440,7 @@ export default {
 	<h1 class="text-primary-700">...</h1>
 
 	<!-- Hover state -->
-	<button class="bg-primary-600 hover:bg-primary-700">...</button>
+	<button class="bg-primary-600 hover:bg-primary-700 text-white">...</button>
 
 	<!-- Responsive -->
 	<div class="bg-gray-100 md:bg-primary-50 lg:bg-white">...</div>
@@ -1902,20 +1930,46 @@ app.mount('#app');
 
 ### Issue: Tailwind classes don't work
 
-**Cause:** Missing `@tailwind` directives in `style.css`
+**Causes (v4):**
 
-**Solution:** Add directives at the top of `style.css`
+-   Missing `@tailwind` directives in `src/style.css`
+-   No `@theme` tokens defined for custom colors (e.g., `primary` scale)
+-   Tailwind v4 Vite plugin not enabled (`@tailwindcss/vite`)
+
+**Solutions:**
+
+1. Ensure `src/style.css` contains:
 
 ```css
-/* style.css - Must be at the TOP */
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
-
-/* Your custom styles below */
 ```
 
-After adding, restart the dev server:
+2. If you use custom colors (like `bg-primary-600`), add tokens:
+
+```css
+@theme {
+	--color-primary-600: #2563eb;
+	--color-primary-700: #1d4ed8;
+}
+```
+
+3. Verify Vite plugin and PostCSS:
+
+```ts
+// vite.config.ts
+import tailwind from '@tailwindcss/vite';
+plugins: [tailwind(), vue()];
+```
+
+```js
+// postcss.config.js
+import tailwind from '@tailwindcss/postcss';
+export default { plugins: [tailwind()] };
+```
+
+After changes, restart the dev server:
 
 ```bash
 # Stop: Ctrl+C
