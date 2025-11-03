@@ -129,77 +129,95 @@ onMounted(() => {
 		@configure="emit('configure')"
 		@remove="emit('remove')"
 	>
+		<!-- Empty State -->
 		<div
 			v-if="cryptos.length === 0 && !loading && !error"
-			class="text-center text-gray-500 py-8"
+			class="flex flex-col items-center justify-center py-8 text-center"
 		>
-			<p class="text-sm">No cryptocurrency data found</p>
+			<div class="text-4xl mb-3">💰</div>
+			<p class="text-sm text-base-content/60">
+				No cryptocurrency data found
+			</p>
 		</div>
 
+		<!-- Crypto List -->
 		<div v-else class="space-y-3">
 			<div
 				v-for="crypto in cryptos"
 				:key="crypto.id"
-				class="bg-gradient-to-r from-gray-50 to-white p-4 rounded-lg border border-gray-200 hover:shadow-md transition-shadow"
+				class="card card-bordered border-base-300 bg-gradient-to-br from-base-100 to-base-200 hover:shadow-lg transition-all duration-300 group"
 			>
-				<!-- Crypto Header -->
-				<div class="flex items-center justify-between mb-3">
-					<div class="flex items-center space-x-2">
-						<span class="font-bold text-lg text-gray-800">{{
-							crypto.symbol.toUpperCase()
-						}}</span>
-						<span class="text-sm text-gray-500">{{
-							crypto.name
-						}}</span>
-					</div>
-					<div class="text-right">
-						<div class="font-bold text-lg text-gray-800">
-							{{ formatPrice(crypto.current_price) }}
+				<div class="card-body p-4">
+					<!-- Header: Symbol and Price -->
+					<div class="flex items-center justify-between mb-3">
+						<div class="flex items-center gap-2">
+							<div class="badge badge-primary gap-1 font-bold">
+								{{ crypto.symbol.toUpperCase() }}
+							</div>
+							<span class="text-sm text-base-content/60">
+								{{ crypto.name }}
+							</span>
+						</div>
+						<div class="text-right">
+							<div
+								class="text-xl font-bold text-transparent bg-gradient-to-r from-primary to-secondary bg-clip-text"
+							>
+								{{ formatPrice(crypto.current_price) }}
+							</div>
 						</div>
 					</div>
-				</div>
 
-				<!-- Price Change -->
-				<div class="flex items-center justify-between text-sm">
-					<div
-						:class="
-							getPriceChangeClass(
-								crypto.price_change_percentage_24h,
-							)
-						"
-						class="font-semibold flex items-center space-x-1"
-					>
-						<span>{{
-							getPriceChangeIcon(
-								crypto.price_change_percentage_24h,
-							)
-						}}</span>
-						<span
-							>{{
-								Math.abs(
-									crypto.price_change_percentage_24h,
-								).toFixed(2)
-							}}%</span
+					<!-- Divider -->
+					<div class="divider my-1"></div>
+
+					<!-- Price Change and Market Cap -->
+					<div class="flex items-center justify-between text-sm">
+						<!-- Price Change Badge -->
+						<div
+							class="badge"
+							:class="{
+								'badge-success':
+									crypto.price_change_percentage_24h > 0,
+								'badge-error':
+									crypto.price_change_percentage_24h < 0,
+								'badge-ghost':
+									crypto.price_change_percentage_24h === 0,
+							}"
 						>
-						<span class="text-xs text-gray-500">(24h)</span>
-					</div>
-					<div class="text-gray-600">
-						<span class="text-xs">MCap: </span>
-						<span class="font-medium">{{
-							formatMarketCap(crypto.market_cap)
-						}}</span>
-					</div>
-				</div>
+							<span>{{
+								getPriceChangeIcon(
+									crypto.price_change_percentage_24h,
+								)
+							}}</span>
+							<span
+								>{{
+									Math.abs(
+										crypto.price_change_percentage_24h,
+									).toFixed(2)
+								}}%</span
+							>
+							<span class="text-xs">(24h)</span>
+						</div>
 
-				<!-- Volume -->
-				<div class="mt-2 pt-2 border-t border-gray-100">
-					<div
-						class="flex items-center justify-between text-xs text-gray-500"
-					>
-						<span>24h Volume</span>
-						<span class="font-medium">{{
-							formatMarketCap(crypto.total_volume)
-						}}</span>
+						<!-- Market Cap -->
+						<div class="text-base-content/70">
+							<span class="text-xs">MCap: </span>
+							<span class="font-semibold">{{
+								formatMarketCap(crypto.market_cap)
+							}}</span>
+						</div>
+					</div>
+
+					<!-- Volume -->
+					<div class="mt-2 pt-2 border-t border-base-300">
+						<div
+							class="flex items-center justify-between text-xs text-base-content/60"
+						>
+							<span>24h Volume</span>
+							<span class="font-semibold text-base-content">{{
+								formatMarketCap(crypto.total_volume)
+							}}</span>
+						</div>
 					</div>
 				</div>
 			</div>

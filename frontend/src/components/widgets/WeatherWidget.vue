@@ -125,44 +125,58 @@ onMounted(() => {
 	>
 		<div
 			v-if="weather"
-			class="flex flex-col items-center justify-center h-full space-y-4"
+			class="flex flex-col items-center justify-center space-y-6 py-4"
 		>
-			<!-- Weather Icon and Temperature -->
-			<div class="text-center">
-				<div class="text-6xl mb-2">
+			<!-- Main Temperature Card -->
+			<div
+				class="bg-gradient-to-br from-primary/10 to-secondary/10 rounded-2xl p-8 w-full text-center border border-base-300"
+			>
+				<!-- Weather Icon -->
+				<div class="text-7xl mb-4">
 					{{ getWeatherIcon(weather.icon) }}
 				</div>
-				<div class="text-5xl font-bold text-gray-800">
+
+				<!-- Temperature -->
+				<div
+					class="text-5xl font-bold text-transparent bg-gradient-to-r from-primary to-secondary bg-clip-text mb-2"
+				>
 					{{ Math.round(weather.temperature) }}°C
 				</div>
-				<div class="text-sm text-gray-500 mt-1">
+
+				<!-- Feels Like -->
+				<div class="text-sm text-base-content/60 mb-4">
 					Feels like {{ Math.round(weather.feels_like) }}°C
 				</div>
-			</div>
 
-			<!-- Weather Description -->
-			<div class="text-center">
-				<p class="text-lg text-gray-700 capitalize">
+				<!-- Description -->
+				<p class="text-lg font-semibold text-base-content capitalize">
 					{{ weather.description }}
 				</p>
-				<p class="text-sm text-gray-500">
+				<p class="text-sm text-base-content/60 mt-1">
 					{{ weather.city }}, {{ weather.country }}
 				</p>
 			</div>
 
-			<!-- Weather Details -->
-			<div class="grid grid-cols-2 gap-4 w-full max-w-xs mt-4">
-				<div class="bg-blue-50 rounded-lg p-3 text-center">
-					<div class="text-2xl mb-1">💧</div>
-					<div class="text-xs text-gray-600">Humidity</div>
-					<div class="text-lg font-semibold text-gray-800">
+			<!-- Weather Details Grid -->
+			<div class="divider my-2"></div>
+
+			<div class="grid grid-cols-2 gap-3 w-full">
+				<!-- Humidity -->
+				<div class="stat bg-base-200 rounded-lg p-3">
+					<div class="stat-title text-sm flex items-center gap-1">
+						<span>💧 Humidity</span>
+					</div>
+					<div class="stat-value text-2xl text-primary text-center">
 						{{ weather.humidity }}%
 					</div>
 				</div>
-				<div class="bg-blue-50 rounded-lg p-3 text-center">
-					<div class="text-2xl mb-1">💨</div>
-					<div class="text-xs text-gray-600">Wind Speed</div>
-					<div class="text-lg font-semibold text-gray-800">
+
+				<!-- Wind Speed -->
+				<div class="stat bg-base-200 rounded-lg p-3">
+					<div class="stat-title text-sm flex items-center gap-1">
+						<span>💨 Wind Speed</span>
+					</div>
+					<div class="stat-value text-2xl text-secondary text-center">
 						{{ weather.wind_speed }} m/s
 					</div>
 				</div>

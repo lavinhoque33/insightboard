@@ -111,13 +111,16 @@ onMounted(() => {
 		@configure="emit('configure')"
 		@remove="emit('remove')"
 	>
+		<!-- Empty State -->
 		<div
 			v-if="articles.length === 0 && !loading && !error"
-			class="text-center text-gray-500 py-8"
+			class="flex flex-col items-center justify-center py-8 text-center"
 		>
-			<p class="text-sm">No news articles found</p>
+			<div class="text-4xl mb-3">📰</div>
+			<p class="text-sm text-base-content/60">No news articles found</p>
 		</div>
 
+		<!-- Articles List -->
 		<div v-else class="space-y-3">
 			<a
 				v-for="(article, index) in articles.slice(0, 5)"
@@ -125,41 +128,55 @@ onMounted(() => {
 				:href="article.url"
 				target="_blank"
 				rel="noopener noreferrer"
-				class="block p-3 rounded-lg border border-gray-200 hover:border-blue-300 hover:shadow-md transition-all"
+				class="card card-bordered card-compact border-base-300 hover:border-primary hover:shadow-lg transition-all duration-300 cursor-pointer group bg-base-100"
 			>
-				<div class="flex space-x-3">
-					<!-- Article Image -->
-					<div
-						v-if="article.urlToImage"
-						class="flex-shrink-0 w-20 h-20 rounded overflow-hidden bg-gray-100"
-					>
-						<img
-							:src="article.urlToImage"
-							:alt="article.title"
-							class="w-full h-full object-cover"
-							@error="(e) => ((e.target as HTMLImageElement).style.display = 'none')"
-						/>
-					</div>
-
-					<!-- Article Content -->
-					<div class="flex-1 min-w-0">
-						<h4
-							class="text-sm font-semibold text-gray-800 line-clamp-2 mb-1"
-						>
-							{{ article.title }}
-						</h4>
-						<p class="text-xs text-gray-600 line-clamp-2 mb-2">
-							{{ article.description }}
-						</p>
+				<div class="card-body p-3">
+					<!-- Title and Image -->
+					<div class="flex gap-3">
+						<!-- Article Image -->
 						<div
-							class="flex items-center justify-between text-xs text-gray-500"
+							v-if="article.urlToImage"
+							class="flex-shrink-0 w-20 h-20 rounded-lg overflow-hidden bg-base-300"
 						>
-							<span class="font-medium">{{
-								article.source.name
-							}}</span>
-							<span>{{ formatTime(article.publishedAt) }}</span>
+							<img
+								:src="article.urlToImage"
+								:alt="article.title"
+								class="w-full h-full object-cover"
+								@error="(e) => ((e.target as HTMLImageElement).style.display = 'none')"
+							/>
+						</div>
+
+						<!-- Article Content -->
+						<div
+							class="flex-1 min-w-0 flex flex-col justify-between"
+						>
+							<!-- Title -->
+							<h4
+								class="text-sm font-semibold text-base-content line-clamp-2 group-hover:text-primary transition-colors"
+							>
+								{{ article.title }}
+							</h4>
+
+							<!-- Source and Time -->
+							<div
+								class="flex items-center justify-between gap-2 mt-2"
+							>
+								<span
+									class="badge badge-sm badge-ghost text-xs"
+								>
+									{{ article.source.name }}
+								</span>
+								<span class="text-xs text-base-content/50">
+									{{ formatTime(article.publishedAt) }}
+								</span>
+							</div>
 						</div>
 					</div>
+
+					<!-- Description (on second line) -->
+					<p class="text-xs text-base-content/60 line-clamp-2 mt-2">
+						{{ article.description }}
+					</p>
 				</div>
 			</a>
 		</div>

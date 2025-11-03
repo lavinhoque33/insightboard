@@ -153,29 +153,46 @@ onMounted(() => {
 		@configure="emit('configure')"
 		@remove="emit('remove')"
 	>
+		<!-- Empty State -->
 		<div
 			v-if="events.length === 0 && !loading && !error"
-			class="text-center text-gray-500 py-8"
+			class="flex flex-col items-center justify-center py-8 text-center"
 		>
-			<p class="text-sm">No recent activity found</p>
+			<div class="text-4xl mb-3">📋</div>
+			<p class="text-sm text-base-content/60">No recent activity found</p>
 		</div>
 
+		<!-- Activity Timeline -->
 		<div v-else class="space-y-2">
 			<div
 				v-for="(event, index) in events.slice(0, 10)"
 				:key="index"
-				class="flex items-start space-x-3 p-2 rounded hover:bg-gray-50 transition-colors"
+				class="flex items-start gap-3 p-3 rounded-lg border border-base-300 hover:border-primary hover:shadow-md transition-all duration-300 group"
 			>
-				<span class="text-2xl flex-shrink-0">{{
-					getEventIcon(event.type)
-				}}</span>
+				<!-- Event Icon Badge -->
+				<div class="flex-shrink-0">
+					<div class="badge badge-lg badge-primary gap-2 text-lg">
+						{{ getEventIcon(event.type) }}
+					</div>
+				</div>
+
+				<!-- Event Details -->
 				<div class="flex-1 min-w-0">
-					<p class="text-sm text-gray-800 truncate">
+					<p
+						class="text-sm font-medium text-base-content truncate group-hover:text-primary transition-colors"
+					>
 						{{ formatEventDescription(event) }}
 					</p>
-					<p class="text-xs text-gray-500 mt-0.5">
+					<p class="text-xs text-base-content/50 mt-1">
 						{{ formatTime(event.created_at) }}
 					</p>
+				</div>
+
+				<!-- Event Type Badge -->
+				<div class="flex-shrink-0">
+					<span class="badge badge-ghost text-xs">
+						{{ event.type.replace('Event', '') }}
+					</span>
 				</div>
 			</div>
 		</div>

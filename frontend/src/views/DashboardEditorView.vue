@@ -225,22 +225,23 @@ onBeforeUnmount(() => {
 </script>
 
 <template>
-	<div class="dashboard-editor h-screen flex flex-col bg-gray-50">
-		<!-- Top Bar -->
+	<div class="h-screen flex flex-col bg-base-100">
+		<!-- Toolbar -->
 		<div
-			class="bg-white shadow-sm border-b border-gray-200 px-6 py-4 flex items-center justify-between"
+			class="navbar bg-base-200 shadow-lg border-b border-base-300 sticky top-[70px] z-40"
 		>
-			<div class="flex items-center space-x-4">
+			<div class="flex-1">
 				<button
 					@click="router.push('/dashboards')"
-					class="text-gray-600 hover:text-gray-800 transition-colors"
+					class="btn btn-ghost gap-2"
 					title="Back to Dashboards"
 				>
 					<svg
-						class="w-6 h-6"
+						xmlns="http://www.w3.org/2000/svg"
+						class="h-5 w-5"
 						fill="none"
-						stroke="currentColor"
 						viewBox="0 0 24 24"
+						stroke="currentColor"
 					>
 						<path
 							stroke-linecap="round"
@@ -249,91 +250,131 @@ onBeforeUnmount(() => {
 							d="M10 19l-7-7m0 0l7-7m-7 7h18"
 						/>
 					</svg>
+					<h1
+						class="text-2xl font-bold text-transparent bg-gradient-to-r from-primary to-secondary bg-clip-text"
+					>
+						{{ dashboard?.settings?.title || 'Dashboard Editor' }}
+					</h1>
 				</button>
-				<h1 class="text-2xl font-bold text-gray-800">
-					{{ dashboard?.settings?.title || 'Dashboard Editor' }}
-				</h1>
-				<span
-					v-if="saving"
-					class="text-sm text-blue-600 flex items-center space-x-1"
-				>
+			</div>
+
+			<!-- Saving Status -->
+			<div
+				v-if="saving"
+				class="flex items-center gap-2 text-primary font-medium mx-4"
+			>
+				<span class="loading loading-spinner loading-sm"></span>
+				<span>Saving...</span>
+			</div>
+
+			<!-- Add Widget Dropdown -->
+			<div class="dropdown dropdown-end">
+				<button class="btn btn-primary gap-2 shadow-lg">
 					<svg
-						class="animate-spin h-4 w-4"
+						xmlns="http://www.w3.org/2000/svg"
+						class="h-5 w-5"
 						fill="none"
 						viewBox="0 0 24 24"
+						stroke="currentColor"
 					>
-						<circle
-							class="opacity-25"
-							cx="12"
-							cy="12"
-							r="10"
-							stroke="currentColor"
-							stroke-width="4"
-						></circle>
 						<path
-							class="opacity-75"
-							fill="currentColor"
-							d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
-						></path>
+							stroke-linecap="round"
+							stroke-linejoin="round"
+							stroke-width="2"
+							d="M12 4v16m8-8H4"
+						/>
 					</svg>
-					<span>Saving...</span>
-				</span>
-			</div>
-
-			<button
-				@click="showWidgetPicker = !showWidgetPicker"
-				class="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors flex items-center space-x-2"
-			>
-				<svg
-					class="w-5 h-5"
-					fill="none"
-					stroke="currentColor"
-					viewBox="0 0 24 24"
-				>
-					<path
-						stroke-linecap="round"
-						stroke-linejoin="round"
-						stroke-width="2"
-						d="M12 4v16m8-8H4"
-					/>
-				</svg>
-				<span>Add Widget</span>
-			</button>
-		</div>
-
-		<!-- Widget Picker Dropdown -->
-		<div
-			v-if="showWidgetPicker"
-			class="absolute right-6 top-20 z-50 w-80 bg-white rounded-lg shadow-xl border border-gray-200"
-		>
-			<div class="p-4 border-b border-gray-200">
-				<h3 class="font-semibold text-gray-800">Add Widget</h3>
-			</div>
-			<div class="max-h-96 overflow-y-auto">
-				<button
-					v-for="widgetType in widgetStore.availableWidgets"
-					:key="widgetType.id"
-					@click="addWidget(widgetType.id)"
-					class="w-full text-left px-4 py-3 hover:bg-blue-50 transition-colors border-b border-gray-100 last:border-0"
-				>
-					<div class="flex items-start space-x-3">
-						<span class="text-2xl">{{ widgetType.icon }}</span>
-						<div class="flex-1">
-							<div class="font-medium text-gray-800">
-								{{ widgetType.name }}
-							</div>
-							<div class="text-sm text-gray-600 mt-0.5">
-								{{ widgetType.description }}
-							</div>
-						</div>
-					</div>
+					<span>Add Widget</span>
 				</button>
+				<ul
+					class="dropdown-content z-50 menu p-2 shadow-xl bg-base-100 rounded-lg w-80 border border-base-300 max-h-96 overflow-y-auto"
+				>
+					<li
+						v-for="widgetType in widgetStore.availableWidgets"
+						:key="widgetType.id"
+					>
+						<a @click="addWidget(widgetType.id)" class="p-3">
+							<div class="flex items-start gap-3 w-full">
+								<span class="text-2xl">{{
+									widgetType.icon
+								}}</span>
+								<div class="flex-1">
+									<div class="font-bold text-base-content">
+										{{ widgetType.name }}
+									</div>
+									<div
+										class="text-sm text-base-content/60 mt-1"
+									>
+										{{ widgetType.description }}
+									</div>
+								</div>
+							</div>
+						</a>
+					</li>
+				</ul>
 			</div>
 		</div>
 
 		<!-- GridStack Container -->
-		<div class="flex-1 overflow-auto p-6">
-			<div ref="gridContainer" class="grid-stack">
+		<div
+			class="flex-1 overflow-auto p-6 bg-gradient-to-br from-base-100 via-base-100 to-base-200"
+		>
+			<!-- Empty State -->
+			<div
+				v-if="widgets.length === 0"
+				class="flex flex-col items-center justify-center h-full"
+			>
+				<div class="text-center max-w-md">
+					<div
+						class="inline-flex items-center justify-center w-24 h-24 rounded-full bg-base-200 mb-6"
+					>
+						<svg
+							xmlns="http://www.w3.org/2000/svg"
+							class="h-12 w-12 text-base-content/40"
+							fill="none"
+							viewBox="0 0 24 24"
+							stroke="currentColor"
+						>
+							<path
+								stroke-linecap="round"
+								stroke-linejoin="round"
+								stroke-width="2"
+								d="M9 17V7m0 10a2 2 0 01-2 2H5a2 2 0 01-2-2V7a2 2 0 012-2h2a2 2 0 012 2m0 10a2 2 0 002 2h2a2 2 0 002-2M9 7a2 2 0 012-2h2a2 2 0 012 2m0 10V7m0 10a2 2 0 002 2h2a2 2 0 002-2V7a2 2 0 00-2-2h-2a2 2 0 00-2 2"
+							/>
+						</svg>
+					</div>
+					<h2 class="text-2xl font-bold text-base-content mb-2">
+						Build Your Dashboard
+					</h2>
+					<p class="text-base-content/60 mb-8">
+						Add widgets to visualize your data and create a
+						personalized dashboard experience.
+					</p>
+					<button
+						@click="showWidgetPicker = true"
+						class="btn btn-primary btn-lg gap-2 shadow-lg"
+					>
+						<svg
+							xmlns="http://www.w3.org/2000/svg"
+							class="h-6 w-6"
+							fill="none"
+							viewBox="0 0 24 24"
+							stroke="currentColor"
+						>
+							<path
+								stroke-linecap="round"
+								stroke-linejoin="round"
+								stroke-width="2"
+								d="M12 4v16m8-8H4"
+							/>
+						</svg>
+						Add Your First Widget
+					</button>
+				</div>
+			</div>
+
+			<!-- Widgets Grid -->
+			<div v-else ref="gridContainer" class="grid-stack rounded-lg">
 				<div
 					v-for="widget in widgets"
 					:key="widget.id"
@@ -345,7 +386,9 @@ onBeforeUnmount(() => {
 					:gs-w="widget.layout.w"
 					:gs-h="widget.layout.h"
 				>
-					<div class="grid-stack-item-content">
+					<div
+						class="grid-stack-item-content rounded-lg shadow-md hover:shadow-lg transition-all"
+					>
 						<component
 							:is="getWidgetComponent(widget.type)"
 							:config="widget.config"
@@ -355,38 +398,6 @@ onBeforeUnmount(() => {
 						/>
 					</div>
 				</div>
-			</div>
-
-			<!-- Empty State -->
-			<div
-				v-if="widgets.length === 0"
-				class="flex flex-col items-center justify-center h-full text-center text-gray-500 py-20"
-			>
-				<svg
-					class="w-20 h-20 text-gray-300 mb-4"
-					fill="none"
-					stroke="currentColor"
-					viewBox="0 0 24 24"
-				>
-					<path
-						stroke-linecap="round"
-						stroke-linejoin="round"
-						stroke-width="1.5"
-						d="M9 17V7m0 10a2 2 0 01-2 2H5a2 2 0 01-2-2V7a2 2 0 012-2h2a2 2 0 012 2m0 10a2 2 0 002 2h2a2 2 0 002-2M9 7a2 2 0 012-2h2a2 2 0 012 2m0 10V7m0 10a2 2 0 002 2h2a2 2 0 002-2V7a2 2 0 00-2-2h-2a2 2 0 00-2 2"
-					/>
-				</svg>
-				<h3 class="text-xl font-semibold text-gray-700 mb-2">
-					No widgets yet
-				</h3>
-				<p class="text-sm text-gray-500 mb-6">
-					Click "Add Widget" to start building your dashboard
-				</p>
-				<button
-					@click="showWidgetPicker = true"
-					class="px-6 py-3 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors"
-				>
-					Add Your First Widget
-				</button>
 			</div>
 		</div>
 

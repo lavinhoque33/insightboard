@@ -88,176 +88,221 @@ const handleBackdropClick = (event: MouseEvent) => {
 
 <template>
 	<Transition name="modal">
-		<div
-			v-if="show"
-			class="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50 p-4"
-			@click="handleBackdropClick"
-		>
+		<!-- daisyUI Modal Dialog -->
+		<div v-if="show" class="modal modal-open" @click="handleBackdropClick">
 			<div
-				class="bg-white rounded-lg shadow-xl max-w-lg w-full max-h-[90vh] overflow-hidden flex flex-col"
+				class="modal-box w-full max-w-md bg-base-100 shadow-2xl"
+				@click.stop
 			>
-				<!-- Modal Header -->
-				<div
-					class="bg-gradient-to-r from-blue-500 to-blue-600 text-white px-6 py-4 flex items-center justify-between"
-				>
-					<h2 class="text-lg font-semibold">
-						Configure {{ widgetTypeName }}
-					</h2>
-					<button
-						@click="handleClose"
-						class="text-white hover:bg-white/20 rounded p-1 transition-colors"
-						title="Close"
-					>
-						<svg
-							class="w-5 h-5"
-							fill="none"
-							stroke="currentColor"
-							viewBox="0 0 24 24"
+				<!-- Modal Header with Gradient -->
+				<div class="pb-4 border-b border-base-300">
+					<div class="flex items-center justify-between">
+						<h3
+							class="font-bold text-lg text-transparent bg-gradient-to-r from-primary to-secondary bg-clip-text"
 						>
-							<path
-								stroke-linecap="round"
-								stroke-linejoin="round"
-								stroke-width="2"
-								d="M6 18L18 6M6 6l12 12"
-							/>
-						</svg>
-					</button>
+							⚙️ Configure {{ widgetTypeName }}
+						</h3>
+						<button
+							@click="handleClose"
+							class="btn btn-ghost btn-sm btn-circle"
+							title="Close"
+						>
+							<svg
+								class="w-5 h-5"
+								fill="none"
+								stroke="currentColor"
+								viewBox="0 0 24 24"
+							>
+								<path
+									stroke-linecap="round"
+									stroke-linejoin="round"
+									stroke-width="2"
+									d="M6 18L18 6M6 6l12 12"
+								/>
+							</svg>
+						</button>
+					</div>
 				</div>
 
-				<!-- Modal Body -->
-				<div class="flex-1 overflow-y-auto p-6">
-					<form @submit.prevent="handleSave" class="space-y-4">
-						<div
-							v-for="field in configSchema"
-							:key="field.key"
-							class="form-group"
-						>
-							<label
-								:for="field.key"
-								class="block text-sm font-medium text-gray-700 mb-1"
-							>
+				<!-- Modal Body with Form -->
+				<form
+					@submit.prevent="handleSave"
+					class="py-4 space-y-5 max-h-96 overflow-y-auto"
+				>
+					<!-- Dynamic Form Fields -->
+					<div
+						v-for="field in configSchema"
+						:key="field.key"
+						class="form-control w-full px-4"
+					>
+						<!-- Label with Required Indicator -->
+						<label :for="field.key" class="label">
+							<span class="label-text font-medium">
 								{{ field.label }}
-								<span v-if="field.required" class="text-red-500"
+								<span
+									v-if="field.required"
+									class="text-error ml-1"
 									>*</span
 								>
-							</label>
+							</span>
+						</label>
 
-							<!-- Text Input -->
-							<input
-								v-if="
-									field.type === 'text' ||
-									field.type === 'url'
-								"
-								:id="field.key"
-								v-model="formData[field.key]"
-								:type="field.type"
-								:placeholder="field.placeholder"
-								:required="field.required"
-								class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-								:class="{ 'border-red-500': errors[field.key] }"
-							/>
+						<!-- Text Input -->
+						<input
+							v-if="field.type === 'text' || field.type === 'url'"
+							:id="field.key"
+							v-model="formData[field.key]"
+							:type="field.type"
+							:placeholder="field.placeholder"
+							:required="field.required"
+							class="input input-bordered input-primary w-full transition-all duration-300"
+							:class="{ 'input-error': errors[field.key] }"
+						/>
 
-							<!-- Number Input -->
-							<input
-								v-else-if="field.type === 'number'"
-								:id="field.key"
-								v-model.number="formData[field.key]"
-								type="number"
-								:placeholder="field.placeholder"
-								:required="field.required"
-								class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-								:class="{ 'border-red-500': errors[field.key] }"
-							/>
+						<!-- Number Input -->
+						<input
+							v-else-if="field.type === 'number'"
+							:id="field.key"
+							v-model.number="formData[field.key]"
+							type="number"
+							:placeholder="field.placeholder"
+							:required="field.required"
+							class="input input-bordered input-primary w-full transition-all duration-300"
+							:class="{ 'input-error': errors[field.key] }"
+						/>
 
-							<!-- Textarea -->
-							<textarea
-								v-else-if="field.type === 'textarea'"
-								:id="field.key"
-								v-model="formData[field.key]"
-								:placeholder="field.placeholder"
-								:required="field.required"
-								rows="3"
-								class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent resize-none"
-								:class="{ 'border-red-500': errors[field.key] }"
-							></textarea>
+						<!-- Textarea -->
+						<textarea
+							v-else-if="field.type === 'textarea'"
+							:id="field.key"
+							v-model="formData[field.key]"
+							:placeholder="field.placeholder"
+							:required="field.required"
+							rows="3"
+							class="textarea textarea-bordered textarea-primary w-full resize-none transition-all duration-300"
+							:class="{ 'textarea-error': errors[field.key] }"
+						></textarea>
 
-							<!-- Select Dropdown -->
-							<select
-								v-else-if="field.type === 'select'"
-								:id="field.key"
-								v-model="formData[field.key]"
-								:required="field.required"
-								class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-								:class="{ 'border-red-500': errors[field.key] }"
+						<!-- Select Dropdown -->
+						<select
+							v-else-if="field.type === 'select'"
+							:id="field.key"
+							v-model="formData[field.key]"
+							:required="field.required"
+							class="select select-bordered select-primary w-full transition-all duration-300"
+							:class="{ 'select-error': errors[field.key] }"
+						>
+							<option value="" disabled selected>
+								Select {{ field.label }}
+							</option>
+							<option
+								v-for="option in field.options"
+								:key="option.value"
+								:value="option.value"
 							>
-								<option value="">
-									Select {{ field.label }}
-								</option>
-								<option
-									v-for="option in field.options"
-									:key="option.value"
-									:value="option.value"
-								>
-									{{ option.label }}
-								</option>
-							</select>
+								{{ option.label }}
+							</option>
+						</select>
 
-							<!-- Checkbox -->
-							<div
-								v-else-if="field.type === 'checkbox'"
-								class="flex items-center"
+						<!-- Checkbox -->
+						<div
+							v-else-if="field.type === 'checkbox'"
+							class="flex items-center gap-3 mt-2"
+						>
+							<input
+								:id="field.key"
+								v-model="formData[field.key]"
+								type="checkbox"
+								class="checkbox checkbox-primary"
+							/>
+							<label
+								:for="field.key"
+								class="label cursor-pointer flex-1"
 							>
-								<input
-									:id="field.key"
-									v-model="formData[field.key]"
-									type="checkbox"
-									class="w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
-								/>
-								<label
-									:for="field.key"
-									class="ml-2 text-sm text-gray-600"
-								>
+								<span class="label-text">
 									{{ field.helpText || 'Enable' }}
-								</label>
-							</div>
+								</span>
+							</label>
+						</div>
 
-							<!-- Help Text -->
-							<p
-								v-if="
-									field.helpText && field.type !== 'checkbox'
-								"
-								class="mt-1 text-xs text-gray-500"
+						<!-- Help Text -->
+						<label
+							v-if="field.helpText && field.type !== 'checkbox'"
+							:for="field.key"
+							class="label"
+						>
+							<span
+								class="label-text-alt text-base-content/60 italic"
 							>
 								{{ field.helpText }}
-							</p>
+							</span>
+						</label>
 
-							<!-- Error Message -->
-							<p
-								v-if="errors[field.key]"
-								class="mt-1 text-xs text-red-600"
-							>
-								{{ errors[field.key] }}
-							</p>
+						<!-- Error Message Alert -->
+						<div
+							v-if="errors[field.key]"
+							class="alert alert-error shadow-md mt-2 py-2"
+						>
+							<div class="flex gap-2 items-start">
+								<!-- Error Icon -->
+								<svg
+									xmlns="http://www.w3.org/2000/svg"
+									class="stroke-current flex-shrink-0 h-5 w-5 mt-0.5"
+									fill="none"
+									viewBox="0 0 24 24"
+								>
+									<path
+										stroke-linecap="round"
+										stroke-linejoin="round"
+										stroke-width="2"
+										d="M10 14l-2-2m0 0l-2-2m2 2l2-2m-2 2l-2 2m8-8l-2 2m0 0l-2 2m2-2l2 2m-2-2l-2-2"
+									/>
+								</svg>
+								<div class="flex-1">
+									<h3
+										class="font-semibold text-sm leading-tight"
+									>
+										Validation Error
+									</h3>
+									<p class="text-xs mt-0.5">
+										{{ errors[field.key] }}
+									</p>
+								</div>
+							</div>
 						</div>
-					</form>
-				</div>
+					</div>
+				</form>
 
-				<!-- Modal Footer -->
+				<!-- Modal Footer with Action Buttons -->
 				<div
-					class="bg-gray-50 px-6 py-4 flex items-center justify-end space-x-3 border-t border-gray-200"
+					class="modal-action pt-6 border-t border-base-300 gap-3 px-4"
 				>
 					<button
 						@click="handleClose"
 						type="button"
-						class="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-colors"
+						class="btn btn-ghost btn-sm"
 					>
 						Cancel
 					</button>
 					<button
 						@click="handleSave"
 						type="button"
-						class="px-4 py-2 text-sm font-medium text-white bg-blue-600 rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-colors"
+						class="btn btn-primary btn-sm gap-2"
 					>
+						<svg
+							xmlns="http://www.w3.org/2000/svg"
+							class="h-4 w-4"
+							fill="none"
+							viewBox="0 0 24 24"
+							stroke="currentColor"
+						>
+							<path
+								stroke-linecap="round"
+								stroke-linejoin="round"
+								stroke-width="2"
+								d="M5 13l4 4L19 7"
+							/>
+						</svg>
 						Save Changes
 					</button>
 				</div>
@@ -267,7 +312,7 @@ const handleBackdropClick = (event: MouseEvent) => {
 </template>
 
 <style scoped>
-/* Modal transition animations */
+/* Modal transition animations with daisyUI integration */
 .modal-enter-active,
 .modal-leave-active {
 	transition: opacity 0.3s ease;
@@ -278,13 +323,28 @@ const handleBackdropClick = (event: MouseEvent) => {
 	opacity: 0;
 }
 
-.modal-enter-active .bg-white,
-.modal-leave-active .bg-white {
+.modal-enter-active .modal-box,
+.modal-leave-active .modal-box {
 	transition: transform 0.3s ease;
 }
 
-.modal-enter-from .bg-white,
-.modal-leave-to .bg-white {
-	transform: scale(0.9);
+.modal-enter-from .modal-box,
+.modal-leave-to .modal-box {
+	transform: scale(0.95);
+}
+
+/* Smooth input transitions */
+:deep(.input),
+:deep(.textarea),
+:deep(.select),
+:deep(.checkbox) {
+	@apply transition-all duration-300;
+}
+
+/* Focus states for better UX */
+:deep(.input:focus),
+:deep(.textarea:focus),
+:deep(.select:focus) {
+	@apply shadow-md;
 }
 </style>

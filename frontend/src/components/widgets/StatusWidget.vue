@@ -138,110 +138,164 @@ onMounted(() => {
 		@configure="emit('configure')"
 		@remove="emit('remove')"
 	>
+		<!-- Empty State -->
 		<div
 			v-if="statuses.length === 0 && !loading && !error"
-			class="text-center text-gray-500 py-8"
+			class="flex flex-col items-center justify-center py-8 text-center"
 		>
-			<p class="text-sm">No URLs configured</p>
+			<div class="text-4xl mb-3">🔍</div>
+			<p class="text-sm text-base-content/60">No URLs configured</p>
 		</div>
 
+		<!-- Status List -->
 		<div v-else class="space-y-3">
 			<div
 				v-for="(status, index) in statuses"
 				:key="index"
-				class="p-3 rounded-lg border border-gray-200 hover:shadow-md transition-shadow"
+				class="card card-bordered border-base-300 hover:shadow-md transition-all duration-300"
 			>
-				<!-- Status Header -->
-				<div class="flex items-center justify-between mb-2">
-					<div class="flex items-center space-x-2 flex-1 min-w-0">
-						<!-- Status Indicator -->
-						<div
-							:class="getStatusColor(status.status)"
-							class="w-3 h-3 rounded-full flex-shrink-0 flex items-center justify-center"
-						>
-							<span class="text-white text-xs font-bold">{{
-								getStatusIcon(status.status)
-							}}</span>
+				<div class="card-body p-3">
+					<!-- Status Header -->
+					<div class="flex items-center justify-between gap-2">
+						<!-- Status Indicator and URL -->
+						<div class="flex items-center gap-2 flex-1 min-w-0">
+							<!-- Status Badge -->
+							<div
+								class="badge badge-lg"
+								:class="{
+									'badge-success':
+										status.status >= 200 &&
+										status.status < 300,
+									'badge-warning':
+										status.status >= 300 &&
+										status.status < 400,
+									'badge-error': status.status >= 400,
+								}"
+							>
+								{{ getStatusIcon(status.status) }}
+							</div>
+
+							<!-- URL -->
+							<span
+								class="text-sm font-medium text-base-content truncate"
+								:title="status.url"
+							>
+								{{ formatUrl(status.url) }}
+							</span>
 						</div>
 
-						<!-- URL -->
+						<!-- Status Code -->
 						<span
-							class="text-sm font-medium text-gray-800 truncate"
-							:title="status.url"
+							class="badge badge-lg font-semibold flex-shrink-0"
+							:class="{
+								'badge-success':
+									status.status >= 200 && status.status < 300,
+								'badge-warning':
+									status.status >= 300 && status.status < 400,
+								'badge-error': status.status >= 400,
+							}"
 						>
-							{{ formatUrl(status.url) }}
+							{{ status.status }}
 						</span>
 					</div>
 
-					<!-- Status Code Badge -->
-					<span
-						:class="getStatusColor(status.status)"
-						class="px-2 py-1 rounded text-xs font-semibold text-white flex-shrink-0 ml-2"
-					>
-						{{ status.status }}
-					</span>
-				</div>
+					<!-- Status Details -->
+					<div class="divider my-1"></div>
 
-				<!-- Status Details -->
-				<div class="flex items-center justify-between text-xs">
-					<div class="text-gray-600">
-						<span
-							:class="
-								getStatusColor(status.status).replace(
-									'bg-',
-									'text-',
-								)
-							"
-							class="font-semibold"
+					<div class="flex items-center justify-between text-sm">
+						<!-- Status Text -->
+						<div
+							class="font-medium"
+							:class="{
+								'text-success':
+									status.status >= 200 && status.status < 300,
+								'text-warning':
+									status.status >= 300 && status.status < 400,
+								'text-error': status.status >= 400,
+							}"
 						>
 							{{ getStatusText(status.status) }}
-						</span>
-					</div>
-					<div
-						:class="getResponseTimeColor(status.response_time_ms)"
-						class="font-semibold"
-					>
-						{{ status.response_time_ms }}ms
-					</div>
-				</div>
+						</div>
 
-				<!-- Error Message -->
-				<div
-					v-if="status.error"
-					class="mt-2 pt-2 border-t border-gray-100"
-				>
-					<p class="text-xs text-red-600">{{ status.error }}</p>
+						<!-- Response Time -->
+						<div
+							class="font-semibold"
+							:class="{
+								'text-success': status.response_time_ms < 200,
+								'text-warning': status.response_time_ms < 500,
+								'text-error': status.response_time_ms >= 1000,
+							}"
+						>
+							{{ status.response_time_ms }}ms
+						</div>
+					</div>
+
+					<!-- Error Message -->
+					<div
+						v-if="status.error"
+						class="alert alert-error shadow-md mt-2 py-2"
+					>
+						<svg
+							xmlns="http://www.w3.org/2000/svg"
+							class="stroke-current flex-shrink-0 h-5 w-5"
+							fill="none"
+							viewBox="0 0 24 24"
+						>
+							<path
+								stroke-linecap="round"
+								stroke-linejoin="round"
+								stroke-width="2"
+								d="M10 14l-2-2m0 0l-2-2m2 2l2-2m-2 2l-2 2m8-8l-2 2m0 0l-2 2m2-2l2 2m-2-2l-2-2"
+							/>
+						</svg>
+						<span class="text-xs">{{ status.error }}</span>
+					</div>
 				</div>
 			</div>
 
-			<!-- Summary -->
-			<div class="mt-4 pt-3 border-t border-gray-200">
-				<div class="grid grid-cols-3 gap-2 text-center text-xs">
-					<div>
-						<div class="text-green-600 font-bold text-lg">
-							{{
-								statuses.filter(
-									(s) => s.status >= 200 && s.status < 300,
-								).length
-							}}
+			<!-- Summary Stats -->
+			<div
+				v-if="statuses.length > 0"
+				class="card card-bordered border-base-300 bg-base-200"
+			>
+				<div class="card-body p-4">
+					<div class="grid grid-cols-3 gap-2 text-center">
+						<!-- Healthy Count -->
+						<div class="stat bg-base-100 rounded-lg p-2">
+							<div class="stat-value text-success text-2xl">
+								{{
+									statuses.filter(
+										(s) =>
+											s.status >= 200 && s.status < 300,
+									).length
+								}}
+							</div>
+							<div class="stat-title text-xs">Healthy</div>
 						</div>
-						<div class="text-gray-500">Healthy</div>
-					</div>
-					<div>
-						<div class="text-yellow-600 font-bold text-lg">
-							{{
-								statuses.filter(
-									(s) => s.status >= 300 && s.status < 400,
-								).length
-							}}
+
+						<!-- Redirects Count -->
+						<div class="stat bg-base-100 rounded-lg p-2">
+							<div class="stat-value text-warning text-2xl">
+								{{
+									statuses.filter(
+										(s) =>
+											s.status >= 300 && s.status < 400,
+									).length
+								}}
+							</div>
+							<div class="stat-title text-xs">Redirects</div>
 						</div>
-						<div class="text-gray-500">Redirects</div>
-					</div>
-					<div>
-						<div class="text-red-600 font-bold text-lg">
-							{{ statuses.filter((s) => s.status >= 400).length }}
+
+						<!-- Errors Count -->
+						<div class="stat bg-base-100 rounded-lg p-2">
+							<div class="stat-value text-error text-2xl">
+								{{
+									statuses.filter((s) => s.status >= 400)
+										.length
+								}}
+							</div>
+							<div class="stat-title text-xs">Errors</div>
 						</div>
-						<div class="text-gray-500">Errors</div>
 					</div>
 				</div>
 			</div>
