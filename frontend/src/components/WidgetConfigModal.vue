@@ -312,6 +312,7 @@ const handleBackdropClick = (event: MouseEvent) => {
 </template>
 
 <style scoped>
+@reference "tailwindcss";
 /* Modal transition animations with daisyUI integration */
 .modal-enter-active,
 .modal-leave-active {

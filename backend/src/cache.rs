@@ -48,14 +48,14 @@ impl Cache {
     {
         let mut conn = self.get_connection().await?;
         let serialized = serde_json::to_string(value)?;
-        conn.set_ex(key, serialized, ttl as u64).await?;
+        conn.set_ex::<_, _, ()>(key, serialized, ttl as u64).await?;
         Ok(())
     }
 
     /// Delete a value from cache
     pub async fn delete(&self, key: &str) -> anyhow::Result<()> {
         let mut conn = self.get_connection().await?;
-        conn.del(key).await?;
+        conn.del::<_, ()>(key).await?;
         Ok(())
     }
 

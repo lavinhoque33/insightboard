@@ -77,11 +77,6 @@ const formatMarketCap = (marketCap: number): string => {
 	return `$${marketCap.toLocaleString()}`;
 };
 
-const getPriceChangeClass = (change: number): string => {
-	if (change > 0) return 'text-green-600';
-	if (change < 0) return 'text-red-600';
-	return 'text-gray-600';
-};
 
 const getPriceChangeIcon = (change: number): string => {
 	if (change > 0) return '▲';

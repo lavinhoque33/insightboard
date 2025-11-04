@@ -59,13 +59,6 @@ const setupAutoRefresh = () => {
 	}
 };
 
-const getStatusColor = (status: number): string => {
-	if (status >= 200 && status < 300) return 'bg-green-500';
-	if (status >= 300 && status < 400) return 'bg-yellow-500';
-	if (status >= 400 && status < 500) return 'bg-orange-500';
-	if (status >= 500) return 'bg-red-500';
-	return 'bg-gray-500';
-};
 
 const getStatusText = (status: number): string => {
 	if (status >= 200 && status < 300) return 'Healthy';
@@ -82,12 +75,6 @@ const getStatusIcon = (status: number): string => {
 	return '?';
 };
 
-const getResponseTimeColor = (responseTime: number): string => {
-	if (responseTime < 200) return 'text-green-600';
-	if (responseTime < 500) return 'text-yellow-600';
-	if (responseTime < 1000) return 'text-orange-600';
-	return 'text-red-600';
-};
 
 const formatUrl = (url: string): string => {
 	try {
