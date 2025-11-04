@@ -1,14 +1,24 @@
 <script setup lang="ts">
-import { useRouter } from 'vue-router';
+import { computed } from 'vue';
+import { useRouter, useRoute } from 'vue-router';
 import { useAuthStore } from './stores/auth';
 
 const router = useRouter();
+const route = useRoute();
 const authStore = useAuthStore();
 
 const handleLogout = () => {
 	authStore.logout();
 	router.push('/login');
 };
+
+// Dynamic classes for auth buttons (daisyUI)
+const loginBtnClass = computed(() =>
+    `btn btn-sm gap-2 transition-colors duration-200 ${route.path.startsWith('/login') ? 'btn-primary' : 'btn-ghost'}`,
+);
+const registerBtnClass = computed(() =>
+    `btn btn-sm gap-2 transition-colors duration-200 ${route.path.startsWith('/register') ? 'btn-primary' : 'btn-ghost'}`,
+);
 </script>
 
 <template>
@@ -100,7 +110,7 @@ const handleLogout = () => {
 
 				<!-- Authentication Links -->
 				<template v-else>
-					<router-link to="/login" class="btn btn-ghost btn-sm gap-2">
+					<router-link to="/login" :class="loginBtnClass">
 						<svg
 							xmlns="http://www.w3.org/2000/svg"
 							class="h-5 w-5"
@@ -117,10 +127,7 @@ const handleLogout = () => {
 						</svg>
 						Login
 					</router-link>
-					<router-link
-						to="/register"
-						class="btn btn-primary btn-sm gap-2"
-					>
+					<router-link to="/register" :class="registerBtnClass">
 						<svg
 							xmlns="http://www.w3.org/2000/svg"
 							class="h-5 w-5"
