@@ -316,7 +316,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed } from 'vue';
+import { ref, computed, watch } from 'vue';
 import { useRouter } from 'vue-router';
 import { useAuthStore } from '../stores/auth';
 
@@ -326,6 +326,13 @@ const authStore = useAuthStore();
 const email = ref('');
 const password = ref('');
 const confirmPassword = ref('');
+
+// Clear auth errors as the user types for smoother UX
+watch([email, password, confirmPassword], () => {
+	if (authStore.error) {
+		authStore.clearError();
+	}
+});
 
 const validationError = computed(() => {
 	if (password.value && password.value.length < 8) {

@@ -41,18 +41,29 @@ apiClient.interceptors.response.use(
 	(error: AxiosError<ApiError>) => {
 		// Handle different error scenarios
 		if (error.response) {
+			// Some backends return `error` instead of `message`
+			const data: any = error.response.data || {};
 			const apiError: ApiError = {
-				message: error.response.data?.message || 'An error occurred',
+				message: data.message || data.error || 'An error occurred',
 				status: error.response.status,
-				details: error.response.data?.details,
+				details: data.details,
 			};
 
-			// Handle 401 Unauthorized - clear token and redirect to login
+			// Handle 401 Unauthorized - careful with login/register endpoints
 			if (error.response.status === 401) {
-				localStorage.removeItem('auth_token');
-				localStorage.removeItem('user');
-				// Redirect to login will be handled by router guard
-				window.location.href = '/login';
+				const reqUrl = (error.config?.url || '').toString();
+				const isAuthLogin = reqUrl.includes('/auth/login');
+				const isAuthRegister = reqUrl.includes('/auth/register');
+
+				// For login/register failures, let callers handle and show errors
+				if (!isAuthLogin && !isAuthRegister) {
+					localStorage.removeItem('auth_token');
+					localStorage.removeItem('user');
+					// Redirect to login will be handled by router guard or here as fallback
+					if (typeof window !== 'undefined' && window.location.pathname !== '/login') {
+						window.location.href = '/login';
+					}
+				}
 			}
 
 			return Promise.reject(apiError);

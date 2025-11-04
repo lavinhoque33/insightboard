@@ -177,7 +177,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref } from 'vue';
+import { ref, watch } from 'vue';
 import { useRouter, useRoute } from 'vue-router';
 import { useAuthStore } from '../stores/auth';
 
@@ -187,6 +187,13 @@ const authStore = useAuthStore();
 
 const email = ref('');
 const password = ref('');
+
+// Clear error as user edits fields for smoother UX
+watch([email, password], () => {
+    if (authStore.error) {
+        authStore.clearError();
+    }
+});
 
 const handleSubmit = async () => {
 	try {
