@@ -77,12 +77,28 @@ const initializeGrid = () => {
 };
 
 // Add widget to dashboard
-const addWidget = (typeId: string) => {
+const addWidget = (typeId: string, event?: Event) => {
+	if (event) {
+		event.preventDefault();
+		event.stopPropagation();
+	}
+
 	const newWidget = widgetStore.createWidgetInstance(typeId);
 	if (!newWidget) return;
 
 	widgets.value.push(newWidget);
 	showWidgetPicker.value = false;
+
+	// Close dropdown
+	const dropdown = document.querySelector('.dropdown');
+	if (dropdown instanceof HTMLElement) {
+		dropdown.classList.remove('dropdown-open');
+	}
+
+	// Initialize grid if not already done (e.g., first widget being added)
+	if (!gridInstance.value && gridContainer.value) {
+		initializeGrid();
+	}
 
 	// Add to grid
 	if (gridInstance.value) {
@@ -293,7 +309,11 @@ onBeforeUnmount(() => {
 						v-for="widgetType in widgetStore.availableWidgets"
 						:key="widgetType.id"
 					>
-						<a @click="addWidget(widgetType.id)" class="p-3">
+						<button
+							@click="addWidget(widgetType.id, $event)"
+							type="button"
+							class="p-3 text-left w-full hover:bg-base-200 rounded transition-colors"
+						>
 							<div class="flex items-start gap-3 w-full">
 								<span class="text-2xl">{{
 									widgetType.icon
@@ -309,7 +329,7 @@ onBeforeUnmount(() => {
 									</div>
 								</div>
 							</div>
-						</a>
+						</button>
 					</li>
 				</ul>
 			</div>
@@ -373,8 +393,12 @@ onBeforeUnmount(() => {
 				</div>
 			</div>
 
-			<!-- Widgets Grid -->
-			<div v-else ref="gridContainer" class="grid-stack rounded-lg">
+			<!-- Widgets Grid (always rendered so ref is available) -->
+			<div
+				ref="gridContainer"
+				class="grid-stack rounded-lg"
+				:style="{ display: widgets.length === 0 ? 'none' : 'block' }"
+			>
 				<div
 					v-for="widget in widgets"
 					:key="widget.id"
