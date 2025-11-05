@@ -1,7 +1,7 @@
 /** * Dashboard Editor View * Allows users to add, configure, move, and remove
 widgets on their dashboard */
 <script setup lang="ts">
-import { ref, computed, onMounted, onBeforeUnmount } from 'vue';
+import { ref, computed, onMounted, onBeforeUnmount, nextTick } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import { useDashboardStore } from '../stores/dashboard';
 import { useWidgetStore } from '../stores/widgets';
@@ -100,16 +100,23 @@ const addWidget = (typeId: string, event?: Event) => {
 		initializeGrid();
 	}
 
-	// Add to grid
-	if (gridInstance.value) {
-		gridInstance.value.addWidget({
-			id: newWidget.id,
-			x: newWidget.layout.x,
-			y: newWidget.layout.y,
-			w: newWidget.layout.w,
-			h: newWidget.layout.h,
-		});
-	}
+	// Wait for Vue to update DOM, then add widget to GridStack
+	nextTick(() => {
+		if (gridInstance.value) {
+			const widgetElement = document.getElementById(newWidget.id);
+			if (widgetElement) {
+				// Remove position attributes to let GridStack auto-position
+				widgetElement.removeAttribute('gs-x');
+				widgetElement.removeAttribute('gs-y');
+
+				// Keep size attributes for proper sizing
+				// gs-w and gs-h are already set from the template
+
+				// Let GridStack auto-position the widget with correct size
+				gridInstance.value.addWidget(widgetElement);
+			}
+		}
+	});
 
 	scheduleAutoSave();
 };
