@@ -1411,6 +1411,40 @@ TailwindCSS v4 favors a CSS-first configuration instead of `tailwind.config.js` 
 import tailwind from '@tailwindcss/vite';
 import vue from '@vitejs/plugin-vue';
 
+### NOTE: Backend ↔ Frontend payload mapping (important)
+
+The backend dashboard endpoints use a slightly different shape than the original frontend helper did. The backend expects and returns the following fields:
+
+- Request (create): `{ name: string, layout_json: any, settings_json: any }`
+- Response (dashboard object): includes `layout_json` and `settings_json` (and `id`, `user_id`, timestamps, etc.)
+
+Why this matters
+
+- Earlier the frontend sent `{ layout, settings }` to the create endpoint. The backend validates the presence of `name` and will return a `422` (validation) when `name` is missing or empty. This is why creating a dashboard failed with a 422 error.
+- To fix this we map frontend `layout` → `layout_json`, `settings` → `settings_json`, and send `name` (typically `settings.title || 'New Dashboard'`) in the create payload.
+
+What we changed in the code
+
+- `src/api/dashboard.ts` was updated to: 
+	- send `{ name, layout_json, settings_json }` when creating a dashboard, and
+	- send partial `{ name?, layout_json?, settings_json? }` for updates.
+	- map the backend response fields `layout_json` / `settings_json` back to the frontend `layout` / `settings` types.
+
+Quick example (POST body):
+
+```json
+{
+	"name": "My Test Dashboard",
+	"layout_json": { "widgets": [] },
+	"settings_json": { "title": "My Test Dashboard", "theme": "light" }
+}
+```
+
+Developer notes / future-proofing
+
+- If the backend contract changes, update `src/api/dashboard.ts` to adapt the mapping in one place — the API layer is intentionally the single source of truth for request/response translation.
+- Consider adding automated tests (unit or integration) for the API layer to catch contract mismatches early.
+
 export default defineConfig({
 	plugins: [tailwind(), vue()],
 });
