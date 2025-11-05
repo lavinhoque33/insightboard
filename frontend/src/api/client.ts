@@ -43,10 +43,42 @@ apiClient.interceptors.response.use(
 		if (error.response) {
 			// Some backends return `error` instead of `message`
 			const data: any = error.response.data || {};
+			// Try to surface validation details for 422 responses so UI can show
+			// helpful messages instead of a generic error.
+			let message = data.message || data.error || 'An error occurred';
+			const details =
+				data.details ?? data.errors ?? data.validation ?? null;
+
+			if (error.response.status === 422 && details) {
+				// Format details into a readable string depending on their shape
+				let formatted = '';
+				if (typeof details === 'string') {
+					formatted = details;
+				} else if (Array.isArray(details)) {
+					formatted = details.join('; ');
+				} else if (typeof details === 'object') {
+					formatted = Object.entries(details)
+						.map(([k, v]) => {
+							if (Array.isArray(v))
+								return `${k}: ${v.join(', ')}`;
+							if (typeof v === 'object')
+								return `${k}: ${JSON.stringify(v)}`;
+							return `${k}: ${v}`;
+						})
+						.join('; ');
+				} else {
+					formatted = String(details);
+				}
+
+				if (formatted) {
+					message = `${message} — ${formatted}`;
+				}
+			}
+
 			const apiError: ApiError = {
-				message: data.message || data.error || 'An error occurred',
+				message,
 				status: error.response.status,
-				details: data.details,
+				details: details,
 			};
 
 			// Handle 401 Unauthorized - careful with login/register endpoints
@@ -60,7 +92,10 @@ apiClient.interceptors.response.use(
 					localStorage.removeItem('auth_token');
 					localStorage.removeItem('user');
 					// Redirect to login will be handled by router guard or here as fallback
-					if (typeof window !== 'undefined' && window.location.pathname !== '/login') {
+					if (
+						typeof window !== 'undefined' &&
+						window.location.pathname !== '/login'
+					) {
 						window.location.href = '/login';
 					}
 				}
