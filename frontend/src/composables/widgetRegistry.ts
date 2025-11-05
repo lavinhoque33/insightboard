@@ -3,6 +3,7 @@
  * Registers all available widget types with their configurations
  */
 
+import { markRaw } from 'vue';
 import { useWidgetStore } from '../stores/widgets';
 import GitHubWidget from '../components/widgets/GitHubWidget.vue';
 import WeatherWidget from '../components/widgets/WeatherWidget.vue';
@@ -23,7 +24,7 @@ export const initializeWidgets = () => {
 		name: 'GitHub Activity',
 		description: 'Display recent GitHub events for a user',
 		icon: '🐙',
-		component: GitHubWidget,
+		component: markRaw(GitHubWidget),
 		defaultConfig: {
 			username: '',
 		},
@@ -56,7 +57,7 @@ export const initializeWidgets = () => {
 		name: 'Weather',
 		description: 'Display current weather for a city',
 		icon: '🌤️',
-		component: WeatherWidget,
+		component: markRaw(WeatherWidget),
 		defaultConfig: {
 			city: '',
 		},
@@ -81,7 +82,7 @@ export const initializeWidgets = () => {
 		name: 'News Feed',
 		description: 'Display latest news articles by topic',
 		icon: '📰',
-		component: NewsWidget,
+		component: markRaw(NewsWidget),
 		defaultConfig: {
 			topic: 'technology',
 		},
@@ -113,7 +114,7 @@ export const initializeWidgets = () => {
 		name: 'Cryptocurrency Prices',
 		description: 'Track cryptocurrency prices and changes',
 		icon: '💰',
-		component: CryptoWidget,
+		component: markRaw(CryptoWidget),
 		defaultConfig: {
 			cryptoIds: 'bitcoin,ethereum,cardano',
 		},
@@ -145,7 +146,7 @@ export const initializeWidgets = () => {
 		name: 'Status Monitor',
 		description: 'Monitor website uptime and response times',
 		icon: '🔍',
-		component: StatusWidget,
+		component: markRaw(StatusWidget),
 		defaultConfig: {
 			urls: '',
 		},

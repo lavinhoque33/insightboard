@@ -1,7 +1,7 @@
 /** * Dashboard Editor View * Allows users to add, configure, move, and remove
 widgets on their dashboard */
 <script setup lang="ts">
-import { ref, computed, onMounted, onBeforeUnmount, nextTick, markRaw } from 'vue';
+import { ref, computed, onMounted, onBeforeUnmount, nextTick } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import { useDashboardStore } from '../stores/dashboard';
 import { useWidgetStore } from '../stores/widgets';
@@ -223,7 +223,7 @@ const saveDashboard = async () => {
 // Get widget component
 const getWidgetComponent = (typeId: string) => {
 	const widgetType = widgetStore.getWidgetType(typeId);
-	return widgetType?.component ? markRaw(widgetType.component) : null;
+	return widgetType?.component || null;
 };
 
 // Get widget refresh interval
