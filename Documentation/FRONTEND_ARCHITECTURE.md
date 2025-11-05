@@ -1,8 +1,8 @@
 # Frontend Architecture Guide
 
-**InsightBoard Frontend - Vue 3 + TypeScript + Pinia + TailwindCSS**
+InsightBoard Frontend — Vue 3 + TypeScript + Pinia + TailwindCSS + daisyUI
 
-> This guide explains the frontend architecture from the ground up, assuming no prior knowledge. Whether you're new to Vue or an experienced developer, you'll understand how everything fits together.
+This is a complete, beginner‑friendly, yet production‑ready guide to how the frontend works. It teaches the essentials of Vue 3, the libraries in use, and exactly how they are applied in this codebase. No prior experience required.
 
 ---
 
@@ -10,19 +10,20 @@
 
 1. [Quick Start](#quick-start)
 2. [Overview](#overview)
-3. [Technology Stack Explained](#technology-stack-explained)
+3. [Technology Stack](#technology-stack)
 4. [Project Structure](#project-structure)
 5. [Type System (TypeScript)](#type-system-typescript)
-6. [API Layer Architecture](#api-layer-architecture)
-7. [State Management with Pinia](#state-management-with-pinia)
-8. [Routing System](#routing-system)
+6. [API Layer](#api-layer)
+7. [State Management (Pinia)](#state-management-pinia)
+8. [Routing](#routing)
 9. [Component Architecture](#component-architecture)
-10. [Styling with TailwindCSS](#styling-with-tailwindcss)
-11. [Authentication Flow](#authentication-flow)
-12. [Data Flow Diagrams](#data-flow-diagrams)
-13. [Best Practices & Patterns](#best-practices--patterns)
-14. [Common Scenarios](#common-scenarios)
-15. [Troubleshooting](#troubleshooting)
+10. [Widget System & Editor](#widget-system--editor)
+11. [Styling System (Tailwind + daisyUI)](#styling-system-tailwind--daisyui)
+12. [Authentication Flow](#authentication-flow)
+13. [Data Flows](#data-flows)
+14. [Best Practices](#best-practices)
+15. [Common Scenarios](#common-scenarios)
+16. [Troubleshooting](#troubleshooting)
 
 ---
 
@@ -212,7 +213,7 @@ InsightBoard's frontend is a **Single Page Application (SPA)** built with Vue 3.
 
 ---
 
-## Technology Stack Explained
+## Technology Stack
 
 ### Why Vue 3?
 
@@ -334,7 +335,7 @@ frontend/
 │   │   └── DashboardEditorView.vue  # Dashboard editor
 │   │
 │   ├── components/             # 🧩 Reusable Components
-│   │   └── widgets/           # Widget components (Phase 8)
+│   │   └── widgets/           # Widget components
 │   │
 │   ├── types/                  # 📐 TypeScript Definitions
 │   │   └── index.ts           # All interfaces & types
@@ -525,7 +526,7 @@ export interface TodoWidgetConfig {
 
 ---
 
-## API Layer Architecture
+## API Layer
 
 ### Overview: Why an API Layer?
 
@@ -732,6 +733,28 @@ export const dashboardApi = {
 };
 ```
 
+#### Important: Request/Response Field Mapping
+
+The backend expects dashboard fields with JSONB suffixes. The API layer translates between frontend types and backend payloads so components stay simple and consistent.
+
+-   Create/Update request body maps to `{ name, layout_json, settings_json }`.
+-   Backend response maps back to `{ layout, settings }` for the app.
+
+Quick example (request):
+
+```json
+{
+	"name": "My Test Dashboard",
+	"layout_json": { "widgets": [] },
+	"settings_json": { "title": "My Test Dashboard", "theme": "light" }
+}
+```
+
+Notes
+
+-   If `name` is missing, backend returns 422 (validation error). Use a sensible default like `settings.title || 'New Dashboard'`.
+-   Keep request/response translation inside `src/api/dashboard.ts` so the rest of the app remains stable if contracts evolve.
+
 **Partial Updates:**
 
 ```typescript
@@ -747,7 +770,7 @@ await dashboardApi.update(dashboardId, newLayout, newSettings);
 
 ---
 
-## State Management with Pinia
+## State Management (Pinia)
 
 ### What is State Management?
 
@@ -1035,7 +1058,7 @@ export const useDashboardStore = defineStore('dashboard', () => {
 
 ---
 
-## Routing System
+## Routing
 
 ### Router Configuration (`src/router/index.ts`)
 
@@ -1377,148 +1400,93 @@ const formatDate = (dateString: string): string => {
 
 ---
 
-## Styling with TailwindCSS
+## Styling System (Tailwind + daisyUI)
 
-### Tailwind v4 Setup (CSS-first)
+This project uses TailwindCSS v4 for utility classes and daisyUI v4 for semantic, production‑ready components. Everything you see in the UI is built from these two layers: Tailwind provides the low‑level primitives; daisyUI provides beautifully styled, accessible components using pure CSS classes (no JS components).
 
-TailwindCSS v4 favors a CSS-first configuration instead of `tailwind.config.js` for most theming. This project uses the recommended v4 setup so classes work in both dev and prod.
+Important: daisyUI components are CSS classes on normal HTML elements (e.g., `span`, `div`, `button`). They are not custom elements. For example, use `<span class="badge">…</span>`, not `<badge>`.
 
-1. Global stylesheet directives in `src/style.css`:
+### Setup Overview
 
-```css
-@tailwind base;
-@tailwind components;
-@tailwind utilities;
+-   Global styles live in `frontend/src/style.css` and include:
+    -   `@import 'tailwindcss';`
+    -   `@plugin "daisyui";`
+    -   An `@theme` block defining brand colors (e.g., `--color-primary-*`).
+-   PostCSS plugins (`frontend/postcss.config.js`): `@tailwindcss/postcss` and `autoprefixer`.
+-   A legacy `tailwind.config.js` exists (for forms plugin and content scanning). With Tailwind v4 the CSS‑first tokens in `@theme` are preferred.
 
-/* Theme tokens (v4) */
-@theme {
-	--color-primary-50: #eff6ff;
-	--color-primary-100: #dbeafe;
-	--color-primary-200: #bfdbfe;
-	--color-primary-300: #93c5fd;
-	--color-primary-400: #60a5fa;
-	--color-primary-500: #3b82f6;
-	--color-primary-600: #2563eb; /* Main brand color */
-	--color-primary-700: #1d4ed8;
-	--color-primary-800: #1e40af;
-	--color-primary-900: #1e3a8a;
-}
-```
+### Using Tailwind v4 Tokens
 
-2. Vite plugin in `vite.config.ts` (improves class detection in Vue SFCs):
-
-```ts
-import tailwind from '@tailwindcss/vite';
-import vue from '@vitejs/plugin-vue';
-
-### NOTE: Backend ↔ Frontend payload mapping (important)
-
-The backend dashboard endpoints use a slightly different shape than the original frontend helper did. The backend expects and returns the following fields:
-
-- Request (create): `{ name: string, layout_json: any, settings_json: any }`
-- Response (dashboard object): includes `layout_json` and `settings_json` (and `id`, `user_id`, timestamps, etc.)
-
-Why this matters
-
-- Earlier the frontend sent `{ layout, settings }` to the create endpoint. The backend validates the presence of `name` and will return a `422` (validation) when `name` is missing or empty. This is why creating a dashboard failed with a 422 error.
-- To fix this we map frontend `layout` → `layout_json`, `settings` → `settings_json`, and send `name` (typically `settings.title || 'New Dashboard'`) in the create payload.
-
-What we changed in the code
-
-- `src/api/dashboard.ts` was updated to: 
-	- send `{ name, layout_json, settings_json }` when creating a dashboard, and
-	- send partial `{ name?, layout_json?, settings_json? }` for updates.
-	- map the backend response fields `layout_json` / `settings_json` back to the frontend `layout` / `settings` types.
-
-Quick example (POST body):
-
-```json
-{
-	"name": "My Test Dashboard",
-	"layout_json": { "widgets": [] },
-	"settings_json": { "title": "My Test Dashboard", "theme": "light" }
-}
-```
-
-Developer notes / future-proofing
-
-- If the backend contract changes, update `src/api/dashboard.ts` to adapt the mapping in one place — the API layer is intentionally the single source of truth for request/response translation.
-- Consider adding automated tests (unit or integration) for the API layer to catch contract mismatches early.
-
-export default defineConfig({
-	plugins: [tailwind(), vue()],
-});
-```
-
-3. PostCSS configuration in `postcss.config.js`:
-
-```js
-import tailwind from '@tailwindcss/postcss';
-import autoprefixer from 'autoprefixer';
-
-export default {
-	plugins: [tailwind(), autoprefixer()],
-};
-```
-
-Note: A legacy `tailwind.config.js` exists in the repo from earlier versions. With v4, prefer `@theme` in CSS for colors/tokens. The config file may be ignored by v4 for most settings.
-
-### Using Custom Colors
-
-```vue
-<template>
-	<!-- Background -->
-	<div class="bg-primary-600">...</div>
-
-	<!-- Text -->
-	<h1 class="text-primary-700">...</h1>
-
-	<!-- Hover state -->
-	<button class="bg-primary-600 hover:bg-primary-700 text-white">...</button>
-
-	<!-- Responsive -->
-	<div class="bg-gray-100 md:bg-primary-50 lg:bg-white">...</div>
-</template>
-```
-
-### Common Patterns
-
-#### Responsive Grid
+In `style.css` we define brand color scales with `@theme`. These enable utilities like `bg-primary-600`, `text-primary-700`, `border-gray-200`, etc. Example usage:
 
 ```html
-<!-- 1 column mobile, 2 tablet, 3 desktop -->
-<div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-	<div>Item 1</div>
-	<div>Item 2</div>
-	<div>Item 3</div>
-</div>
-```
+<!-- Background and text colors -->
+<div class="bg-primary-600 text-white">Primary Block</div>
 
-#### Centered Container
-
-```html
-<div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-	<!-- Content automatically centered with responsive padding -->
-</div>
-```
-
-#### Button Styles
-
-```html
-<!-- Primary button -->
+<!-- Hover state and transitions -->
 <button
-	class="bg-primary-600 hover:bg-primary-700 text-white px-4 py-2 rounded-md shadow-sm"
+	class="bg-primary-600 hover:bg-primary-700 text-white transition-colors"
 >
-	Click Me
+	Save
 </button>
 
-<!-- Secondary button -->
-<button
-	class="bg-white hover:bg-gray-50 text-gray-700 px-4 py-2 rounded-md border border-gray-300"
->
-	Cancel
-</button>
+<!-- Responsive variants -->
+<div class="bg-gray-100 md:bg-primary-50 lg:bg-white"></div>
 ```
+
+### Common Tailwind Patterns
+
+-   Responsive grid: `<div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">…</div>`
+-   Centered container: `<div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">…</div>`
+-   Buttons: `bg-primary-600 hover:bg-primary-700 text-white px-4 py-2 rounded-md shadow-sm`
+
+### daisyUI: Component Library
+
+Version: daisyUI v4.12.10 (CSS‑only)
+
+Why daisyUI
+
+-   Semantic classes that map to common UI patterns (card, alert, badge, navbar, modal, dropdown, form controls, etc.)
+-   Minimal configuration, works with Tailwind out‑of‑the‑box
+-   Theming support via our `primary`/`secondary` scales
+-   Zero JS runtime, Vue‑friendly
+
+Key components used across the app
+
+-   Forms: `form-control`, `input input-bordered input-primary`, `textarea textarea-bordered`, `select select-bordered`, `checkbox checkbox-primary`
+-   Containers: `card card-bordered card-compact`, `card-body`, `hero`, `stat`, `divider`
+-   Data display: `badge`, `badge-primary`, `badge-success`, `badge-warning`, `badge-error`, `badge-ghost`, `table`, `grid`
+-   Navigation: `navbar`, `dropdown`, `btn`, `btn-primary`, `btn-ghost`, `btn-sm`, `btn-lg`, `btn-circle`
+-   Feedback: `alert`, `alert-success`, `alert-error`, `alert-warning`, `alert-info`, `loading loading-spinner`
+-   Modals: `modal modal-open`, `modal-box`, `modal-action`
+
+Design patterns applied
+
+-   Color scheme: primary/secondary gradients for accents; semantic colors for success/warning/error; neutral `base-*` backgrounds
+-   Spacing: consistent `gap-*` and `p-*` scales
+-   Effects: `transition-all duration-300`, `shadow-*`, `hover:*` states; focus styles supplied by daisyUI/Tailwind
+
+Component styling highlights (what you’ll see in the UI)
+
+-   `App.vue`: Sticky `navbar` with gradient accents, avatar dropdown, responsive menu, gradient footer.
+-   `LoginView.vue`: `hero` background, `card` form, `alert` for errors, primary buttons.
+-   `RegisterView.vue`: Real‑time validation with `alert` feedback, password strength with `badge`.
+-   `DashboardListView.vue`: Responsive grid of `card`s, `stat` components for metrics, empty/loading/error states.
+-   `DashboardEditorView.vue`: Toolbar `navbar`, dropdown widget picker, saving indicator with `loading` spinner, GridStack canvas.
+-   `BaseWidget.vue`: Gradient header, last‑updated `badge`, dropdown actions, tri‑state content (loading/error/success) using `alert` and `loading`.
+-   `WidgetConfigModal.vue`: `modal` with dynamic forms, per‑field validation via `alert`, `modal-action` buttons.
+-   `GitHubWidget.vue`: Event timeline with `badge` chips and hover borders.
+-   `WeatherWidget.vue`: Gradient `card`, `stat` blocks for humidity/wind, divider separators.
+-   `NewsWidget.vue`: `card card-compact` articles with image thumbs and `badge` source labels.
+-   `CryptoWidget.vue`: Gradient cards, conditional `badge` colors for price change.
+-   `StatusWidget.vue`: Color‑coded `badge` by HTTP status, summary `stat`s, `alert` for errors.
+
+Performance & accessibility
+
+-   daisyUI adds ~63KB minified CSS; zero JS overhead.
+-   Animations are GPU‑accelerated; components are semantic and accessible by default.
+
+Practical tip: daisyUI classes go on standard HTML elements. For badges, use `<span class="badge ...">` — do not use a custom `<badge>` tag.
 
 ---
 
@@ -1613,7 +1581,7 @@ function isTokenExpired(token: string): boolean {
 
 ---
 
-## Data Flow Diagrams
+## Data Flows
 
 ### Creating a Dashboard
 
@@ -1689,7 +1657,7 @@ Dashboard cards rendered
 
 ---
 
-## Best Practices & Patterns
+## Best Practices
 
 ### 1. Component Composition
 
@@ -1989,18 +1957,19 @@ app.mount('#app');
 }
 ```
 
-3. Verify Vite plugin and PostCSS:
-
-```ts
-// vite.config.ts
-import tailwind from '@tailwindcss/vite';
-plugins: [tailwind(), vue()];
-```
+3. Verify PostCSS plugin and CSS plugin directive:
 
 ```js
 // postcss.config.js
 import tailwind from '@tailwindcss/postcss';
-export default { plugins: [tailwind()] };
+import autoprefixer from 'autoprefixer';
+export default { plugins: [tailwind(), autoprefixer()] };
+```
+
+```css
+/* src/style.css */
+@import 'tailwindcss';
+@plugin "daisyui";
 ```
 
 After changes, restart the dev server:
@@ -2063,11 +2032,11 @@ await api.post('http://localhost:8080/api/auth/login', ...)
 
 ---
 
-## Phase 7: Widget System & Dashboard Editor
+## Widget System & Editor
 
 ### Overview
 
-Phase 7 introduces the complete widget system with drag-and-drop dashboard editing, five functional widgets, and a dynamic configuration system. This is the heart of InsightBoard's functionality.
+The widget system provides drag‑and‑drop dashboard editing, five functional widgets, and a dynamic configuration system. This is the heart of InsightBoard’s UI.
 
 ### Architecture Components
 
@@ -2753,23 +2722,12 @@ const fetchWithCache = async (key, fetcher, ttl = 300000) => {
 
 You now understand:
 
--   ✅ How Vue 3 reactive system works
--   ✅ How TypeScript provides safety
--   ✅ How Pinia manages global state
--   ✅ How the API layer centralizes HTTP calls
--   ✅ How Vue Router handles navigation
--   ✅ How components communicate
--   ✅ How authentication flows through the app
--   ✅ **How the widget system works with GridStack**
--   ✅ **How to add new widgets to the dashboard**
--   ✅ **How configuration and persistence work**
+-   How Vue 3’s reactivity works in components
+-   How TypeScript provides safety across the app
+-   How Pinia manages global state cleanly
+-   How the API layer centralizes HTTP calls and handles contracts
+-   How Vue Router secures and coordinates navigation
+-   How widgets, GridStack, and configuration/persistence work together
+-   How Tailwind and daisyUI create a cohesive, accessible design system
 
-**The architecture is modular, type-safe, and scalable.** Each piece has a clear responsibility, making the codebase maintainable as it grows.
-
-**Phase 7 Complete!** The dashboard editor with drag-and-drop widgets is fully functional.
-
-**Next Steps:**
-
--   Testing and CI/CD (Phase 10)
--   Deployment preparation (Phase 11)
--   Production optimization and monitoring
+The architecture is modular, type‑safe, and scalable. Each layer has a clear responsibility, making the codebase easy to extend (for example, adding a new widget) and straightforward to maintain.

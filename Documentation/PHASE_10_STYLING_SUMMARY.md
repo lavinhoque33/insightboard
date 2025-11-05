@@ -1,3 +1,5 @@
+> Note: This file is deprecated. Styling has been consolidated into `Documentation/FRONTEND_ARCHITECTURE.md` under “Styling System (Tailwind + daisyUI)” and “Component styling highlights”.
+
 # Phase 10: Frontend Styling with daisyUI - Complete Implementation Summary
 
 **Completed**: November 3, 2025 at 21:30 UTC  
