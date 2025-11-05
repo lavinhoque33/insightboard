@@ -66,12 +66,12 @@ const handleRemove = () => {
 		>
 			<div class="flex items-center gap-2 flex-1 min-w-0">
 				<h3 class="font-bold text-base truncate">{{ title }}</h3>
-				<badge
+				<span
 					v-if="lastUpdated"
 					class="badge badge-sm badge-ghost text-xs opacity-75"
 				>
 					{{ formattedUpdateTime }}
-				</badge>
+				</span>
 			</div>
 			<div class="flex items-center gap-1 flex-shrink-0 relative">
 				<!-- Refresh Button -->
