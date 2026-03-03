@@ -353,12 +353,12 @@ const handleSubmit = async () => {
 		return;
 	}
 
-	try {
-		await authStore.register(email.value, password.value);
+		try {
+			await authStore.register(email.value, password.value);
 
-		// Redirect to login page after successful registration
-		router.push('/login');
-	} catch (error) {
+			// Register endpoint returns a token; continue as authenticated user.
+			router.push('/dashboards');
+		} catch (error) {
 		// Error is handled by the store
 		console.error('Registration failed:', error);
 	}

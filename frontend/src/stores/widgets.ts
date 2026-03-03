@@ -69,7 +69,6 @@ export const useWidgetStore = defineStore('widgets', () => {
 	 * Register a widget type
 	 */
 	const registerWidget = (widget: WidgetType) => {
-		console.log('[registerWidget] Registering widget:', widget.id);
 		widgetTypes.value.set(widget.id, widget);
 	};
 

@@ -9,6 +9,7 @@ import type {
 	RegisterRequest,
 	User,
 } from '../types';
+import type { ContractAuthResponse, ContractUser } from '../contracts/apiContract';
 
 export const authApi = {
 	/**
@@ -16,7 +17,7 @@ export const authApi = {
 	 */
 	async register(email: string, password: string): Promise<AuthResponse> {
 		const request: RegisterRequest = { email, password };
-		const response = await apiClient.post<AuthResponse>(
+		const response = await apiClient.post<ContractAuthResponse>(
 			'/auth/register',
 			request,
 		);
@@ -28,7 +29,7 @@ export const authApi = {
 	 */
 	async login(email: string, password: string): Promise<AuthResponse> {
 		const request: LoginRequest = { email, password };
-		const response = await apiClient.post<AuthResponse>(
+		const response = await apiClient.post<ContractAuthResponse>(
 			'/auth/login',
 			request,
 		);
@@ -39,7 +40,7 @@ export const authApi = {
 	 * Get current authenticated user
 	 */
 	async getCurrentUser(): Promise<User> {
-		const response = await apiClient.get<User>('/auth/me');
+		const response = await apiClient.get<ContractUser>('/me');
 		return response.data;
 	},
 };

@@ -16,11 +16,18 @@ fn default_topic() -> String {
 #[derive(Debug, Serialize, Deserialize)]
 pub struct NewsArticle {
     pub title: String,
-    pub description: Option<String>,
+    pub description: String,
     pub url: String,
-    pub source: String,
+    pub source: NewsSource,
+    #[serde(rename = "publishedAt")]
     pub published_at: String,
+    #[serde(rename = "urlToImage")]
     pub url_to_image: Option<String>,
+}
+
+#[derive(Debug, Serialize, Deserialize)]
+pub struct NewsSource {
+    pub name: String,
 }
 
 pub async fn fetch_news_data(
@@ -29,7 +36,7 @@ pub async fn fetch_news_data(
     Query(query): Query<NewsQuery>,
 ) -> Result<impl IntoResponse> {
     let api_key = state.config.newsapi_api_key.as_ref()
-        .ok_or_else(|| AppError::Internal("NewsAPI key not configured".to_string()))?;
+        .ok_or_else(|| AppError::Validation("NewsAPI key not configured".to_string()))?;
     
     let cache_key = format!("news:{}", query.topic);
     
@@ -63,9 +70,11 @@ pub async fn fetch_news_data(
         .iter()
         .map(|article| NewsArticle {
             title: article["title"].as_str().unwrap_or("").to_string(),
-            description: article["description"].as_str().map(|s| s.to_string()),
+            description: article["description"].as_str().unwrap_or("").to_string(),
             url: article["url"].as_str().unwrap_or("").to_string(),
-            source: article["source"]["name"].as_str().unwrap_or("Unknown").to_string(),
+            source: NewsSource {
+                name: article["source"]["name"].as_str().unwrap_or("Unknown").to_string(),
+            },
             published_at: article["publishedAt"].as_str().unwrap_or("").to_string(),
             url_to_image: article["urlToImage"].as_str().map(|s| s.to_string()),
         })

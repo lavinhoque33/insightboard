@@ -1,0 +1,552 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://insightboard.local/contracts/api-contract.v1.json",
+  "title": "InsightBoard API Contract v1",
+  "description": "Contract-first schema for backend/frontend integration. Both layers must conform to these request/response shapes.",
+  "type": "object",
+  "required": [
+    "auth",
+    "dashboards",
+    "widgets"
+  ],
+  "properties": {
+    "auth": {
+      "type": "object",
+      "required": [
+        "register_request",
+        "login_request",
+        "auth_response",
+        "current_user_response"
+      ],
+      "properties": {
+        "register_request": {
+          "$ref": "#/$defs/RegisterRequest"
+        },
+        "login_request": {
+          "$ref": "#/$defs/LoginRequest"
+        },
+        "auth_response": {
+          "$ref": "#/$defs/AuthResponse"
+        },
+        "current_user_response": {
+          "$ref": "#/$defs/User"
+        }
+      }
+    },
+    "dashboards": {
+      "type": "object",
+      "required": [
+        "dashboard",
+        "list_response",
+        "create_request",
+        "update_request"
+      ],
+      "properties": {
+        "dashboard": {
+          "$ref": "#/$defs/Dashboard"
+        },
+        "list_response": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/Dashboard"
+          }
+        },
+        "create_request": {
+          "$ref": "#/$defs/CreateDashboardRequest"
+        },
+        "update_request": {
+          "$ref": "#/$defs/UpdateDashboardRequest"
+        }
+      }
+    },
+    "widgets": {
+      "type": "object",
+      "required": [
+        "github",
+        "weather",
+        "news",
+        "crypto",
+        "status"
+      ],
+      "properties": {
+        "github": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/GitHubEvent"
+          }
+        },
+        "weather": {
+          "$ref": "#/$defs/WeatherData"
+        },
+        "news": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/NewsArticle"
+          }
+        },
+        "crypto": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/CryptoPrice"
+          }
+        },
+        "status": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/StatusCheck"
+          }
+        }
+      }
+    }
+  },
+  "$defs": {
+    "ErrorResponse": {
+      "type": "object",
+      "required": [
+        "error"
+      ],
+      "properties": {
+        "error": {
+          "type": "string",
+          "minLength": 1
+        }
+      },
+      "additionalProperties": false
+    },
+    "RegisterRequest": {
+      "type": "object",
+      "required": [
+        "email",
+        "password"
+      ],
+      "properties": {
+        "email": {
+          "type": "string",
+          "format": "email"
+        },
+        "password": {
+          "type": "string",
+          "minLength": 8
+        }
+      },
+      "additionalProperties": false
+    },
+    "LoginRequest": {
+      "type": "object",
+      "required": [
+        "email",
+        "password"
+      ],
+      "properties": {
+        "email": {
+          "type": "string",
+          "format": "email"
+        },
+        "password": {
+          "type": "string",
+          "minLength": 1
+        }
+      },
+      "additionalProperties": false
+    },
+    "User": {
+      "type": "object",
+      "required": [
+        "id",
+        "email",
+        "created_at"
+      ],
+      "properties": {
+        "id": {
+          "type": "string",
+          "format": "uuid"
+        },
+        "email": {
+          "type": "string",
+          "format": "email"
+        },
+        "created_at": {
+          "type": "string",
+          "format": "date-time"
+        }
+      },
+      "additionalProperties": false
+    },
+    "AuthResponse": {
+      "type": "object",
+      "required": [
+        "token",
+        "user"
+      ],
+      "properties": {
+        "token": {
+          "type": "string",
+          "minLength": 1
+        },
+        "user": {
+          "$ref": "#/$defs/User"
+        }
+      },
+      "additionalProperties": false
+    },
+    "WidgetLayout": {
+      "type": "object",
+      "required": [
+        "id",
+        "type",
+        "x",
+        "y",
+        "w",
+        "h"
+      ],
+      "properties": {
+        "id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "type": {
+          "type": "string",
+          "enum": [
+            "weather",
+            "crypto",
+            "github",
+            "news",
+            "status"
+          ]
+        },
+        "x": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "y": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "w": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "h": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "config": {
+          "type": "object"
+        }
+      },
+      "additionalProperties": false
+    },
+    "LayoutConfig": {
+      "type": "object",
+      "required": [
+        "widgets"
+      ],
+      "properties": {
+        "widgets": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/WidgetLayout"
+          }
+        }
+      },
+      "additionalProperties": false
+    },
+    "DashboardSettings": {
+      "type": "object",
+      "properties": {
+        "theme": {
+          "type": "string",
+          "enum": [
+            "light",
+            "dark"
+          ]
+        },
+        "title": {
+          "type": "string"
+        },
+        "refresh_interval": {
+          "type": "integer",
+          "minimum": 0
+        }
+      },
+      "additionalProperties": true
+    },
+    "Dashboard": {
+      "type": "object",
+      "required": [
+        "id",
+        "user_id",
+        "name",
+        "layout_json",
+        "settings_json",
+        "created_at",
+        "updated_at"
+      ],
+      "properties": {
+        "id": {
+          "type": "string",
+          "format": "uuid"
+        },
+        "user_id": {
+          "type": "string",
+          "format": "uuid"
+        },
+        "name": {
+          "type": "string",
+          "minLength": 1
+        },
+        "layout_json": {
+          "$ref": "#/$defs/LayoutConfig"
+        },
+        "settings_json": {
+          "$ref": "#/$defs/DashboardSettings"
+        },
+        "created_at": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "updated_at": {
+          "type": "string",
+          "format": "date-time"
+        }
+      },
+      "additionalProperties": false
+    },
+    "CreateDashboardRequest": {
+      "type": "object",
+      "required": [
+        "name",
+        "layout_json",
+        "settings_json"
+      ],
+      "properties": {
+        "name": {
+          "type": "string",
+          "minLength": 1
+        },
+        "layout_json": {
+          "$ref": "#/$defs/LayoutConfig"
+        },
+        "settings_json": {
+          "$ref": "#/$defs/DashboardSettings"
+        }
+      },
+      "additionalProperties": false
+    },
+    "UpdateDashboardRequest": {
+      "type": "object",
+      "properties": {
+        "name": {
+          "type": "string",
+          "minLength": 1
+        },
+        "layout_json": {
+          "$ref": "#/$defs/LayoutConfig"
+        },
+        "settings_json": {
+          "$ref": "#/$defs/DashboardSettings"
+        }
+      },
+      "additionalProperties": false
+    },
+    "GitHubEvent": {
+      "type": "object",
+      "required": [
+        "id",
+        "type",
+        "repo",
+        "created_at"
+      ],
+      "properties": {
+        "id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "type": {
+          "type": "string",
+          "minLength": 1
+        },
+        "repo": {
+          "type": "object",
+          "required": [
+            "name"
+          ],
+          "properties": {
+            "name": {
+              "type": "string",
+              "minLength": 1
+            }
+          },
+          "additionalProperties": false
+        },
+        "created_at": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "payload": {
+          "type": [
+            "object",
+            "null"
+          ]
+        }
+      },
+      "additionalProperties": true
+    },
+    "WeatherData": {
+      "type": "object",
+      "required": [
+        "city",
+        "country",
+        "temperature",
+        "feels_like",
+        "humidity",
+        "description",
+        "wind_speed",
+        "icon"
+      ],
+      "properties": {
+        "city": {
+          "type": "string",
+          "minLength": 1
+        },
+        "country": {
+          "type": "string",
+          "minLength": 1
+        },
+        "temperature": {
+          "type": "number"
+        },
+        "feels_like": {
+          "type": "number"
+        },
+        "humidity": {
+          "type": "integer"
+        },
+        "description": {
+          "type": "string"
+        },
+        "wind_speed": {
+          "type": "number"
+        },
+        "icon": {
+          "type": "string"
+        }
+      },
+      "additionalProperties": false
+    },
+    "NewsArticle": {
+      "type": "object",
+      "required": [
+        "title",
+        "description",
+        "url",
+        "source",
+        "publishedAt"
+      ],
+      "properties": {
+        "title": {
+          "type": "string"
+        },
+        "description": {
+          "type": "string"
+        },
+        "url": {
+          "type": "string",
+          "format": "uri"
+        },
+        "source": {
+          "type": "object",
+          "required": [
+            "name"
+          ],
+          "properties": {
+            "name": {
+              "type": "string",
+              "minLength": 1
+            }
+          },
+          "additionalProperties": false
+        },
+        "publishedAt": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "urlToImage": {
+          "type": [
+            "string",
+            "null"
+          ]
+        }
+      },
+      "additionalProperties": false
+    },
+    "CryptoPrice": {
+      "type": "object",
+      "required": [
+        "id",
+        "symbol",
+        "name",
+        "current_price",
+        "price_change_percentage_24h",
+        "market_cap",
+        "total_volume"
+      ],
+      "properties": {
+        "id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "symbol": {
+          "type": "string",
+          "minLength": 1
+        },
+        "name": {
+          "type": "string",
+          "minLength": 1
+        },
+        "current_price": {
+          "type": "number"
+        },
+        "price_change_percentage_24h": {
+          "type": "number"
+        },
+        "market_cap": {
+          "type": "number"
+        },
+        "total_volume": {
+          "type": "number"
+        }
+      },
+      "additionalProperties": false
+    },
+    "StatusCheck": {
+      "type": "object",
+      "required": [
+        "url",
+        "status",
+        "response_time_ms"
+      ],
+      "properties": {
+        "url": {
+          "type": "string",
+          "format": "uri"
+        },
+        "status": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "response_time_ms": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "error": {
+          "type": [
+            "string",
+            "null"
+          ]
+        }
+      },
+      "additionalProperties": false
+    }
+  }
+}

@@ -4,21 +4,23 @@
  */
 
 import apiClient from './client';
+import type {
+	ContractCryptoPrice,
+	ContractGitHubEvent,
+	ContractNewsArticle,
+	ContractStatusCheck,
+	ContractWeatherData,
+} from '../contracts/apiContract';
 
 /**
  * GitHub Widget Data
  */
-export interface GitHubEvent {
-	type: string;
-	repo: { name: string };
-	created_at: string;
-	payload?: any;
-}
+export type GitHubEvent = ContractGitHubEvent;
 
 export const fetchGitHubData = async (
 	username: string,
 ): Promise<GitHubEvent[]> => {
-	const response = await apiClient.get('/data/github', {
+	const response = await apiClient.get<GitHubEvent[]>('/data/github', {
 		params: { username },
 	});
 	return response.data;
@@ -27,19 +29,10 @@ export const fetchGitHubData = async (
 /**
  * Weather Widget Data
  */
-export interface WeatherData {
-	city: string;
-	country: string;
-	temperature: number;
-	feels_like: number;
-	description: string;
-	humidity: number;
-	wind_speed: number;
-	icon: string;
-}
+export type WeatherData = ContractWeatherData;
 
 export const fetchWeatherData = async (city: string): Promise<WeatherData> => {
-	const response = await apiClient.get('/data/weather', {
+	const response = await apiClient.get<WeatherData>('/data/weather', {
 		params: { city },
 	});
 	return response.data;
@@ -48,17 +41,10 @@ export const fetchWeatherData = async (city: string): Promise<WeatherData> => {
 /**
  * News Widget Data
  */
-export interface NewsArticle {
-	title: string;
-	description: string;
-	url: string;
-	source: { name: string };
-	publishedAt: string;
-	urlToImage?: string;
-}
+export type NewsArticle = ContractNewsArticle;
 
 export const fetchNewsData = async (topic: string): Promise<NewsArticle[]> => {
-	const response = await apiClient.get('/data/news', {
+	const response = await apiClient.get<NewsArticle[]>('/data/news', {
 		params: { topic },
 	});
 	return response.data;
@@ -67,18 +53,10 @@ export const fetchNewsData = async (topic: string): Promise<NewsArticle[]> => {
 /**
  * Crypto Widget Data
  */
-export interface CryptoPrice {
-	id: string;
-	symbol: string;
-	name: string;
-	current_price: number;
-	price_change_percentage_24h: number;
-	market_cap: number;
-	total_volume: number;
-}
+export type CryptoPrice = ContractCryptoPrice;
 
 export const fetchCryptoData = async (ids: string): Promise<CryptoPrice[]> => {
-	const response = await apiClient.get('/data/crypto', {
+	const response = await apiClient.get<CryptoPrice[]>('/data/crypto', {
 		params: { ids },
 	});
 	return response.data;
@@ -87,15 +65,10 @@ export const fetchCryptoData = async (ids: string): Promise<CryptoPrice[]> => {
 /**
  * Status Widget Data
  */
-export interface StatusCheck {
-	url: string;
-	status: number;
-	response_time_ms: number;
-	error?: string;
-}
+export type StatusCheck = ContractStatusCheck;
 
 export const fetchStatusData = async (urls: string): Promise<StatusCheck[]> => {
-	const response = await apiClient.get('/data/status', {
+	const response = await apiClient.get<StatusCheck[]>('/data/status', {
 		params: { urls },
 	});
 	return response.data;

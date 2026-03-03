@@ -12,8 +12,6 @@ app.use(pinia);
 app.use(router);
 
 // Initialize widget registry after Pinia is installed
-console.log('[main] Initializing widget registry...');
 initializeWidgets();
-console.log('[main] Widget registry initialized');
 
 app.mount('#app');

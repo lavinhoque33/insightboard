@@ -1,7 +1,8 @@
 use axum::{extract::{Query, State}, response::IntoResponse, Json};
 use serde::{Deserialize, Serialize};
+use serde_json::Value as JsonValue;
 
-use crate::{auth::UserCtx, error::Result, AppState};
+use crate::{auth::UserCtx, error::{AppError, Result}, AppState};
 
 #[derive(Debug, Deserialize)]
 pub struct GitHubQuery {
@@ -15,6 +16,7 @@ pub struct GitHubEvent {
     pub event_type: String,
     pub repo: GitHubRepo,
     pub created_at: String,
+    pub payload: Option<JsonValue>,
 }
 
 #[derive(Debug, Serialize, Deserialize)]
@@ -27,6 +29,10 @@ pub async fn fetch_github_data(
     State(state): State<AppState>,
     Query(query): Query<GitHubQuery>,
 ) -> Result<impl IntoResponse> {
+    if query.username.trim().is_empty() {
+        return Err(AppError::Validation("username is required".to_string()));
+    }
+
     let cache_key = format!("github:{}", query.username);
     
     // Check cache first

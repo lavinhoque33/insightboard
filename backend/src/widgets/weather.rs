@@ -10,12 +10,14 @@ pub struct WeatherQuery {
 
 #[derive(Debug, Serialize, Deserialize)]
 pub struct WeatherData {
-    pub temp: f64,
+    pub city: String,
+    pub country: String,
+    pub temperature: f64,
     pub feels_like: f64,
     pub humidity: i32,
     pub description: String,
+    pub wind_speed: f64,
     pub icon: String,
-    pub city_name: String,
 }
 
 pub async fn fetch_weather_data(
@@ -24,7 +26,7 @@ pub async fn fetch_weather_data(
     Query(query): Query<WeatherQuery>,
 ) -> Result<impl IntoResponse> {
     let api_key = state.config.openweather_api_key.as_ref()
-        .ok_or_else(|| AppError::Internal("OpenWeather API key not configured".to_string()))?;
+        .ok_or_else(|| AppError::Validation("OpenWeather API key not configured".to_string()))?;
     
     let cache_key = format!("weather:{}", query.city);
     
@@ -53,12 +55,14 @@ pub async fn fetch_weather_data(
         .map_err(|e| AppError::ExternalApi(format!("Failed to parse weather response: {}", e)))?;
     
     let weather_data = WeatherData {
-        temp: json["main"]["temp"].as_f64().unwrap_or(0.0),
+        city: json["name"].as_str().unwrap_or(&query.city).to_string(),
+        country: json["sys"]["country"].as_str().unwrap_or("N/A").to_string(),
+        temperature: json["main"]["temp"].as_f64().unwrap_or(0.0),
         feels_like: json["main"]["feels_like"].as_f64().unwrap_or(0.0),
         humidity: json["main"]["humidity"].as_i64().unwrap_or(0) as i32,
         description: json["weather"][0]["description"].as_str().unwrap_or("").to_string(),
+        wind_speed: json["wind"]["speed"].as_f64().unwrap_or(0.0),
         icon: json["weather"][0]["icon"].as_str().unwrap_or("").to_string(),
-        city_name: json["name"].as_str().unwrap_or(&query.city).to_string(),
     };
     
     // Cache for 10 minutes

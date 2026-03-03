@@ -30,6 +30,7 @@ const showConfigModal = ref(false);
 const configModalWidget = ref<{
 	instance: WidgetInstance;
 	typeName: string;
+	isNewWidget: boolean;
 } | null>(null);
 const autoSaveTimer = ref<number | null>(null);
 
@@ -63,6 +64,11 @@ const initializeGrid = () => {
 			minRow: 1,
 			column: 12,
 			animate: true,
+			draggable: {
+				// Only drag by header area and ignore controls.
+				handle: '.widget-drag-handle',
+				cancel: '.widget-action,button,a,input,textarea,select',
+			},
 			resizable: {
 				handles: 'se, sw',
 			},
@@ -83,42 +89,21 @@ const addWidget = (typeId: string, event?: Event) => {
 		event.stopPropagation();
 	}
 
-	const newWidget = widgetStore.createWidgetInstance(typeId);
-	if (!newWidget) return;
-
-	widgets.value.push(newWidget);
 	showWidgetPicker.value = false;
 
-	// Close dropdown
-	const dropdown = document.querySelector('.dropdown');
-	if (dropdown instanceof HTMLElement) {
-		dropdown.classList.remove('dropdown-open');
-	}
+	const draftWidget = widgetStore.createWidgetInstance(typeId);
+	if (!draftWidget) return;
 
-	// Initialize grid if not already done (e.g., first widget being added)
-	if (!gridInstance.value && gridContainer.value) {
-		initializeGrid();
-	}
+	const widgetType = widgetStore.getWidgetType(typeId);
+	if (!widgetType) return;
 
-	// Wait for Vue to update DOM, then add widget to GridStack
-	nextTick(() => {
-		if (gridInstance.value) {
-			const widgetElement = document.getElementById(newWidget.id);
-			if (widgetElement) {
-				// Remove position attributes to let GridStack auto-position
-				widgetElement.removeAttribute('gs-x');
-				widgetElement.removeAttribute('gs-y');
-
-				// Keep size attributes for proper sizing
-				// gs-w and gs-h are already set from the template
-
-				// Let GridStack auto-position the widget with correct size
-				gridInstance.value.addWidget(widgetElement);
-			}
-		}
-	});
-
-	scheduleAutoSave();
+	// Open config first; only create/persist widget after successful Save.
+	configModalWidget.value = {
+		instance: draftWidget,
+		typeName: widgetType.name,
+		isNewWidget: true,
+	};
+	showConfigModal.value = true;
 };
 
 // Configure widget
@@ -132,6 +117,7 @@ const configureWidget = (widgetId: string) => {
 	configModalWidget.value = {
 		instance: widget,
 		typeName: widgetType.name,
+		isNewWidget: false,
 	};
 	showConfigModal.value = true;
 };
@@ -140,14 +126,43 @@ const configureWidget = (widgetId: string) => {
 const saveWidgetConfig = (config: Record<string, any>) => {
 	if (!configModalWidget.value) return;
 
-	const widget = widgets.value.find(
-		(w) => w.id === configModalWidget.value!.instance.id,
-	);
-	if (widget) {
-		widget.config = config;
-		scheduleAutoSave();
+	const { instance, isNewWidget } = configModalWidget.value;
+
+	if (isNewWidget) {
+		const newWidget: WidgetInstance = {
+			...instance,
+			config,
+		};
+		widgets.value.push(newWidget);
+
+		// Initialize grid if needed and attach the newly created widget.
+		nextTick(() => {
+			if (!gridInstance.value && gridContainer.value) {
+				initializeGrid();
+			}
+
+			if (gridInstance.value) {
+				const widgetElement = document.getElementById(newWidget.id);
+				if (widgetElement) {
+					widgetElement.removeAttribute('gs-x');
+					widgetElement.removeAttribute('gs-y');
+					gridInstance.value.addWidget(widgetElement);
+				}
+			}
+		});
+	} else {
+		const widget = widgets.value.find((w) => w.id === instance.id);
+		if (widget) {
+			widget.config = config;
+		}
 	}
 
+	scheduleAutoSave();
+};
+
+// Close widget configuration modal without mutating dashboard state.
+const closeConfigModal = () => {
+	showConfigModal.value = false;
 	configModalWidget.value = null;
 };
 
@@ -291,8 +306,15 @@ onBeforeUnmount(() => {
 			</div>
 
 			<!-- Add Widget Dropdown -->
-			<div class="dropdown dropdown-end">
-				<button class="btn btn-primary gap-2 shadow-lg">
+				<div
+					class="dropdown dropdown-end"
+					:class="{ 'dropdown-open': showWidgetPicker }"
+				>
+					<button
+						class="btn btn-primary gap-2 shadow-lg"
+						@click="showWidgetPicker = !showWidgetPicker"
+						type="button"
+					>
 					<svg
 						xmlns="http://www.w3.org/2000/svg"
 						class="h-5 w-5"
@@ -316,9 +338,9 @@ onBeforeUnmount(() => {
 						v-for="widgetType in widgetStore.availableWidgets"
 						:key="widgetType.id"
 					>
-						<button
-							@click="addWidget(widgetType.id, $event)"
-							type="button"
+							<button
+								@click="addWidget(widgetType.id, $event)"
+								type="button"
 							class="p-3 text-left w-full hover:bg-base-200 rounded transition-colors"
 						>
 							<div class="flex items-start gap-3 w-full">
@@ -442,10 +464,7 @@ onBeforeUnmount(() => {
 					?.configSchema || []
 			"
 			:initial-config="configModalWidget.instance.config"
-			@close="
-				showConfigModal = false;
-				configModalWidget = null;
-			"
+			@close="closeConfigModal"
 			@save="saveWidgetConfig"
 		/>
 	</div>

@@ -5,7 +5,7 @@ use argon2::{
 use axum::{
     async_trait,
     extract::FromRequestParts,
-    http::{request::Parts, StatusCode},
+    http::request::Parts,
     RequestPartsExt,
 };
 use axum_extra::{
@@ -118,5 +118,40 @@ impl FromRequestParts<AppState> for UserCtx {
             user_id,
             email: claims.email,
         })
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::{generate_token, hash_password, validate_token, verify_password};
+    use uuid::Uuid;
+
+    #[test]
+    fn password_hash_roundtrip() {
+        let password = "password123";
+        let hashed = hash_password(password).expect("password should hash");
+        let valid = verify_password(password, &hashed).expect("verification should succeed");
+        assert!(valid);
+    }
+
+    #[test]
+    fn password_hash_rejects_wrong_password() {
+        let hashed = hash_password("password123").expect("password should hash");
+        let valid = verify_password("wrong-password", &hashed).expect("verification should succeed");
+        assert!(!valid);
+    }
+
+    #[test]
+    fn jwt_roundtrip() {
+        let user_id = Uuid::new_v4();
+        let email = "contract@example.com";
+        let secret = "test-secret";
+
+        let token = generate_token(user_id, email, secret).expect("token generation should succeed");
+        let claims = validate_token(&token, secret).expect("token validation should succeed");
+
+        assert_eq!(claims.sub, user_id.to_string());
+        assert_eq!(claims.email, email);
+        assert!(claims.exp > claims.iat);
     }
 }

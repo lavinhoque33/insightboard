@@ -1,6 +1,6 @@
 /** * News Widget * Displays news articles filtered by topic */
 <script setup lang="ts">
-import { ref, onMounted, watch } from 'vue';
+import { ref, onMounted, onUnmounted, watch } from 'vue';
 import BaseWidget from '../BaseWidget.vue';
 import { fetchNewsData, type NewsArticle } from '../../api/widgets';
 
@@ -90,13 +90,10 @@ watch(
 	},
 );
 
-// Cleanup on unmount
-onMounted(() => {
-	return () => {
-		if (refreshTimer) {
-			clearInterval(refreshTimer);
-		}
-	};
+onUnmounted(() => {
+	if (refreshTimer) {
+		clearInterval(refreshTimer);
+	}
 });
 </script>
 

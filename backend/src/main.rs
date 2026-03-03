@@ -55,6 +55,10 @@ async fn main() -> anyhow::Result<()> {
     let db = Database::new(&config.database_url).await?;
     tracing::info!("Database connection established");
 
+    // Ensure schema is present in local/dev runs.
+    db.migrate().await?;
+    tracing::info!("Database migrations applied");
+
     // Initialize Redis cache
     let cache = Cache::new(&config.redis_url).await?;
     tracing::info!("Redis cache connection established");

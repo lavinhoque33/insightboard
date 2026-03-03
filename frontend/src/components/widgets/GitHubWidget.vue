@@ -1,6 +1,6 @@
 /** * GitHub Widget * Displays recent GitHub activity for a user */
 <script setup lang="ts">
-import { ref, onMounted, watch } from 'vue';
+import { ref, onMounted, onUnmounted, watch } from 'vue';
 import BaseWidget from '../BaseWidget.vue';
 import { fetchGitHubData, type GitHubEvent } from '../../api/widgets';
 
@@ -78,21 +78,26 @@ const getEventIcon = (eventType: string): string => {
 const formatEventDescription = (event: GitHubEvent): string => {
 	const type = event.type.replace('Event', '');
 	const repo = event.repo.name;
+	const payload = (event.payload || {}) as {
+		commits?: unknown[];
+		ref_type?: string;
+		action?: string;
+	};
 
 	switch (event.type) {
 		case 'PushEvent':
-			const commitCount = event.payload?.commits?.length || 0;
+			const commitCount = Array.isArray(payload.commits)
+				? payload.commits.length
+				: 0;
 			return `Pushed ${commitCount} commit${
 				commitCount !== 1 ? 's' : ''
 			} to ${repo}`;
 		case 'CreateEvent':
-			return `Created ${
-				event.payload?.ref_type || 'repository'
-			} in ${repo}`;
+			return `Created ${payload.ref_type || 'repository'} in ${repo}`;
 		case 'IssuesEvent':
-			return `${event.payload?.action || 'Updated'} issue in ${repo}`;
+			return `${payload.action || 'Updated'} issue in ${repo}`;
 		case 'PullRequestEvent':
-			return `${event.payload?.action || 'Updated'} PR in ${repo}`;
+			return `${payload.action || 'Updated'} PR in ${repo}`;
 		case 'WatchEvent':
 			return `Starred ${repo}`;
 		case 'ForkEvent':
@@ -132,13 +137,10 @@ watch(
 	},
 );
 
-// Cleanup on unmount
-onMounted(() => {
-	return () => {
-		if (refreshTimer) {
-			clearInterval(refreshTimer);
-		}
-	};
+onUnmounted(() => {
+	if (refreshTimer) {
+		clearInterval(refreshTimer);
+	}
 });
 </script>
 

@@ -2,7 +2,7 @@ use axum::{extract::{Query, State}, response::IntoResponse, Json};
 use serde::{Deserialize, Serialize};
 use std::time::Duration;
 
-use crate::{auth::UserCtx, error::Result, AppState};
+use crate::{auth::UserCtx, error::{AppError, Result}, AppState};
 
 #[derive(Debug, Deserialize)]
 pub struct StatusQuery {
@@ -12,9 +12,9 @@ pub struct StatusQuery {
 #[derive(Debug, Serialize, Deserialize)]
 pub struct StatusCheck {
     pub url: String,
-    pub status: String,
-    pub status_code: Option<u16>,
-    pub response_time_ms: Option<u64>,
+    pub status: u16,
+    pub response_time_ms: u64,
+    pub error: Option<String>,
 }
 
 pub async fn fetch_status_data(
@@ -22,6 +22,10 @@ pub async fn fetch_status_data(
     State(state): State<AppState>,
     Query(query): Query<StatusQuery>,
 ) -> Result<impl IntoResponse> {
+    if query.urls.trim().is_empty() {
+        return Err(AppError::Validation("urls is required".to_string()));
+    }
+
     let cache_key = format!("status:{}", query.urls);
     
     // Check cache first
@@ -51,17 +55,17 @@ pub async fn fetch_status_data(
                 let elapsed = start.elapsed().as_millis() as u64;
                 checks.push(StatusCheck {
                     url: url.to_string(),
-                    status: "up".to_string(),
-                    status_code: Some(response.status().as_u16()),
-                    response_time_ms: Some(elapsed),
+                    status: response.status().as_u16(),
+                    response_time_ms: elapsed,
+                    error: None,
                 });
             }
             Err(e) => {
                 checks.push(StatusCheck {
                     url: url.to_string(),
-                    status: format!("down: {}", e),
-                    status_code: None,
-                    response_time_ms: None,
+                    status: 0,
+                    response_time_ms: 0,
+                    error: Some(e.to_string()),
                 });
             }
         }

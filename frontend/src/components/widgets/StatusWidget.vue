@@ -1,6 +1,6 @@
 /** * Status Widget * Displays URL status checks with response times */
 <script setup lang="ts">
-import { ref, onMounted, watch } from 'vue';
+import { ref, onMounted, onUnmounted, watch } from 'vue';
 import BaseWidget from '../BaseWidget.vue';
 import { fetchStatusData, type StatusCheck } from '../../api/widgets';
 
@@ -61,6 +61,7 @@ const setupAutoRefresh = () => {
 
 
 const getStatusText = (status: number): string => {
+	if (status === 0) return 'Unavailable';
 	if (status >= 200 && status < 300) return 'Healthy';
 	if (status >= 300 && status < 400) return 'Redirect';
 	if (status >= 400 && status < 500) return 'Client Error';
@@ -69,6 +70,7 @@ const getStatusText = (status: number): string => {
 };
 
 const getStatusIcon = (status: number): string => {
+	if (status === 0) return '✗';
 	if (status >= 200 && status < 300) return '✓';
 	if (status >= 300 && status < 400) return '↻';
 	if (status >= 400) return '✗';
@@ -104,13 +106,10 @@ watch(
 	},
 );
 
-// Cleanup on unmount
-onMounted(() => {
-	return () => {
-		if (refreshTimer) {
-			clearInterval(refreshTimer);
-		}
-	};
+onUnmounted(() => {
+	if (refreshTimer) {
+		clearInterval(refreshTimer);
+	}
 });
 </script>
 
@@ -156,7 +155,9 @@ onMounted(() => {
 									'badge-warning':
 										status.status >= 300 &&
 										status.status < 400,
-									'badge-error': status.status >= 400,
+									'badge-error':
+										status.status === 0 ||
+										status.status >= 400,
 								}"
 							>
 								{{ getStatusIcon(status.status) }}
@@ -174,15 +175,17 @@ onMounted(() => {
 						<!-- Status Code -->
 						<span
 							class="badge badge-lg font-semibold flex-shrink-0"
-							:class="{
-								'badge-success':
-									status.status >= 200 && status.status < 300,
-								'badge-warning':
-									status.status >= 300 && status.status < 400,
-								'badge-error': status.status >= 400,
-							}"
-						>
-							{{ status.status }}
+								:class="{
+									'badge-success':
+										status.status >= 200 && status.status < 300,
+									'badge-warning':
+										status.status >= 300 && status.status < 400,
+									'badge-error':
+										status.status === 0 ||
+										status.status >= 400,
+								}"
+							>
+								{{ status.status === 0 ? 'ERR' : status.status }}
 						</span>
 					</div>
 
@@ -193,13 +196,15 @@ onMounted(() => {
 						<!-- Status Text -->
 						<div
 							class="font-medium"
-							:class="{
-								'text-success':
-									status.status >= 200 && status.status < 300,
-								'text-warning':
-									status.status >= 300 && status.status < 400,
-								'text-error': status.status >= 400,
-							}"
+								:class="{
+									'text-success':
+										status.status >= 200 && status.status < 300,
+									'text-warning':
+										status.status >= 300 && status.status < 400,
+									'text-error':
+										status.status === 0 ||
+										status.status >= 400,
+								}"
 						>
 							{{ getStatusText(status.status) }}
 						</div>
@@ -207,14 +212,25 @@ onMounted(() => {
 						<!-- Response Time -->
 						<div
 							class="font-semibold"
-							:class="{
-								'text-success': status.response_time_ms < 200,
-								'text-warning': status.response_time_ms < 500,
-								'text-error': status.response_time_ms >= 1000,
-							}"
-						>
-							{{ status.response_time_ms }}ms
-						</div>
+								:class="{
+									'text-success':
+										status.status !== 0 &&
+										status.response_time_ms < 200,
+									'text-warning':
+										status.status !== 0 &&
+										status.response_time_ms >= 200 &&
+										status.response_time_ms < 1000,
+									'text-error':
+										status.status === 0 ||
+										status.response_time_ms >= 1000,
+								}"
+							>
+								{{
+									status.status === 0
+										? 'N/A'
+										: `${status.response_time_ms}ms`
+								}}
+							</div>
 					</div>
 
 					<!-- Error Message -->

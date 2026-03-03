@@ -1,7 +1,7 @@
 /** * Base Widget Component * Provides common widget functionality: header,
 loading states, error handling, settings */
 <script setup lang="ts">
-import { ref, computed } from 'vue';
+import { ref, computed, onMounted, onUnmounted } from 'vue';
 
 interface Props {
 	title: string;
@@ -27,6 +27,7 @@ const props = withDefaults(defineProps<Props>(), {
 const emit = defineEmits<Emits>();
 
 const showMenu = ref(false);
+const menuRoot = ref<HTMLElement | null>(null);
 
 const formattedUpdateTime = computed(() => {
 	if (!props.lastUpdated) return '';
@@ -42,6 +43,7 @@ const formattedUpdateTime = computed(() => {
 });
 
 const handleRefresh = () => {
+	showMenu.value = false;
 	emit('refresh');
 };
 
@@ -54,34 +56,60 @@ const handleRemove = () => {
 	showMenu.value = false;
 	emit('remove');
 };
+
+const toggleMenu = (event: MouseEvent) => {
+	event.stopPropagation();
+	showMenu.value = !showMenu.value;
+};
+
+const handleDocumentClick = (event: MouseEvent) => {
+	const target = event.target as Node | null;
+	if (!menuRoot.value || !target) {
+		showMenu.value = false;
+		return;
+	}
+
+	if (!menuRoot.value.contains(target)) {
+		showMenu.value = false;
+	}
+};
+
+onMounted(() => {
+	document.addEventListener('click', handleDocumentClick);
+});
+
+onUnmounted(() => {
+	document.removeEventListener('click', handleDocumentClick);
+});
 </script>
 
 <template>
-	<div
-		class="widget-base card bg-base-100 shadow-lg border border-base-300 flex flex-col h-full overflow-hidden hover:shadow-xl transition-all duration-300"
-	>
-		<!-- Widget Header with daisyUI -->
 		<div
-			class="widget-header bg-gradient-to-r from-primary/90 to-primary text-primary-content px-4 py-3 flex items-center justify-between flex-shrink-0"
+			class="widget-base card bg-base-100 shadow-lg border border-base-300 flex flex-col h-full overflow-hidden hover:shadow-xl transition-all duration-300"
 		>
-			<div class="flex items-center gap-2 flex-1 min-w-0">
-				<h3 class="font-bold text-base truncate">{{ title }}</h3>
-				<span
-					v-if="lastUpdated"
-					class="badge badge-sm badge-ghost text-xs opacity-75"
+				<!-- Widget Header with daisyUI -->
+				<div
+					class="widget-header widget-drag-handle bg-base-200 text-base-content border-b border-base-300 px-4 py-3 flex items-center justify-between flex-shrink-0"
 				>
-					{{ formattedUpdateTime }}
-				</span>
-			</div>
-			<div class="flex items-center gap-1 flex-shrink-0 relative">
-				<!-- Refresh Button -->
-				<button
-					@click="handleRefresh"
-					:disabled="loading"
-					class="btn btn-ghost btn-xs gap-1"
-					:class="{ loading: loading }"
-					title="Refresh data"
-				>
+					<div class="flex items-center gap-2 flex-1 min-w-0">
+						<h3 class="font-bold text-base truncate">{{ title }}</h3>
+					<span
+						v-if="lastUpdated"
+						class="badge badge-sm badge-outline text-xs"
+					>
+						{{ formattedUpdateTime }}
+					</span>
+					</div>
+					<div class="flex items-center gap-1 flex-shrink-0 relative">
+					<!-- Refresh Button -->
+					<button
+							@click.stop="handleRefresh"
+							@mousedown.stop
+							:disabled="loading"
+							class="btn btn-ghost btn-xs gap-1 widget-action text-base-content"
+							:class="{ loading: loading }"
+							title="Refresh data"
+						>
 					<svg
 						xmlns="http://www.w3.org/2000/svg"
 						class="h-4 w-4"
@@ -97,15 +125,18 @@ const handleRemove = () => {
 							d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"
 						/>
 					</svg>
-				</button>
+					</button>
 
-				<!-- Options Dropdown -->
-				<div class="dropdown dropdown-end">
-					<button
-						class="btn btn-ghost btn-xs gap-1"
-						title="Widget options"
-					>
-						<svg
+					<!-- Options Menu -->
+						<div ref="menuRoot" class="relative widget-action">
+							<button
+								data-testid="widget-options-btn"
+								@click.stop="toggleMenu"
+								@mousedown.stop
+								class="btn btn-ghost btn-xs gap-1 widget-action text-base-content"
+								title="Widget options"
+							>
+							<svg
 							xmlns="http://www.w3.org/2000/svg"
 							class="h-4 w-4"
 							fill="none"
@@ -119,16 +150,24 @@ const handleRemove = () => {
 								d="M12 5v.01M12 12v.01M12 19v.01M12 6a1 1 0 110-2 1 1 0 010 2zm0 7a1 1 0 110-2 1 1 0 010 2zm0 7a1 1 0 110-2 1 1 0 010 2z"
 							/>
 						</svg>
-					</button>
+						</button>
 
-					<!-- Dropdown Menu -->
-					<ul
-						class="dropdown-content z-50 menu p-2 shadow-xl bg-base-100 rounded-lg border border-base-300 w-48"
-					>
-						<li>
-							<a @click="handleConfigure" class="gap-2">
-								<svg
-									xmlns="http://www.w3.org/2000/svg"
+						<!-- Menu -->
+						<ul
+							v-if="showMenu"
+							class="absolute right-0 top-full mt-2 z-50 menu p-2 shadow-xl bg-base-100 rounded-lg border border-base-300 w-48 widget-action"
+							@mousedown.stop
+							@click.stop
+						>
+								<li>
+									<button
+										data-testid="widget-configure-btn"
+										type="button"
+										@click.stop="handleConfigure"
+										class="gap-2 text-left text-base-content hover:bg-base-200 active:bg-base-300 cursor-pointer font-medium"
+									>
+									<svg
+										xmlns="http://www.w3.org/2000/svg"
 									class="h-4 w-4"
 									fill="none"
 									viewBox="0 0 24 24"
@@ -146,14 +185,19 @@ const handleRemove = () => {
 										stroke-width="2"
 										d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"
 									/>
-								</svg>
-								Configure
-							</a>
-						</li>
-						<li>
-							<a @click="handleRemove" class="text-error gap-2">
-								<svg
-									xmlns="http://www.w3.org/2000/svg"
+									</svg>
+									Configure
+								</button>
+							</li>
+								<li>
+									<button
+										data-testid="widget-remove-btn"
+										type="button"
+										@click.stop="handleRemove"
+										class="text-error gap-2 text-left hover:bg-error/10 active:bg-error/20 cursor-pointer font-medium"
+									>
+									<svg
+										xmlns="http://www.w3.org/2000/svg"
 									class="h-4 w-4"
 									fill="none"
 									viewBox="0 0 24 24"
@@ -165,12 +209,12 @@ const handleRemove = () => {
 										stroke-width="2"
 										d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"
 									/>
-								</svg>
-								Remove
-							</a>
-						</li>
-					</ul>
-				</div>
+									</svg>
+									Remove
+								</button>
+							</li>
+						</ul>
+					</div>
 			</div>
 		</div>
 
