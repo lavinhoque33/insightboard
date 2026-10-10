@@ -19,7 +19,7 @@ RUST_VERSION := $(shell sed -n 's/^channel *= *"\(.*\)"/\1/p' rust-toolchain.tom
 RUST_IMAGE := rust:$(RUST_VERSION)-bookworm
 HAVE_CARGO := $(shell command -v cargo 2>/dev/null)
 
-.PHONY: help setup setup-env doctor db-up db-down db-reset backend-dev web-dev backend-check web-check verify format require-env require-cargo require-web-deps
+.PHONY: help setup setup-env doctor db-up db-down db-reset backend-dev web-dev backend-check web-check verify format require-env require-db require-cargo require-web-deps
 
 help:
 	@printf '%s\n' \
@@ -31,9 +31,9 @@ help:
 	  '  db-reset       DESTRUCTIVE: remove containers and data volumes (needs CONFIRM=yes)' \
 	  '  backend-dev    Run the API on 127.0.0.1:8080 with the root .env (needs host Rust)' \
 	  '  web-dev        Run Vite on 127.0.0.1:5173 with the /api proxy' \
-	  '  backend-check  cargo fmt --check, clippy -D warnings, test, build (host Rust, else container)' \
+	  '  backend-check  cargo fmt --check, clippy -D warnings, test, build (host Rust, else container); needs db-up' \
 	  '  web-check      ESLint + Prettier check, Vitest, vue-tsc + vite build' \
-	  '  verify         backend-check and web-check; needs no database' \
+	  '  verify         backend-check and web-check; backend tests need Postgres and Redis (make db-up)' \
 	  '  format         cargo fmt and Prettier write (needs host Rust)'
 
 # --- setup ------------------------------------------------------------------
@@ -101,6 +101,15 @@ require-cargo:
 require-web-deps:
 	@[ -d $(FRONTEND)/node_modules ] || { printf '%s\n' 'frontend/node_modules is missing: run make setup'; exit 1; }
 
+# Backend tests use the compose Postgres (isolated #[sqlx::test] databases) and Redis
+# (unique key prefixes). Checks state only; never starts, stops, or recreates containers.
+require-db: require-env
+	@command -v docker >/dev/null 2>&1 || { printf '%s\n' 'backend-check needs Docker for Postgres and Redis'; exit 1; }
+	@running="$$(docker compose ps --status running --services 2>/dev/null)"; \
+	for svc in postgres redis; do \
+	  printf '%s\n' "$$running" | grep -qx "$$svc" || { printf '%s\n' "backend-check needs Postgres and Redis running: run make db-up ($$svc is not running)"; exit 1; }; \
+	done
+
 db-up: require-env
 	docker compose up -d --wait postgres redis
 
@@ -123,19 +132,21 @@ web-dev: require-web-deps
 
 # --- checks -----------------------------------------------------------------
 
-# Host Rust when present; otherwise a throwaway container. The container mounts backend/
-# read-only and builds in a copy inside the container, so it never writes root-owned files
-# into the checkout. It downloads crates on every run (no cache volume).
+# Host Rust when present; otherwise a throwaway container. Tests read DATABASE_URL and
+# REDIS_URL from .env (exported to cargo without printing). The container mounts backend/
+# read-only, builds in a copy inside the container (no root-owned files in the checkout),
+# uses the host network to reach the 127.0.0.1 Postgres and Redis, and downloads crates on
+# every run (no cache volume).
 ifneq ($(HAVE_CARGO),)
-backend-check:
+backend-check: require-db
 	cd $(BACKEND) && cargo fmt --check
 	cd $(BACKEND) && cargo clippy --locked --all-targets -- -D warnings
-	cd $(BACKEND) && cargo test --locked
+	@printf '%s\n' 'cd $(BACKEND) && cargo test --locked  (environment from .env)'
+	@cd $(BACKEND) && set -a && . ../.env && set +a && cargo test --locked
 	cd $(BACKEND) && cargo build --locked
 else
-backend-check:
-	@command -v docker >/dev/null 2>&1 || { printf '%s\n' 'backend-check needs host Rust or Docker (container fallback)'; exit 1; }
-	docker run --rm -v "$(CURDIR)/$(BACKEND):/src:ro" $(RUST_IMAGE) bash -c '\
+backend-check: require-db
+	docker run --rm --network host --env-file "$(CURDIR)/.env" -v "$(CURDIR)/$(BACKEND):/src:ro" $(RUST_IMAGE) bash -c '\
 	  set -ex; \
 	  rustup component add rustfmt clippy; \
 	  mkdir /work && tar -C /src --exclude=./target -cf - . | tar -C /work -xf -; \

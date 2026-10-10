@@ -1,24 +1,24 @@
-use axum::{
-    extract::{Query, State},
-    response::IntoResponse,
-    Json,
-};
+use axum::{extract::State, Json};
 use serde::{Deserialize, Serialize};
 
+use super::{
+    http::{endpoint, fetch_json},
+    normalize_text,
+};
 use crate::{
     auth::UserCtx,
     error::{AppError, Result},
+    extract::ApiQuery,
     AppState,
 };
 
+const DEFAULT_TOPIC: &str = "technology";
+const MAX_TOPIC_CHARS: usize = 100;
+const CACHE_TTL_SECS: u64 = 900;
+
 #[derive(Debug, Deserialize)]
 pub struct NewsQuery {
-    #[serde(default = "default_topic")]
-    pub topic: String,
-}
-
-fn default_topic() -> String {
-    "technology".to_string()
+    pub topic: Option<String>,
 }
 
 #[derive(Debug, Serialize, Deserialize)]
@@ -38,74 +38,70 @@ pub struct NewsSource {
     pub name: String,
 }
 
+/// Map one upstream article; articles without a URL or publication time are dropped (the
+/// contract requires both).
+fn map_article(article: &serde_json::Value) -> Option<NewsArticle> {
+    let url = article["url"].as_str().filter(|s| !s.is_empty())?;
+    let published_at = article["publishedAt"].as_str().filter(|s| !s.is_empty())?;
+    Some(NewsArticle {
+        title: article["title"].as_str().unwrap_or("").to_string(),
+        description: article["description"].as_str().unwrap_or("").to_string(),
+        url: url.to_string(),
+        source: NewsSource {
+            name: article["source"]["name"]
+                .as_str()
+                .filter(|s| !s.is_empty())
+                .unwrap_or("Unknown")
+                .to_string(),
+        },
+        published_at: published_at.to_string(),
+        url_to_image: article["urlToImage"].as_str().map(str::to_string),
+    })
+}
+
 pub async fn fetch_news_data(
     _user_ctx: UserCtx,
     State(state): State<AppState>,
-    Query(query): Query<NewsQuery>,
-) -> Result<impl IntoResponse> {
+    ApiQuery(query): ApiQuery<NewsQuery>,
+) -> Result<Json<Vec<NewsArticle>>> {
+    let topic = match query.topic.as_deref() {
+        None => DEFAULT_TOPIC.to_string(),
+        Some(raw) => normalize_text(raw),
+    };
+    if topic.is_empty() {
+        return Err(AppError::invalid("topic", "must not be blank"));
+    }
+    if topic.chars().count() > MAX_TOPIC_CHARS {
+        return Err(AppError::invalid(
+            "topic",
+            format!("must be at most {MAX_TOPIC_CHARS} characters"),
+        ));
+    }
     let api_key = state
         .config
         .newsapi_api_key
-        .as_ref()
-        .ok_or_else(|| AppError::Validation("NewsAPI key not configured".to_string()))?;
+        .as_deref()
+        .ok_or(AppError::ProviderNotConfigured("NEWSAPI_API_KEY"))?;
 
-    let cache_key = format!("news:{}", query.topic);
-
-    // Check cache first
-    if let Some(cached) = state
-        .cache
-        .get::<Vec<NewsArticle>>(&cache_key)
-        .await
-        .ok()
-        .flatten()
-    {
-        tracing::debug!("Cache hit for news data: {}", query.topic);
+    let cache_key = state.cache.key("news", &[&topic.to_lowercase()]);
+    if let Some(cached) = state.cache.get::<Vec<NewsArticle>>(&cache_key).await {
         return Ok(Json(cached));
     }
 
-    // Fetch from NewsAPI
-    let url = format!(
-        "https://newsapi.org/v2/everything?q={}&apiKey={}&pageSize=10&sortBy=publishedAt",
-        query.topic, api_key
-    );
-
-    let response = reqwest::get(&url)
-        .await
-        .map_err(|e| AppError::ExternalApi(format!("NewsAPI error: {}", e)))?;
-
-    if !response.status().is_success() {
-        return Err(AppError::ExternalApi(format!(
-            "NewsAPI returned status: {}",
-            response.status()
-        )));
-    }
-
-    let json: serde_json::Value = response
-        .json()
-        .await
-        .map_err(|e| AppError::ExternalApi(format!("Failed to parse news response: {}", e)))?;
+    let mut url = endpoint(&state.config.provider_urls.newsapi, &["v2", "everything"])?;
+    url.query_pairs_mut()
+        .append_pair("q", &topic)
+        .append_pair("pageSize", "10")
+        .append_pair("sortBy", "publishedAt");
+    // The key travels in a header, never in the URL.
+    let request = state.http.provider.get(url).header("X-Api-Key", api_key);
+    let json: serde_json::Value = fetch_json("NewsAPI", request).await?;
 
     let articles: Vec<NewsArticle> = json["articles"]
         .as_array()
-        .unwrap_or(&vec![])
-        .iter()
-        .map(|article| NewsArticle {
-            title: article["title"].as_str().unwrap_or("").to_string(),
-            description: article["description"].as_str().unwrap_or("").to_string(),
-            url: article["url"].as_str().unwrap_or("").to_string(),
-            source: NewsSource {
-                name: article["source"]["name"]
-                    .as_str()
-                    .unwrap_or("Unknown")
-                    .to_string(),
-            },
-            published_at: article["publishedAt"].as_str().unwrap_or("").to_string(),
-            url_to_image: article["urlToImage"].as_str().map(|s| s.to_string()),
-        })
-        .collect();
+        .map(|items| items.iter().filter_map(map_article).collect())
+        .unwrap_or_default();
 
-    // Cache for 15 minutes
-    let _ = state.cache.set(&cache_key, &articles, 900).await;
-
+    state.cache.set(&cache_key, &articles, CACHE_TTL_SECS).await;
     Ok(Json(articles))
 }

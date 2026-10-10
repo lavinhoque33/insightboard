@@ -77,6 +77,19 @@ const getStatusIcon = (status: number): string => {
 	return '?';
 };
 
+// Generic per-URL failure classes sent by the backend (never raw error text)
+const ERROR_CLASS_TEXT: Record<string, string> = {
+	invalid_url: 'Invalid URL (must be http or https, without credentials)',
+	blocked_address: 'Blocked: private or internal addresses cannot be checked',
+	dns_error: 'Host name could not be resolved',
+	timeout: 'No response before the timeout',
+	connect_error: 'Could not connect to the host',
+	request_error: 'The request failed',
+};
+
+const describeError = (errorClass: string): string =>
+	ERROR_CLASS_TEXT[errorClass] ?? 'The check failed';
+
 const formatUrl = (url: string): string => {
 	try {
 		const urlObj = new URL(url);
@@ -229,7 +242,7 @@ onUnmounted(() => {
 								d="M10 14l-2-2m0 0l-2-2m2 2l2-2m-2 2l-2 2m8-8l-2 2m0 0l-2 2m2-2l2 2m-2-2l-2-2"
 							/>
 						</svg>
-						<span class="text-xs">{{ status.error }}</span>
+						<span class="text-xs">{{ describeError(status.error) }}</span>
 					</div>
 				</div>
 			</div>

@@ -8,15 +8,12 @@ import type {
 	AxiosInstance,
 	InternalAxiosRequestConfig,
 } from 'axios';
-import type { ApiError } from '../types';
+import type { ApiError, FieldError } from '../types';
 
-// Error bodies the backend (or a proxy) may send; `error` is the backend's key
+// Error body every backend response uses: `{error}`, plus `details` on 422
 interface ErrorBody {
-	message?: string;
 	error?: string;
-	details?: unknown;
-	errors?: unknown;
-	validation?: unknown;
+	details?: FieldError[];
 }
 
 // Create axios instance with base configuration
@@ -48,43 +45,24 @@ apiClient.interceptors.response.use(
 		return response;
 	},
 	(error: AxiosError<ErrorBody>) => {
-		// Handle different error scenarios
 		if (error.response) {
-			// Some backends return `error` instead of `message`
 			const data: ErrorBody = error.response.data || {};
-			// Try to surface validation details for 422 responses so UI can show
-			// helpful messages instead of a generic error.
-			let message = data.message || data.error || 'An error occurred';
-			const details = data.details ?? data.errors ?? data.validation ?? null;
+			let message = data.error || 'An error occurred';
+			const fieldErrors =
+				error.response.status === 422 && Array.isArray(data.details)
+					? data.details
+					: undefined;
 
-			if (error.response.status === 422 && details) {
-				// Format details into a readable string depending on their shape
-				let formatted = '';
-				if (typeof details === 'string') {
-					formatted = details;
-				} else if (Array.isArray(details)) {
-					formatted = details.join('; ');
-				} else if (typeof details === 'object') {
-					formatted = Object.entries(details as Record<string, unknown>)
-						.map(([k, v]) => {
-							if (Array.isArray(v)) return `${k}: ${v.join(', ')}`;
-							if (typeof v === 'object') return `${k}: ${JSON.stringify(v)}`;
-							return `${k}: ${String(v)}`;
-						})
-						.join('; ');
-				} else {
-					formatted = String(details);
-				}
-
-				if (formatted) {
-					message = `${message} — ${formatted}`;
-				}
+			if (fieldErrors?.length) {
+				message = `${message} — ${fieldErrors
+					.map((d) => `${d.field}: ${d.message}`)
+					.join('; ')}`;
 			}
 
 			const apiError: ApiError = {
 				message,
 				status: error.response.status,
-				details: details,
+				fieldErrors,
 			};
 
 			// Handle 401 Unauthorized - careful with login/register endpoints

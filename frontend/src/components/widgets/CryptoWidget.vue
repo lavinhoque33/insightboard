@@ -61,7 +61,10 @@ const setupAutoRefresh = () => {
 	}
 };
 
-const formatPrice = (price: number): string => {
+const NO_VALUE = '—';
+
+const formatPrice = (price: number | null): string => {
+	if (price === null) return NO_VALUE;
 	if (price >= 1) {
 		return `$${price.toLocaleString(undefined, {
 			minimumFractionDigits: 2,
@@ -71,14 +74,16 @@ const formatPrice = (price: number): string => {
 	return `$${price.toFixed(6)}`;
 };
 
-const formatMarketCap = (marketCap: number): string => {
+const formatMarketCap = (marketCap: number | null): string => {
+	if (marketCap === null) return NO_VALUE;
 	if (marketCap >= 1e12) return `$${(marketCap / 1e12).toFixed(2)}T`;
 	if (marketCap >= 1e9) return `$${(marketCap / 1e9).toFixed(2)}B`;
 	if (marketCap >= 1e6) return `$${(marketCap / 1e6).toFixed(2)}M`;
 	return `$${marketCap.toLocaleString()}`;
 };
 
-const getPriceChangeIcon = (change: number): string => {
+const getPriceChangeIcon = (change: number | null): string => {
+	if (change === null) return '━';
 	if (change > 0) return '▲';
 	if (change < 0) return '▼';
 	return '━';
@@ -165,19 +170,19 @@ onUnmounted(() => {
 						<div
 							class="badge"
 							:class="{
-								'badge-success': crypto.price_change_percentage_24h > 0,
-								'badge-error': crypto.price_change_percentage_24h < 0,
-								'badge-ghost': crypto.price_change_percentage_24h === 0,
+								'badge-success': (crypto.price_change_percentage_24h ?? 0) > 0,
+								'badge-error': (crypto.price_change_percentage_24h ?? 0) < 0,
+								'badge-ghost': (crypto.price_change_percentage_24h ?? 0) === 0,
 							}"
 						>
 							<span>{{
 								getPriceChangeIcon(crypto.price_change_percentage_24h)
 							}}</span>
-							<span
-								>{{
-									Math.abs(crypto.price_change_percentage_24h).toFixed(2)
-								}}%</span
-							>
+							<span>{{
+								crypto.price_change_percentage_24h === null
+									? NO_VALUE
+									: `${Math.abs(crypto.price_change_percentage_24h).toFixed(2)}%`
+							}}</span>
 							<span class="text-xs">(24h)</span>
 						</div>
 

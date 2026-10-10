@@ -17,20 +17,26 @@ Milestone status uses **planned**, **in progress**, **implemented but unverified
 [baseline verification record](baseline-verification.md).
 
 **Automated tests never call live providers** (GitHub, OpenWeather, NewsAPI, CoinGecko) or arbitrary status
-URLs, locally or in CI. Provider behaviour is tested against local mock servers through configurable base URLs;
-the URLs are hard-coded today (D11, M4b), so no provider test exists yet.
+URLs, locally or in CI. Provider behaviour is tested against local `mockito` servers and silent loopback listeners
+through the configurable base URLs (`GITHUB_API_BASE_URL` and the others, M4b); status-policy tests use IP
+literals, `localhost`, and allowlisted loopback fixtures only, and blocked targets are rejected before any
+connection.
 
 ## Commands
 
 The root `Makefile` is the gate (M4 decision 2). Run from the repository root; `make doctor` shows which tools it
-found. Nothing below needs Postgres or Redis: `cargo test` has no database tests yet and the Vitest suites mock the
-API.
+found. **`make backend-check` needs the compose Postgres and Redis running** (`make db-up`): it stops with a clear
+message otherwise, and never starts, stops, or recreates containers. `cargo test` reads `DATABASE_URL` and
+`REDIS_URL` from the root `.env` (exported to the test process without printing). Database tests use
+`#[sqlx::test]`, which creates and drops an isolated database per test (the compose user owns the server, so it may
+create databases); Redis tests write only under unique `ib-test:<uuid>:` key prefixes with short TTLs and never
+flush. The Vitest suites mock the API and need neither.
 
 | Target | What it runs |
 | --- | --- |
-| `make backend-check` | In `backend/`: `cargo fmt --check`, then `cargo clippy --locked --all-targets -- -D warnings`, `cargo test --locked`, `cargo build --locked` (`--locked` fails instead of silently changing the committed `Cargo.lock`) |
+| `make backend-check` | Checks Postgres and Redis are running, then in `backend/`: `cargo fmt --check`, `cargo clippy --locked --all-targets -- -D warnings`, `cargo test --locked` (environment from `.env`), `cargo build --locked` (`--locked` fails instead of silently changing the committed `Cargo.lock`) |
 | `make web-check` | In `frontend/`: `npm run lint` (ESLint with `--max-warnings 0`, then `prettier --check .`), `npm test` (`vitest run`), `npm run build` (`vue-tsc -b && vite build`) |
-| `make verify` | `backend-check` then `web-check`; works from a fresh clone after `make setup` |
+| `make verify` | `backend-check` then `web-check`; works from a fresh clone after `make setup` and `make db-up` |
 | `make format` | `cargo fmt` and `npm run format` (Prettier write); needs host Rust |
 | `make setup` | `npm ci` (and a generated `.env` if absent); run once per clone before `web-check` |
 
@@ -47,7 +53,7 @@ The chain stops at the first failing step. Frontend commands use the project Nod
 | `npm run build` | `vue-tsc -b && vite build`: type-checks app, spec files, and `vite.config.ts`/`vitest.config.ts` (`tsconfig.node.json`), then bundles |
 | `npm audit --omit=dev` | Advisories in production dependencies |
 | `npx vitest run src/components/__tests__/BaseWidget.spec.ts` | One test file |
-| `cargo test jwt_roundtrip` | One backend test by name filter |
+| `cargo test jwt_roundtrip` | One backend test by name filter (from `backend/`; export `.env` first for database and Redis tests: `set -a; . ../.env; set +a`) |
 
 There are no `test:watch`, `test:coverage`, or `test:e2e` scripts; Playwright is not installed (M4c).
 
@@ -58,35 +64,44 @@ first use inside the checkout.
 **Backend, container fallback.** When `cargo` is not on `PATH`, `make backend-check` (and `make verify`) runs the
 same four steps in a throwaway `rust:<version>-bookworm` container, where `<version>` is read from
 `rust-toolchain.toml`. It mounts `backend/` read-only and builds in a copy inside the container, so nothing is
-written to the checkout and no root-owned files appear. It needs Docker and internet access, and downloads the
-locked crates on every run (no cache volume). `make backend-dev` and `make format` need host Rust.
+written to the checkout and no root-owned files appear. It runs with `--network host` and `--env-file .env` so the
+tests reach the compose Postgres and Redis on `127.0.0.1` (Linux Docker; Docker Desktop's host networking differs and
+is not supported here). It needs Docker and internet access, and downloads the locked crates on every run (no cache
+volume). `make backend-dev` and `make format` need host Rust.
+
+**No external network in `cargo test`.** Every provider base URL in the test config is a loopback mock or the
+closed loopback port 9; the status widget only sees IP literals (blocked before connecting), `localhost`, and
+allowlisted loopback fixtures; `jsonschema` is built without its HTTP/file `$ref` resolvers. **Observed** on this
+workstation on 2026-10-10 by running the test binary under `strace -f -e trace=connect`: every `connect` went to
+`127.0.0.1` (plus resolver address-selection probes to `::1` port 0 when resolving `localhost`).
 
 ## What exists
 
-| Area | Test | Covers |
-| --- | --- | --- |
-| `backend/src/auth.rs` | `auth::tests::password_hash_roundtrip` | A hashed password verifies |
-| `backend/src/auth.rs` | `auth::tests::password_hash_rejects_wrong_password` | A wrong password does not verify |
-| `backend/src/auth.rs` | `auth::tests::jwt_roundtrip` | `sub` and `email` survive encode/decode; `exp > iat` |
-| `backend/src/config.rs` | `config::tests::normalize_optional_strips_blank_values` | Unset, empty, and blank optional values become `None` |
-| `backend/src/config.rs` | `config::tests::normalize_optional_trims_and_keeps_non_empty` | Optional values are trimmed |
-| `backend/src/config.rs` | `config::tests::app_host_defaults_to_loopback` | Unset `APP_HOST` binds `127.0.0.1` (D3) |
-| `backend/src/config.rs` | `config::tests::app_host_parses_ip_and_rejects_garbage` | An IP literal parses; a non-IP value fails naming `APP_HOST` |
-| `backend/src/config.rs` | `config::tests::cors_origins_default_to_vite_dev_origin` | Unset or blank `CORS_ORIGINS` yields the two Vite dev origins (D4) |
-| `backend/src/config.rs` | `config::tests::cors_origins_parse_a_trimmed_list` | A comma-separated list is trimmed; empty entries are skipped |
-| `backend/src/config.rs` | `config::tests::cors_origins_reject_invalid_entries` | `*`, missing scheme, non-http scheme, paths, credentials, and wildcards fail naming `CORS_ORIGINS` |
-| `backend/src/config.rs` | `config::tests::required_variables_name_themselves_when_missing_or_blank` | A missing or blank required variable errors with its name (D18) |
-| `backend/src/main.rs` | `tests::preflight_from_allowed_origin_is_granted` | `tower::ServiceExt::oneshot` against the production middleware stack: an allowed origin gets `access-control-allow-origin`, methods, and no credentials header |
-| `backend/src/main.rs` | `tests::preflight_from_foreign_origin_gets_no_grant` | A preflight from an origin outside the list gets no `access-control-allow-origin` |
-| `backend/src/main.rs` | `tests::simple_request_from_foreign_origin_gets_no_grant` | A simple cross-origin request from a foreign origin is served but gets no CORS grant |
-| `frontend/src/components/__tests__/BaseWidget.spec.ts` | "emits configure when Configure is clicked from options menu" | Options menu opens and Configure emits once |
-| `frontend/src/views/__tests__/DashboardEditorView.spec.ts` | "does not create a widget until configuration is saved" | Draft-on-add: modal opens, Cancel leaves no grid item (stores and GridStack mocked) |
-| `frontend/src/views/__tests__/DashboardEditorView.spec.ts` | "creates the widget only after saving valid configuration" | Save with a valid status URL adds one grid item; the save payload is not asserted |
+Backend (`cargo test`, one binary; unit tests sit beside the code, router tests in `backend/src/tests/`):
 
-Totals: 14 backend unit tests and 3 frontend component tests. The router test uses a stub route behind the real
-middleware function, not the full application (which needs live Postgres and Redis). Nothing covers the real
-routes, the database, Redis, providers, the API client, stores, router guards, the contract, the
-configuration-modal prefill (D9), or end-to-end journeys; there is no CI (D11; M4b and M4c).
+| Area | Location | Covers |
+| --- | --- | --- |
+| Config | `config::tests` | Loopback default; required variables name themselves; CORS parsing; `JWT_SECRET` < 32 bytes rejected; base URL, timeout, and fixture-allowlist parsing (loopback `ip:port` only) |
+| Auth helpers | `auth::tests` | Argon2 round trip and rejection; 24 h JWT lifetime; every invalid token is the generic `Unauthorized` |
+| Request validation | `models::user::tests`, `models::dashboard::tests`, `widgets::*::tests` | Email normalisation and validation; password length; dashboard defaults, dotted layout/settings fields, blank names; GitHub username rules; crypto id normalisation; free-text normalisation |
+| Outbound policy | `widgets::net_policy::tests`, `widgets::status::tests`, `widgets::http::tests` | Every blocked address class (loopback, unspecified, private, CGNAT, link-local and metadata, ULA, multicast, broadcast/reserved, documentation, benchmarking, IPv4-mapped/compatible, NAT64, 6to4, IETF-protocol `2001::/23`); the policy resolver rejects `localhost`; scheme/credential/length checks; IP-literal blocking incl. the hex form `0x7f000001`; exact fixture allowlist; path segments percent-encoded |
+| Cache | `cache::tests`, `tests::cache` | Key bounding (hash of long or special parts); unreachable Redis fails open within 3 s; compose Redis round trip with TTL; undecodable entries are misses; provider data shared under normalised keys (one upstream call for two users) |
+| Rate limits | `ratelimit::tests`, `tests::rate_limit` | Burst then 429 per key; cleanup keeps recent keys; auth limited per client IP (other IPs unaffected); data limited per user after authentication (401 before 429) |
+| Middleware | `app::tests` | CORS allowlist (preflight and simple requests); server timeout → JSON 504; unknown route 404 and wrong method 405 as JSON |
+| Auth routes | `tests::auth` (`#[sqlx::test]`) | Register/login/me match the contract; email normalised; duplicate (case-insensitive) → 409; three concurrent duplicate registrations → one 201 and two 409; invalid input → 422 details; wrong password and unknown email → same generic 401; `/me` for a deleted user → 401 |
+| Dashboard routes | `tests::dashboards` (`#[sqlx::test]`) | Create without JSON fields stores `{"widgets":[]}` and `{}`; CRUD responses match the contract; blank name and invalid shapes → 422 with dotted fields; foreign dashboards 404 for GET/PUT/DELETE and invisible in the list; unparsable id 404; 101st dashboard → 409; create for a deleted user → 401; migration 003 backfills legacy `null`/`[]` values and normalises emails |
+| Providers | `tests::providers` (`mockito`) | Each widget's success output matches the contract; the shared `User-Agent` is sent; GitHub token as bearer; NewsAPI key in `X-Api-Key` and absent from the URL; city and topic query-encoded, path-like GitHub usernames rejected without an upstream call; crypto null numbers kept as `null`; upstream 500 and undecodable bodies → generic 502; slow upstream → 502 at the configured timeout for all four providers; missing keys → 503; missing/blank query values → 422 naming the parameter |
+| Status widget | `tests::status` | Blocked and invalid targets get generic classes and never reach a listening fixture; 11 URLs → 422; allowlisted fixture reached; a 302 is reported, not followed; timeout and refused connection classified; checks run five at a time; results cached per user |
+| Errors and health | `tests::errors`, `tests::health` | Malformed JSON 400, wrong content type 415, non-object/mistyped bodies 422 with details, all as `application/json`; database down → generic 500; `/healthz` without dependencies; `/readyz` 200 with both up, 503 with either down |
+| Contract | `tests::contract` | Handler output above is validated with `jsonschema` (formats on) against `contracts/api-contract.v1.json`; the contract compiles; a deliberately broken fixture set (pre-M4b `[]` layout, `w: 0`, null settings, bad uuid, blank name, missing field, leaked error fields, raw library error text as a status class) must fail validation (drill 11) |
+
+Totals: 87 backend tests (**observed** 2026-10-10, `make backend-check` on this workstation). Not covered by
+automated tests: the `dns_error` status class (it would need a non-resolving name, which could query external DNS)
+and live provider behaviour (manual, human-scale smoke only).
+
+Frontend (Vitest): component tests under `frontend/src/**/__tests__/` and the M4b client and contract (ajv) tests;
+run `npm test` for the current list and count. Store, guard, modal, editor, and Playwright suites and CI are
+**pending** (M4c).
 
 ## Gate status
 
@@ -130,8 +145,9 @@ From the [M4 contract](../architecture/m4-quality-gate-contract.md), **accepted*
 - **Gates (decision 3), in place since M4a:** `cargo fmt --check`, `cargo clippy --all-targets -- -D warnings`,
   ESLint, Prettier, `vue-tsc`, Vitest, and `cargo test`, run by `make verify`.
 
-The gates above exist; the contract, provider-mock, `#[sqlx::test]`, Redis, frontend client/store/guard/modal/editor,
-Playwright, and CI items are **pending** (M4b and M4c).
+The gates above exist. Since M4b the backend contract, provider-mock, `#[sqlx::test]`, and Redis tests exist, and
+the frontend has ajv contract tests; the frontend store/guard/modal/editor tests, Playwright, and CI items are
+**pending** (M4c).
 
 ## What a verification record contains
 

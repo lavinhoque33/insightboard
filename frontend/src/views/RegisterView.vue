@@ -34,12 +34,24 @@
 							<input
 								id="email"
 								v-model="email"
+								:aria-invalid="!!fieldError('email')"
+								:aria-describedby="
+									fieldError('email') ? 'email-error' : undefined
+								"
 								type="email"
 								placeholder="you@example.com"
 								class="input input-bordered input-primary w-full focus:outline-none transition-all"
 								required
 								:disabled="authStore.loading"
 							/>
+							<p
+								v-if="fieldError('email')"
+								id="email-error"
+								class="text-error text-sm mt-1"
+								role="alert"
+							>
+								{{ fieldError('email') }}
+							</p>
 							<label class="label">
 								<span class="label-text-alt text-base-content/60"
 									>This will be your unique login</span
@@ -58,6 +70,10 @@
 							<input
 								id="password"
 								v-model="password"
+								:aria-invalid="!!fieldError('password')"
+								:aria-describedby="
+									fieldError('password') ? 'password-error' : undefined
+								"
 								type="password"
 								placeholder="Enter a strong password"
 								class="input input-bordered input-primary w-full focus:outline-none transition-all"
@@ -65,6 +81,14 @@
 								minlength="8"
 								:disabled="authStore.loading"
 							/>
+							<p
+								v-if="fieldError('password')"
+								id="password-error"
+								class="text-error text-sm mt-1"
+								role="alert"
+							>
+								{{ fieldError('password') }}
+							</p>
 							<label class="label">
 								<span class="label-text-alt text-base-content/60"
 									>Minimum 8 characters</span
@@ -293,6 +317,9 @@ import { useAuthStore } from '../stores/auth';
 
 const router = useRouter();
 const authStore = useAuthStore();
+
+const fieldError = (field: string): string | undefined =>
+	authStore.fieldErrors.find((e) => e.field === field)?.message;
 
 const email = ref('');
 const password = ref('');

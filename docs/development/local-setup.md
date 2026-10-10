@@ -108,10 +108,12 @@ compose refuses to start without the secrets.
 
    Startup loads `.env` (so `RUST_LOG` in it applies), connects to Postgres, applies the embedded migrations,
    connects to Redis, and logs `Listening on 127.0.0.1:8080`. A missing or empty `DATABASE_URL`, `REDIS_URL`, or
-   `JWT_SECRET` exits non-zero with an error naming the variable; an unparsable `APP_HOST`, `APP_PORT`, or
-   `CORS_ORIGINS` also fails startup with an error; an unreachable Postgres or Redis exits with an error. Check it
-   with `curl -s http://127.0.0.1:8080/healthz`
-   (`{"status":"ok","service":"insightboard-backend","version":"0.1.0"}`; it checks no dependency).
+   `JWT_SECRET` exits non-zero with an error naming the variable; a `JWT_SECRET` shorter than 32 bytes, or an
+   unparsable `APP_HOST`, `APP_PORT`, `CORS_ORIGINS`, base URL, timeout, rate limit, or fixture entry also fails
+   startup with an error naming it; an unreachable Postgres exits with an error. An unreachable Redis only logs a
+   warning: caching stays off until Redis answers. Check it with `curl -s http://127.0.0.1:8080/healthz`
+   (`{"status":"ok","service":"insightboard-backend","version":"0.1.0"}`; it checks no dependency) and
+   `curl -s http://127.0.0.1:8080/readyz` (`{"status":"ready"}` when Postgres and Redis answer, 503 otherwise).
 5. **Run the frontend** (terminal 2).
 
    ```sh
@@ -137,10 +139,17 @@ compose refuses to start without the secrets.
 | `REDIS_PASSWORD` | none, required by compose | Read by compose only (`--requirepass`, and `REDISCLI_AUTH` inside the container so `docker compose exec redis redis-cli ...` works without `-a`). |
 | `DATABASE_URL` | none, required | `postgres://<POSTGRES_USER>:<POSTGRES_PASSWORD>@127.0.0.1:5432/insightboard`; same values as above. |
 | `REDIS_URL` | none, required | `redis://:<REDIS_PASSWORD>@127.0.0.1:6379`; same password as above. |
-| `JWT_SECRET` | none, required | Must be non-empty; no strength check yet (D17, M4b enforces 32 bytes); generate with `openssl rand -hex 32` (`make setup` does). |
-| `GITHUB_API_TOKEN` | empty | Optional; sent to GitHub when set. Blank values count as unset. |
-| `OPENWEATHER_API_KEY` | empty | Weather widget returns 400 "OpenWeather API key not configured" without it. |
-| `NEWSAPI_API_KEY` | empty | News widget returns 400 "NewsAPI key not configured" without it. |
+| `JWT_SECRET` | none, required | At least 32 bytes, or startup fails; generate with `openssl rand -hex 32` (`make setup` does). Tokens last 24 hours. |
+| `GITHUB_API_TOKEN` | empty | Optional; sent to GitHub as a bearer token when set. Blank values count as unset. |
+| `OPENWEATHER_API_KEY` | empty | Without it the weather endpoint returns 503 `{error}`. OpenWeather accepts the key only in the query string; the backend never logs request URLs. |
+| `NEWSAPI_API_KEY` | empty | Without it the news endpoint returns 503 `{error}`. Sent in the `X-Api-Key` header. |
+| `GITHUB_API_BASE_URL`, `OPENWEATHER_API_BASE_URL`, `NEWSAPI_API_BASE_URL`, `COINGECKO_API_BASE_URL` | the real APIs (`https://api.github.com`, `https://api.openweathermap.org`, `https://newsapi.org`, `https://api.coingecko.com`) | `http(s)` URL with a host, no query or fragment; tests and drills point them at local mocks. |
+| `PROVIDER_CONNECT_TIMEOUT_MS`, `PROVIDER_TIMEOUT_MS` | `3000`, `8000` | Shared provider client timeouts; a timed-out call is 502. |
+| `STATUS_CONNECT_TIMEOUT_MS`, `STATUS_TIMEOUT_MS` | `2000`, `4000` | Per-URL status-check timeouts (10 URLs at most, 5 at a time). |
+| `STATUS_ALLOWED_FIXTURES` | empty | Development only: comma-separated exact loopback `ip:port` fixtures (for example `127.0.0.1:18080`) the status widget may reach. Non-loopback entries fail startup. Hostnames such as `localhost` are not accepted; use the IP in the widget URL. |
+| `REQUEST_TIMEOUT_MS` | `10000` | Server-side limit per request; a slower request gets 504 `{error}`. |
+| `AUTH_RATE_LIMIT_PER_MINUTE`, `AUTH_RATE_LIMIT_BURST` | `10`, `5` | Register and login, per client IP; over the limit is 429 `{error}`. Through the Vite proxy every browser arrives from `127.0.0.1`, so all local clients share one bucket; raise these if several people use one backend. |
+| `DATA_RATE_LIMIT_PER_MINUTE`, `DATA_RATE_LIMIT_BURST` | `60`, `30` | `/api/data/*`, per signed-in user. |
 | `RUST_LOG` | `insightboard_backend=debug,tower_http=debug` | Standard `tracing` filter. The value in `.env` is honoured because `.env` loads before logging starts; `.env.example` sets `info,insightboard_backend=debug`. |
 | `CORS_ORIGINS` | `http://127.0.0.1:5173,http://localhost:5173` (the Vite dev origin) | Comma-separated exact origins (`scheme://host[:port]`; no path, trailing slash, wildcard, or credentials). The backend allows only those origins, the methods GET/POST/PUT/DELETE, and the `Authorization` and `Content-Type` headers, without credentials; other origins get no CORS grant. An unparsable entry fails startup. The Vite proxy makes browser calls same-origin in development, so CORS matters only for direct cross-origin calls. |
 
@@ -165,14 +174,15 @@ the Vite default.
 
 Keys are optional and must be free-tier keys the owner supplies; never buy a plan.
 
-- **No keys:** Weather and News show their "not configured" errors; GitHub works unauthenticated within
+- **No keys:** Weather and News answer 503 "not configured"; GitHub works unauthenticated within
   GitHub's anonymous rate limit; Crypto uses CoinGecko without a key; Status needs no key.
 - **With keys:** add them to `.env` and restart the backend.
 - Manual provider checks stay at human scale (a handful of requests). Status-widget checks use only
-  `https://example.com`; `httpstat.us`, used by the legacy run instructions, is not approved. Automated tests
-  never call providers.
-- Weather and News keys travel in provider query strings and can reach backend logs on transport errors (D7);
-  do not share backend logs from runs with keys set.
+  `https://example.com` and loopback fixtures listed in `STATUS_ALLOWED_FIXTURES`; `httpstat.us`, used by the legacy
+  run instructions, is not approved. Automated tests never call providers.
+- The NewsAPI key travels in a header. The OpenWeather key must travel in the query string; reqwest errors are
+  logged without their URL and provider bodies are never logged. Still, keep `RUST_LOG` at its default levels (do not
+  enable `reqwest` or `hyper` debug/trace logging) when keys are set.
 
 ## Stop, restart, and data
 
@@ -197,7 +207,7 @@ docker compose exec -T postgres sh -c 'psql -U "$POSTGRES_USER" -d insightboard 
   -c "SELECT id, email, created_at FROM users ORDER BY created_at DESC LIMIT 20;"'
 docker compose exec -T postgres sh -c 'psql -U "$POSTGRES_USER" -d insightboard \
   -c "SELECT id, user_id, name, updated_at FROM dashboards ORDER BY updated_at DESC LIMIT 20;"'
-docker compose exec -T redis redis-cli --scan --pattern 'weather:*'
+docker compose exec -T redis redis-cli --scan --pattern 'insightboard:weather:*'
 docker compose exec -T redis redis-cli TTL '<key>'
 ```
 
@@ -208,8 +218,8 @@ docker compose exec -T redis redis-cli TTL '<key>'
 - **Backend exits with `DATABASE_URL must be set to a non-empty value`** (or `REDIS_URL`, `JWT_SECRET`) — `.env` is
   missing, empty for that variable, or not found; run `make setup` or create it at the repository root as above.
 - **Backend exits with `CORS_ORIGINS has an invalid origin`** — fix the entry to `scheme://host[:port]` or unset it.
-- **Backend exits connecting to Postgres or Redis** — `docker compose ps`; wait for `healthy`, then restart the
-  backend. The backend does not reconnect at startup.
+- **Backend exits connecting to Postgres** — `docker compose ps`; wait for `healthy`, then restart the backend. A
+  Redis outage does not stop the backend (`/readyz` reports 503 until Redis answers).
 - **Cannot connect to the Docker daemon** — `systemctl status docker`; start it, and check `docker` group
   membership with `id`.
 - **Port 5432 or 6379 already in use** — another Postgres or Redis is running; stop it. Remapping means editing
@@ -231,13 +241,16 @@ docker compose exec -T redis redis-cli TTL '<key>'
 - **`NOAUTH` or `WRONGPASS` from Redis, or compose says `set REDIS_PASSWORD in .env`** — `.env` is missing the
   value, or `REDIS_URL` carries a different password than `REDIS_PASSWORD`. Recreate the container after
   changing it: `docker compose up -d redis` (the append-only data is kept).
-- **Weather or News show "not configured"** — expected without keys; after adding keys, restart the backend.
-- **GitHub or Crypto show "External service error" (502)** — the provider failed, rate-limited, or returned an
-  unexpected value; the backend hides the cause from the client and logs it.
-- **Status widget shows "No response from server"** — the backend checks URLs one at a time with 5 s each, and
-  the client gives up after 10 s (D20); use fewer URLs.
+- **Weather or News show "not configured" (503)** — expected without keys; after adding keys, restart the backend.
+- **A widget shows "External service error" (502)** — the provider failed, timed out (8 s), rate-limited, or
+  returned an unexpected value; the backend hides the cause from the client and logs it.
+- **Status widget shows `blocked_address`** — the URL is, or resolves to, a loopback, private, link-local,
+  metadata, or other non-public address; only public `http(s)` targets are checked. For a local fixture, add its exact
+  `127.0.0.1:port` to `STATUS_ALLOWED_FIXTURES` and use that IP in the URL.
+- **429 "Too many requests"** — the auth (10/min per IP) or data (60/min per user) rate limit; wait or raise the
+  limits in `.env` for local experiments.
 - **Signed out unexpectedly** — a 401 on any request other than login or register clears the stored session
-  and reloads `/login`; tokens last 7 days (24 hours after M4b).
+  and reloads `/login`; tokens last 24 hours (client-side expiry check: M4c).
 - **`npm run dev` or `npm ci` fails on engine or syntax errors** — Node is older than 20.19; put the `.tools/`
   Node first on `PATH` or use `nvm use`.
 

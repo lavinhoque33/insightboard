@@ -2,12 +2,14 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://insightboard.local/contracts/api-contract.v1.json",
   "title": "InsightBoard API Contract v1",
-  "description": "Contract-first schema for backend/frontend integration. Both layers must conform to these request/response shapes.",
+  "description": "Contract-first schema for backend/frontend integration. Both layers must conform to these request/response shapes. Every error response is ErrorResponse, or ValidationErrorResponse for 422; status codes per endpoint are listed in docs/architecture/system-overview.md.",
   "type": "object",
   "required": [
     "auth",
     "dashboards",
-    "widgets"
+    "widgets",
+    "errors",
+    "health"
   ],
   "properties": {
     "auth": {
@@ -97,6 +99,36 @@
           }
         }
       }
+    },
+    "errors": {
+      "type": "object",
+      "required": [
+        "error_response",
+        "validation_error_response"
+      ],
+      "properties": {
+        "error_response": {
+          "$ref": "#/$defs/ErrorResponse"
+        },
+        "validation_error_response": {
+          "$ref": "#/$defs/ValidationErrorResponse"
+        }
+      }
+    },
+    "health": {
+      "type": "object",
+      "required": [
+        "healthz_response",
+        "readyz_response"
+      ],
+      "properties": {
+        "healthz_response": {
+          "$ref": "#/$defs/HealthResponse"
+        },
+        "readyz_response": {
+          "$ref": "#/$defs/ReadyResponse"
+        }
+      }
     }
   },
   "$defs": {
@@ -109,6 +141,86 @@
         "error": {
           "type": "string",
           "minLength": 1
+        }
+      },
+      "additionalProperties": false,
+      "description": "Body of every non-2xx response except 422: 400 malformed JSON, 401 (always \"Unauthorized\"), 404, 405 (method not allowed), 409, 413 (payload too large), 415, 429, 500, 502 (generic upstream failure), 503 (missing provider key or /readyz dependency down), 504 (server request timeout)."
+    },
+    "ValidationDetail": {
+      "type": "object",
+      "required": [
+        "field",
+        "message"
+      ],
+      "properties": {
+        "field": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Request field name, dotted for nested JSON (layout_json.widgets.0.w); the parameter name for query parameters."
+        },
+        "message": {
+          "type": "string",
+          "minLength": 1
+        }
+      },
+      "additionalProperties": false
+    },
+    "ValidationErrorResponse": {
+      "description": "422 body: well-formed input that is missing, mistyped, or invalid.",
+      "type": "object",
+      "required": [
+        "error",
+        "details"
+      ],
+      "properties": {
+        "error": {
+          "type": "string",
+          "minLength": 1
+        },
+        "details": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "$ref": "#/$defs/ValidationDetail"
+          }
+        }
+      },
+      "additionalProperties": false
+    },
+    "HealthResponse": {
+      "description": "GET /healthz: dependency-free liveness.",
+      "type": "object",
+      "required": [
+        "status",
+        "service",
+        "version"
+      ],
+      "properties": {
+        "status": {
+          "type": "string",
+          "const": "ok"
+        },
+        "service": {
+          "type": "string",
+          "minLength": 1
+        },
+        "version": {
+          "type": "string",
+          "minLength": 1
+        }
+      },
+      "additionalProperties": false
+    },
+    "ReadyResponse": {
+      "description": "GET /readyz 200 body when Postgres and Redis answer; otherwise 503 ErrorResponse.",
+      "type": "object",
+      "required": [
+        "status"
+      ],
+      "properties": {
+        "status": {
+          "type": "string",
+          "const": "ready"
         }
       },
       "additionalProperties": false
@@ -293,7 +405,8 @@
         },
         "name": {
           "type": "string",
-          "minLength": 1
+          "minLength": 1,
+          "pattern": "\\S"
         },
         "layout_json": {
           "$ref": "#/$defs/LayoutConfig"
@@ -315,14 +428,13 @@
     "CreateDashboardRequest": {
       "type": "object",
       "required": [
-        "name",
-        "layout_json",
-        "settings_json"
+        "name"
       ],
       "properties": {
         "name": {
           "type": "string",
-          "minLength": 1
+          "minLength": 1,
+          "pattern": "\\S"
         },
         "layout_json": {
           "$ref": "#/$defs/LayoutConfig"
@@ -331,14 +443,16 @@
           "$ref": "#/$defs/DashboardSettings"
         }
       },
-      "additionalProperties": false
+      "additionalProperties": false,
+      "description": "Omitted layout_json/settings_json are stored as {\"widgets\":[]} and {}."
     },
     "UpdateDashboardRequest": {
       "type": "object",
       "properties": {
         "name": {
           "type": "string",
-          "minLength": 1
+          "minLength": 1,
+          "pattern": "\\S"
         },
         "layout_json": {
           "$ref": "#/$defs/LayoutConfig"
@@ -505,19 +619,32 @@
           "minLength": 1
         },
         "current_price": {
-          "type": "number"
+          "type": [
+            "number",
+            "null"
+          ]
         },
         "price_change_percentage_24h": {
-          "type": "number"
+          "type": [
+            "number",
+            "null"
+          ]
         },
         "market_cap": {
-          "type": "number"
+          "type": [
+            "number",
+            "null"
+          ]
         },
         "total_volume": {
-          "type": "number"
+          "type": [
+            "number",
+            "null"
+          ]
         }
       },
-      "additionalProperties": false
+      "additionalProperties": false,
+      "description": "A numeric field that is null upstream stays null."
     },
     "StatusCheck": {
       "type": "object",
@@ -529,7 +656,7 @@
       "properties": {
         "url": {
           "type": "string",
-          "format": "uri"
+          "description": "The URL as requested (trimmed)."
         },
         "status": {
           "type": "integer",
@@ -540,13 +667,30 @@
           "minimum": 0
         },
         "error": {
-          "type": [
-            "string",
-            "null"
+          "anyOf": [
+            {
+              "$ref": "#/$defs/StatusErrorClass"
+            },
+            {
+              "type": "null"
+            }
           ]
         }
       },
-      "additionalProperties": false
+      "additionalProperties": false,
+      "description": "One result per requested URL, in request order. A 3xx is reported as that status (redirects are not followed). On failure status and response_time_ms are 0 and error is a StatusErrorClass."
+    },
+    "StatusErrorClass": {
+      "description": "invalid_url: unparsable, not http/https, credentials in the URL, or too long. blocked_address: the host is or resolves to a loopback, private, link-local, CGNAT, unspecified, multicast, broadcast, documentation, benchmarking, reserved, or metadata address (outside the dev fixture allowlist). dns_error: the host did not resolve. timeout: no response within the per-URL timeout. connect_error: the connection failed. request_error: any other failure.",
+      "type": "string",
+      "enum": [
+        "invalid_url",
+        "blocked_address",
+        "dns_error",
+        "timeout",
+        "connect_error",
+        "request_error"
+      ]
     }
   }
 }

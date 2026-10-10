@@ -1,9 +1,11 @@
 # System overview
 
-The runtime shape of InsightBoard as built at `f15c6a3` (M0–M3), and the boundaries later milestones must
-preserve or restore. Product direction is in the [project plan](../../INSIGHTBOARD_PROJECT_PLAN.md) (sections 6–10);
-status is in the [roadmap](../product/roadmap.md); exact behaviour, status codes, and the defect list are in the
-[M0–M3 baseline contract](m0-m3-baseline-contract.md).
+The runtime shape of InsightBoard as built at `f15c6a3` (M0–M3) with the M4a and M4b changes, and the boundaries
+later milestones must preserve or restore. Product direction is in the [project plan](../../INSIGHTBOARD_PROJECT_PLAN.md)
+(sections 6–10); status is in the [roadmap](../product/roadmap.md); the as-built baseline and the defect list are in
+the [M0–M3 baseline contract](m0-m3-baseline-contract.md); M4 targets are in the
+[M4 contract](m4-quality-gate-contract.md). The M4b items below are **implemented but unverified** until the main
+thread records them in the M4 verification record.
 
 ## Components
 
@@ -17,7 +19,7 @@ flowchart LR
     API -->|"key required"| OW["OpenWeather"]
     API -->|"key required"| NA["NewsAPI"]
     API -->|"no key"| CG["CoinGecko"]
-    API -->|"any user URL (D1)"| ST["Status targets"]
+    API -->|"public http(s) URLs only (D1, M4b)"| ST["Status targets"]
 ```
 
 - The backend and frontend run natively; Postgres and Redis are the only containers (`docker-compose.yml`). There is
@@ -28,17 +30,25 @@ flowchart LR
   `http://localhost:5173`; methods GET, POST, PUT, DELETE; headers `Authorization` and `Content-Type`; no
   credentials). A request from any other origin gets no `access-control-allow-origin` header (D4, fixed in M4a).
 - Every provider call is made by the backend. Keys live in the backend environment and never reach the browser.
+- `GET /healthz` is dependency-free liveness; `GET /readyz` returns 200 `{"status":"ready"}` when Postgres and Redis
+  both answer and 503 `{error}` otherwise (D19, M4b).
 
 ## Request flows
 
 ### Auth
 
-1. `POST /api/auth/register` or `/api/auth/login` with `{email,password}`.
-2. The backend hashes (register) or verifies (login) with Argon2 and returns `{token, user}`; the token is an HS256
-   JWT valid for 7 days.
-3. The client stores `auth_token` and `user` in localStorage; the router treats their presence as "authenticated".
-4. Every later request carries `Authorization: Bearer <token>`; the `UserCtx` extractor validates it.
-5. A 401 outside login and register clears storage and reloads at `/login` (D23).
+1. `POST /api/auth/register` or `/api/auth/login` with `{email,password}`. Both routes are rate-limited per client
+   IP (default 10/min, burst 5; 429 `{error}`). The email is trimmed, lower-cased, and validated (422 otherwise);
+   register needs a password of at least 8 characters.
+2. The backend hashes (register) or verifies (login) with Argon2 on the blocking pool and returns `{token, user}`;
+   the token is an HS256 JWT valid for 24 hours. A duplicate email is 409 (the insert decides, so concurrent
+   registrations cannot both succeed). A wrong password and an unknown email are the same 401 `{"error":"Unauthorized"}`,
+   and an unknown email still runs one Argon2 verification against a dummy hash.
+3. The client stores `auth_token` and `user` in localStorage; the router treats their presence as "authenticated"
+   (client-side expiry check: M4c).
+4. Every later request carries `Authorization: Bearer <token>`; the `UserCtx` extractor validates it. Every token
+   failure is the generic 401; `/me` for a user that no longer exists is 401.
+5. A 401 outside login and register clears storage and reloads at `/login` (D23, M4c).
 
 ### Dashboard save
 
@@ -53,9 +63,9 @@ sequenceDiagram
     E->>E: restart 2 s debounce timer
     E->>S: updateDashboard(id, {widgets:[{id,type,x,y,w,h,config}]})
     S->>B: PUT /api/dashboards/:id {layout_json}
-    B->>P: ownership check, then UPDATE layout_json, updated_at
-    B-->>S: 200 dashboard
-    Note over E,S: a failed PUT reaches console.error only (D10)
+    B->>P: UPDATE ... WHERE id AND user_id (validated layout_json)
+    B-->>S: 200 dashboard, or 422 {error, details}
+    Note over E,S: a failed PUT reaches console.error only (D10, M4c)
 ```
 
 New dashboards are created from the list with `name` "New Dashboard", an empty layout, and
@@ -70,24 +80,60 @@ sequenceDiagram
     participant R as Redis
     participant X as Provider
     W->>B: GET /api/data/<type>?<param> (on mount, on interval, on config change)
-    B->>B: validate input; check provider key (weather, news)
-    B->>R: GET <type>:<input>
+    B->>B: authenticate, per-user rate limit (429), validate input (422), check provider key (503)
+    B->>R: GET insightboard:<type>:<normalised, bounded key>
     alt cache hit
         R-->>B: JSON
-    else miss or Redis error
-        B->>X: HTTPS request (no timeout except status, D5)
-        X-->>B: response
-        B->>R: SET <key> EX <ttl> (errors ignored)
+    else miss, Redis down, or Redis timeout
+        B->>X: request on the shared client (3 s connect, 8 s total, InsightBoard User-Agent)
+        X-->>B: response (body bounded to 4 MiB)
+        B->>R: SET <key> EX <ttl> (failure logged, ignored)
     end
-    B-->>W: normalised JSON, or 400 / 502 {error}
+    B-->>W: contract JSON, or 422 / 502 / 503 {error}
 ```
+
+Status widget (`/api/data/status?urls=`, D1): at most 10 comma-separated URLs (422 beyond); `http`/`https` only, no
+credentials, at most 2048 bytes each. An IP-literal host is checked before connecting; a DNS name is resolved by a
+policy resolver that drops every blocked address, so the dialled address is always a checked one. Blocked: loopback,
+unspecified/"this network", private (RFC 1918), CGNAT `100.64.0.0/10`, link-local (incl. `169.254.169.254`),
+IETF-protocol, documentation, benchmarking, 6to4-relay, multicast, reserved/broadcast; for IPv6 everything outside
+`2000::/3` (loopback, ULA incl. `fd00:ec2::254`, link-local, NAT64, multicast) plus `2001::/23`, `2001:db8::/32`,
+`2002::/16`, `3fff::/20`; IPv4-mapped addresses are checked as IPv4. Checks run 5 at a time with a 2 s connect and
+4 s total timeout, no proxy, and no redirects (a 3xx is that URL's result). Per-URL failures are one of
+`invalid_url`, `blocked_address`, `dns_error`, `timeout`, `connect_error`, `request_error`, with `status` and
+`response_time_ms` 0. `STATUS_ALLOWED_FIXTURES` (empty by default, development only) admits exact loopback
+`ip:port` fixtures.
+
+A server-side request timeout (`REQUEST_TIMEOUT_MS`, default 10 s) ends any request with 504 `{error}`.
+
+## Errors and status codes (M4b)
+
+Every error body is JSON `{"error": string}`; 422 adds `details: [{field, message}]` with `field` the request
+field (dotted for nested JSON, e.g. `layout_json.widgets.0.w`) or the query parameter name. Shapes:
+`ErrorResponse` and `ValidationErrorResponse` in `contracts/api-contract.v1.json`.
+
+| Status | When |
+| --- | --- |
+| 400 | Malformed JSON body |
+| 401 | Missing, invalid, or expired token; `/me` or dashboard create for a deleted user; wrong login (always `Unauthorized`) |
+| 404 | Unknown or foreign dashboard (also an unparsable id); unknown route |
+| 405 | Method not allowed on a known route |
+| 409 | Duplicate email on register; creating a 101st dashboard |
+| 413 | Body over the 2 MB extractor limit |
+| 415 | Missing or non-JSON `Content-Type` on a JSON route |
+| 422 | Well-formed but invalid input: missing/mistyped fields, invalid email, short password, invalid GitHub username, blank dashboard name, layout/settings not matching the contract, more than 10 status URLs, blank or over-long query values |
+| 429 | Rate limit exceeded |
+| 500 | Database or internal failure (generic text) |
+| 502 | Provider failure, timeout, or undecodable response (always `External service error`) |
+| 503 | Provider key not configured (weather, news); `/readyz` with Postgres or Redis down |
+| 504 | Server request timeout |
 
 ## Data model
 
 | Table | Columns | Notes |
 | --- | --- | --- |
-| `users` | `id` uuid pk, `email` unique, `password_hash`, `created_at` | Email stored as entered (D17) |
-| `dashboards` | `id` uuid pk, `user_id` fk → users (cascade), `name`, `layout_json` jsonb default `'[]'`, `settings_json` jsonb default `'{}'`, `created_at`, `updated_at` | Every query filters by `user_id`; JSON shapes not enforced (D8) |
+| `users` | `id` uuid pk, `email` unique, `password_hash`, `created_at` | Emails stored trimmed and lower-cased (migration 003 normalised existing rows unless that would collide) |
+| `dashboards` | `id` uuid pk, `user_id` fk → users (cascade), `name`, `layout_json` jsonb default `'{"widgets":[]}'`, `settings_json` jsonb default `'{}'`, `created_at`, `updated_at` | Every query filters by `user_id`; JSON shapes validated on write; at most 100 per user (409) |
 
 Migrations are embedded in the binary and applied at startup. Widget configuration lives inside `layout_json`;
 there is no widget table.
@@ -96,29 +142,35 @@ there is no widget table.
 
 | Endpoint | Key | TTL | Client refresh |
 | --- | --- | --- | --- |
-| `/api/data/github` | `github:{username}` | 300 s | 300 s |
-| `/api/data/weather` | `weather:{city}` | 600 s | 600 s |
-| `/api/data/news` | `news:{topic}` | 900 s | 900 s |
-| `/api/data/crypto` | `crypto:{normalised ids}` | 300 s | 60 s (D27) |
-| `/api/data/status` | `status:{raw urls}` | 120 s | 120 s |
+| `/api/data/github` | `insightboard:github:{lower-cased username}` | 300 s | 300 s |
+| `/api/data/weather` | `insightboard:weather:{trimmed, whitespace-collapsed, lower-cased city}` | 600 s | 600 s |
+| `/api/data/news` | `insightboard:news:{normalised topic}` | 900 s | 900 s |
+| `/api/data/crypto` | `insightboard:crypto:{sorted, de-duplicated, lower-cased ids}` | 300 s | 60 s (D27) |
+| `/api/data/status` | `insightboard:status:{user id}:{hash of the URL list}` | 120 s | 120 s |
 
-Keys are shared across users and unbounded (D29). Redis is required at startup and optional per request (D19).
+A key part longer than 100 bytes or containing characters outside `[a-z0-9._,-]` is replaced by a 128-bit hash, so
+keys are bounded. Provider data is shared across users; status results are per user (D29). Redis is optional at
+startup and per request: one reused connection (`ConnectionManager`) with a 1 s connect and 0.5 s response timeout;
+any failure is a cache miss with a warning, and after a failed connect Redis is skipped for 5 s (D19).
 
 ## Auth and session
 
 - Local accounts only; no refresh token, revocation, roles, or Cognito.
-- Tokens carry `sub`, `email`, `exp`, `iat`; the extractor does not re-check that the user exists (D17).
-- The client never checks token expiry and never calls `/me` (D23).
+- Tokens carry `sub`, `email`, `exp`, `iat` and last 24 hours; `JWT_SECRET` shorter than 32 bytes stops startup.
+- The client never checks token expiry and never calls `/me` (D23, M4c).
 
 ## Configuration
 
-Backend variables, defaults, and the variables documented but unread are listed in the
-[baseline contract](m0-m3-baseline-contract.md) section 4. Required: `DATABASE_URL`, `REDIS_URL`, `JWT_SECRET`.
-Optional provider credentials: `GITHUB_API_TOKEN`, `OPENWEATHER_API_KEY`, `NEWSAPI_API_KEY`. Frontend:
-`VITE_API_URL` (default `/api`). `CORS_ORIGINS` (optional, comma-separated exact origins) sets the CORS allowlist; an
-unparsable entry fails startup. The backend loads `.env` before tracing starts, so `RUST_LOG` in `.env` applies, and
-a missing or empty required variable stops startup with an error naming it (D18, fixed in M4a; the variables nothing
-read were removed from `.env.example`). Setup steps are in [local setup](../development/local-setup.md).
+Backend variables and defaults are documented in `.env.example` and [local setup](../development/local-setup.md).
+Required: `DATABASE_URL`, `REDIS_URL`, `JWT_SECRET` (at least 32 bytes). Optional provider credentials:
+`GITHUB_API_TOKEN`, `OPENWEATHER_API_KEY`, `NEWSAPI_API_KEY`. Optional M4b settings: provider base URLs
+(`GITHUB_API_BASE_URL`, `OPENWEATHER_API_BASE_URL`, `NEWSAPI_API_BASE_URL`, `COINGECKO_API_BASE_URL`), timeouts
+(`PROVIDER_CONNECT_TIMEOUT_MS`, `PROVIDER_TIMEOUT_MS`, `STATUS_CONNECT_TIMEOUT_MS`, `STATUS_TIMEOUT_MS`,
+`REQUEST_TIMEOUT_MS`), `STATUS_ALLOWED_FIXTURES`, and rate limits (`AUTH_RATE_LIMIT_PER_MINUTE`,
+`AUTH_RATE_LIMIT_BURST`, `DATA_RATE_LIMIT_PER_MINUTE`, `DATA_RATE_LIMIT_BURST`). Frontend: `VITE_API_URL` (default
+`/api`). `CORS_ORIGINS` (optional, comma-separated exact origins) sets the CORS allowlist. Any unparsable value stops
+startup with an error naming the variable. The backend loads `.env` before tracing starts, so `RUST_LOG` in `.env`
+applies (D18, fixed in M4a).
 
 ## Ports and binds
 
@@ -138,18 +190,17 @@ at once without changing them).
 
 ## Boundaries
 
-As built, enforced by code:
+Enforced by code:
 
 - Dashboards are owner-scoped in every query; a foreign id returns 404.
-- Provider keys stay in the backend; responses are normalised before reaching the client.
-- Error bodies do not carry database or provider error text, except the status widget's per-URL error (D1) and the
-  JWT error kind (D17).
-
-Required by the [plan](../../INSIGHTBOARD_PROJECT_PLAN.md) section 4 and not yet enforced by code (M4):
-
-- Outbound requests limited by scheme, address class, count, and time; user input encoded (D1, D2, D5, D7).
-- No live providers in automated paths; tests use local mocks with configurable base URLs (D11).
-- Secrets never logged (D7).
+- Provider keys stay in the backend; responses are mapped to the contract before reaching the client. The NewsAPI
+  key travels in `X-Api-Key`; OpenWeather accepts the key only as a query parameter, so request URLs are never logged
+  and reqwest errors are logged `without_url()`.
+- Error bodies carry no database, provider, or library text, no URL, and no JWT error kind.
+- Outbound requests are limited by scheme, address class, count, concurrency, and time; user input is encoded with
+  path-segment and query builders; GitHub usernames follow GitHub's rules (D1, D2, D5, D7, M4b).
+- No live providers in automated paths; tests use local mocks with configurable base URLs (D11 backend part, M4b).
+- Rate limits on auth routes (per IP) and `/api/data/*` (per user) (D6, M4b).
 
 ## Known gaps
 
@@ -158,12 +209,12 @@ By area; each ID is defined in the [baseline contract](m0-m3-baseline-contract.m
 | Area | Defect IDs |
 | --- | --- |
 | Exposure and CORS | D3 (fixed 2026-10-10), D4 (fixed in M4a) |
-| Outbound calls | D1, D2, D5, D7, D20, D30 |
-| Abuse and load | D6 |
-| API correctness and contract | D8, D15, D16, D17 |
-| Configuration, cache, health | D18 (fixed in M4a), D19, D29 (compose part fixed in M4a; cache keys open, M4b) |
+| Outbound calls | D1, D2, D5, D7, D20, D30 (M4b) |
+| Abuse and load | D6 (M4b) |
+| API correctness and contract | D8, D15, D16, D17 (M4b: backend `jsonschema` and frontend ajv contract tests) |
+| Configuration, cache, health | D18 (fixed in M4a), D19 (M4b), D29 (compose part fixed in M4a; cache keys and dashboard cap M4b) |
 | Build, gates, dependencies | D12, D13, D14, D26 (fixed in M4a; daisyUI beta remains, M4c) |
-| Tests | D11 |
+| Tests | D11 (backend router, DB, Redis, mock-provider tests M4b; frontend suites, Playwright, CI pending, M4c) |
 | Frontend editor and session | D9, D10, D22, D23, D28 |
 | Styling, accessibility, copy | D24, D25, D27, D31 |
 | Cloud readiness | D21 |

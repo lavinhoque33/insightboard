@@ -63,8 +63,14 @@ export interface RegisterRequest {
 }
 
 // API Error handling
+export interface FieldError {
+	field: string;
+	message: string;
+}
+
+// Normalised error the API client rejects with. `fieldErrors` is set for 422.
 export interface ApiError {
 	message: string;
 	status: number;
-	details?: unknown;
+	fieldErrors?: FieldError[];
 }

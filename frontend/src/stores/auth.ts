@@ -6,7 +6,7 @@
 import { defineStore } from 'pinia';
 import { ref, computed } from 'vue';
 import { authApi } from '../api';
-import type { User, ApiError } from '../types';
+import type { User, ApiError, FieldError } from '../types';
 
 export const useAuthStore = defineStore('auth', () => {
 	// State
@@ -14,9 +14,22 @@ export const useAuthStore = defineStore('auth', () => {
 	const token = ref<string | null>(null);
 	const loading = ref(false);
 	const error = ref<string | null>(null);
+	const fieldErrors = ref<FieldError[]>([]);
 
 	// Getters
 	const isAuthenticated = computed(() => !!token.value && !!user.value);
+
+	/**
+	 * Record a failed auth call. 422 responses keep per-field messages for the form
+	 * and a short summary; every other status shows the backend's message.
+	 */
+	function setAuthError(err: unknown) {
+		const apiError = err as ApiError;
+		fieldErrors.value = apiError.fieldErrors ?? [];
+		error.value = fieldErrors.value.length
+			? 'Please correct the highlighted fields.'
+			: apiError.message;
+	}
 
 	/**
 	 * Initialize store from localStorage
@@ -42,6 +55,7 @@ export const useAuthStore = defineStore('auth', () => {
 	async function register(email: string, password: string): Promise<void> {
 		loading.value = true;
 		error.value = null;
+		fieldErrors.value = [];
 
 		try {
 			const response = await authApi.register(email, password);
@@ -54,8 +68,7 @@ export const useAuthStore = defineStore('auth', () => {
 			localStorage.setItem('auth_token', response.token);
 			localStorage.setItem('user', JSON.stringify(response.user));
 		} catch (err) {
-			const apiError = err as ApiError;
-			error.value = apiError.message;
+			setAuthError(err);
 			throw err;
 		} finally {
 			loading.value = false;
@@ -68,6 +81,7 @@ export const useAuthStore = defineStore('auth', () => {
 	async function login(email: string, password: string): Promise<void> {
 		loading.value = true;
 		error.value = null;
+		fieldErrors.value = [];
 
 		try {
 			const response = await authApi.login(email, password);
@@ -80,8 +94,7 @@ export const useAuthStore = defineStore('auth', () => {
 			localStorage.setItem('auth_token', response.token);
 			localStorage.setItem('user', JSON.stringify(response.user));
 		} catch (err) {
-			const apiError = err as ApiError;
-			error.value = apiError.message;
+			setAuthError(err);
 			throw err;
 		} finally {
 			loading.value = false;
@@ -95,6 +108,7 @@ export const useAuthStore = defineStore('auth', () => {
 		user.value = null;
 		token.value = null;
 		error.value = null;
+		fieldErrors.value = [];
 
 		// Clear localStorage
 		localStorage.removeItem('auth_token');
@@ -111,6 +125,7 @@ export const useAuthStore = defineStore('auth', () => {
 
 		loading.value = true;
 		error.value = null;
+		fieldErrors.value = [];
 
 		try {
 			const userData = await authApi.getCurrentUser();
@@ -132,6 +147,7 @@ export const useAuthStore = defineStore('auth', () => {
 	 */
 	function clearError() {
 		error.value = null;
+		fieldErrors.value = [];
 	}
 
 	// Initialize on store creation
@@ -143,6 +159,7 @@ export const useAuthStore = defineStore('auth', () => {
 		token,
 		loading,
 		error,
+		fieldErrors,
 		// Getters
 		isAuthenticated,
 		// Actions
