@@ -3,7 +3,8 @@
 InsightBoard is a personal dashboard builder: accounts, owner-scoped dashboards, and five provider widgets on a
 GridStack grid, served by a Rust/Axum API with Postgres and Redis and a Vue 3 client. M0–M3 are **accepted**
 (2026-10-10, defects included, after baseline drills B0–B12 on this workstation). M4 — Quality gate and hardening
-is **accepted** (2026-10-10, owner): slices M4a, M4b, and M4c locally verified, CI green on GitHub. M5 is next.
+is **accepted** (2026-10-10, owner): slices M4a, M4b, and M4c locally verified, CI green on GitHub. M5 — local
+release is **in progress** under its accepted [contract](architecture/m5-local-release-contract.md).
 
 ## Start here
 
@@ -31,6 +32,7 @@ The root [README](../README.md) summarises status, limits, and layout.
 | [System overview](architecture/system-overview.md) | Components, request flows, data model, cache keys, ports and binds, boundaries, known gaps by defect ID, planned seams |
 | [M0–M3 baseline contract](architecture/m0-m3-baseline-contract.md) | **Accepted** as-built record at `f15c6a3`: routes, status codes, config, schema, widgets, editor; defect catalogue D1–D31; baseline drills B0–B12 |
 | [M4 quality-gate contract](architecture/m4-quality-gate-contract.md) | **Accepted** 2026-10-10: slices M4a–M4c, owner decisions and preparation values, acceptance drills |
+| [M5 local-release contract](architecture/m5-local-release-contract.md) | **Accepted** 2026-10-10: slices M5a–M5b, owner decisions 1–9, preparation values, acceptance drills |
 
 ## Decisions
 
@@ -38,6 +40,7 @@ The root [README](../README.md) summarises status, limits, and layout.
 | --- | --- |
 | [ADR 0001: foundation stack](decisions/ADR-0001-foundation-stack.md) | **Accepted** 2026-10-10 retroactive record of the stack chosen 2025-10-28 to 2026-03-03: Rust/Axum, SQLx, Postgres, Redis, Vue 3, Pinia, GridStack, Tailwind and daisyUI |
 | [ADR 0002: M4 quality gate](decisions/ADR-0002-m4-quality-gate.md) | **Accepted** owner choices on M4 decisions 1–17, dependencies they approve, and M4 preparation values |
+| [ADR 0003: M5 local release](decisions/ADR-0003-m5-local-release.md) | **Accepted** owner choices on M5 decisions 1–9: one image, compose profile, version `1.0.0`, clean-machine evidence |
 
 ## Development
 
@@ -53,6 +56,7 @@ The root [README](../README.md) summarises status, limits, and layout.
 | [2026-10-10-03 M4a](development/sessions/2026-10-10-03-m4a.md) | M4a: reformat, gates, CORS, config, audit fixes, Makefile, LICENSE; drills 1–4 |
 | [2026-10-10-04 M4b](development/sessions/2026-10-10-04-m4b.md) | ADR 0001 accepted, push; M4b: outbound safety, rate limits, auth, error model, contract tests; drills 5–11 |
 | [2026-10-10-05 M4c](development/sessions/2026-10-10-05-m4c.md) | M4c: frontend correctness, Vitest and Playwright suites, CI, visual overhaul with light and dark themes; drills 12–16 |
+| [2026-10-10-06 M5](development/sessions/2026-10-10-06-m5-contract.md) | M5 contract drafted and accepted (ADR 0003); M5a packaging |
 
 ## Guides (non-authoritative)
 

@@ -18,7 +18,7 @@ they matter.
 | M2 — Widgets and editor | Five provider widgets through a cached backend proxy; GridStack editor with persisted layout | **Accepted** 2026-10-10 (owner), defects included; see the qualification below and the [baseline verification record](../development/baseline-verification.md) |
 | M3 — UI polish and contract alignment | daisyUI styling, auth and editor fixes, v1 payload contract, draft-on-add editor | **Accepted** 2026-10-10 (owner), defects included; see the qualification below and the [baseline verification record](../development/baseline-verification.md) |
 | M4 — Quality gate and hardening | Reproducible builds, passing gates, loopback defaults, safe outbound calls, real test suites, CI | **Accepted** 2026-10-10 (owner) after M4a, M4b, M4c were locally verified and CI passed on GitHub; [contract](../architecture/m4-quality-gate-contract.md) ([ADR 0002](../decisions/ADR-0002-m4-quality-gate.md)); [record](../development/m4-verification.md) |
-| M5 — Local release | A reproducible, documented, independently runnable local product | **Planned** |
+| M5 — Local release | A reproducible, documented, independently runnable local product | **In progress**; [contract](../architecture/m5-local-release-contract.md) **accepted** 2026-10-10 ([ADR 0003](../decisions/ADR-0003-m5-local-release.md)) |
 | M6 — AWS readiness | Cloud adapters and an inspectable, synth-only experiment proposal, without deployment | **Planned** |
 | M7 — AWS experiment | A validated and cleaned-up cloud execution path | **Deferred**; owner approval and a $0 path required |
 
@@ -196,11 +196,18 @@ Research as needed: `research-medium` by default, `research-heavy` for cross-lay
 layout editing (backlog). Light and dark themes with a toggle joined M4c with the owner's visual overhaul
 (2026-10-10).
 
-## M5 — Local release (planned)
+## M5 — Local release (in progress)
 
-Scope, exit evidence, and keep-out follow plan section 12/M5: production builds, loopback-bound app containers or a
-compose profile, release notes and a runbook, README screenshots, a version tag only with owner approval. Legacy
-phase 12 (local half). Contract written after M4 is accepted.
+Scope, exit evidence, and keep-out follow plan section 12/M5 and the
+[M5 contract](../architecture/m5-local-release-contract.md) (**accepted** 2026-10-10; owner decisions 1–9 in
+[ADR 0003](../decisions/ADR-0003-m5-local-release.md)). Legacy phase 12 (local half).
+
+- **M5a — Packaging:** the backend serves the built frontend; one multi-stage image; compose profile `app` on
+  `127.0.0.1:8000`; `make release`, `up`, `down`, `logs`, `backup`; CI `release` job. **In progress.**
+- **M5b — Release material and drills:** version `1.0.0`, `CHANGELOG.md`, runbook, README release path and
+  screenshots, documented limits, drills 1–10. **Planned.** Tag `v1.0.0` only on request after acceptance.
+
+**Keep out:** cloud, registries, public hosting, domains, TLS (D21, M6), a GitHub Release object, the backlog.
 
 ## M6 — AWS readiness (planned)
 
@@ -230,5 +237,6 @@ before any other external request.
 
 ## Next action
 
-1. M5 — local release: draft its contract (scope, decisions for the owner, acceptance drills) from plan section
-   12/M5 and get owner acceptance before implementation.
+1. M5a: `implement-heavy` builds static serving, the image, the compose profile, `make` targets, and the CI
+   `release` job; then `verify`; push; observe CI.
+2. M5b: release material, screenshots, and drills 1–10; then ask the owner to accept M5.

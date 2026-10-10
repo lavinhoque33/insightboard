@@ -10,13 +10,13 @@ entry lives in [`sessions/`](sessions/) so this file stays short as history grow
 | Field | Current state |
 | --- | --- |
 | Updated | 2026-10-10 (UTC) |
-| Latest session | [2026-10-10-05-m4c](sessions/2026-10-10-05-m4c.md) |
-| Milestone | M0–M4 **accepted** 2026-10-10 (M0–M3 defects included; M4 after M4a, M4b, M4c locally verified, [M4 verification record](m4-verification.md), [contract](../architecture/m4-quality-gate-contract.md), [ADR 0002](../decisions/ADR-0002-m4-quality-gate.md)). M5 — local release **planned**; contract not yet written. ADR 0001 **accepted** 2026-10-10. |
+| Latest session | [2026-10-10-06-m5-contract](sessions/2026-10-10-06-m5-contract.md) |
+| Milestone | M0–M4 **accepted** 2026-10-10 (M0–M3 defects included; M4 after M4a, M4b, M4c locally verified, [M4 verification record](m4-verification.md)). M5 — local release **in progress**: [contract](../architecture/m5-local-release-contract.md) **accepted** 2026-10-10 with owner decisions 1–9 ([ADR 0003](../decisions/ADR-0003-m5-local-release.md)). ADR 0001 **accepted** 2026-10-10. |
 | Last accepted task | Session 2026-10-10-05: M4c — `e20a0bc` (CI), `5caff27` (frontend correctness, daisyUI stable 5, Vitest), `13e9018` (visual overhaul with light and dark themes, Playwright, CI e2e job); drills 12–16 pass; CI run 38087833114 backend, web, e2e success. Pushed over SSH: `a27a8de..e20a0bc`, `e20a0bc..5caff27`, `5caff27..13e9018`, then the `docs(m4c)` records commit directly after `13e9018`. |
-| Active task | None. M4 accepted by the owner. |
-| Active delegates / write ownership | None active. Main thread owns tracking documents. |
+| Active task | M5a — packaging (session 06). |
+| Active delegates / write ownership | M5a implementer (`implement-heavy`): `backend/src/**`, `backend/Cargo.toml`, `backend/Cargo.lock`, `Dockerfile`, `.dockerignore`, `docker-compose.yml`, `Makefile`, `.github/workflows/ci.yml`, `.env.example`, `.gitignore`, `docs/development/local-setup.md`, `docs/development/testing.md`. Main thread owns tracking documents, contracts, ADRs, README. |
 | Blockers | None. Standing push authorization since 2026-10-10 (scope in `.omp/AGENTS.md`); force-push, tags, releases, PRs, and visibility changes still need an explicit request. HTTPS pushes that touch `.github/workflows/` need the `workflow` OAuth scope (`gh auth refresh -s workflow`); SSH pushes work. |
-| Exact next action | Draft the M5 — local release contract from plan section 12/M5 (scope, owner decisions, drills) and ask the owner to accept it before implementation. |
+| Exact next action | Review the M5a return; `verify`; push; observe CI including the new `release` job; then M5b. |
 | Workspace | This workstation (Fedora 44): clone `/home/axeleratorx/PersProject/InsightBoard`, `origin` public and in sync with `main`. `.env` present (gitignored, mode 600). Compose containers `insightboard-postgres-1`, `insightboard-redis-1` on `127.0.0.1`; backend `13e9018` debug build on `127.0.0.1:8080`; Vite on `127.0.0.1:5173`. Dev database holds drill, browser, and e2e test users. Backend tests and `make e2e` need `make db-up`; Playwright Chromium installed. rustc 1.99.0 (pinned); Node 20.19.0 in `.tools/`. |
 
 ## Protocol
@@ -80,6 +80,7 @@ Create `sessions/YYYY-MM-DD-NN-short-topic.md`:
 
 | Session | Outcome |
 | --- | --- |
+| [2026-10-10-06-m5-contract](sessions/2026-10-10-06-m5-contract.md) | In progress: M5 contract draft. |
 | [2026-10-10-05-m4c](sessions/2026-10-10-05-m4c.md) | M4c locally verified: CI workflow `e20a0bc` (`implement-medium`), frontend correctness `5caff27` and visual overhaul with light and dark themes plus Playwright `13e9018` (`implement-heavy` ×3); `verify` and `verify-browser` (one dialog-focus regression fixed); drills 12–16 by the main thread; CI green incl. e2e. Pushed over SSH (`a27a8de..8cc1e54`). Owner accepted M4. |
 | [2026-10-10-04-m4b](sessions/2026-10-10-04-m4b.md) | ADR 0001 accepted; `main` pushed (`42555eb`). M4b locally verified: `b20986e` (`implement-heavy` backend and contract, `implement-medium` frontend; `ajv-formats` rejected), `verify` and `verify-browser` reviews, drills 5–11 by the main thread. Owner granted standing push authorization; pushed `42555eb..20ba7ce`. |
 | [2026-10-10-03-m4a](sessions/2026-10-10-03-m4a.md) | M4a locally verified: format-only commit `d4bdca9` (`implement-light`), M4a commit `2780fc0` (`implement-medium`, main-thread fixes), `verify` review; drills 1–4 pass; local Postgres and Redis passwords rotated after a transcript exposure. Committed locally, not pushed. |

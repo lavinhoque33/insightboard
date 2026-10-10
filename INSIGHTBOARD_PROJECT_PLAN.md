@@ -258,7 +258,7 @@ One numbering for all delivery. M0–M3 describe what exists; M4–M7 are future
 | M2 — Widgets and editor | Five provider widgets through a cached backend proxy; GridStack editor with persisted layout | 5 Widget Implementations (Backend), 7 Frontend Dashboard UI / Widget System, 8 Widget Components, 9 Polish and Features | **Accepted** 2026-10-10, defects included |
 | M3 — UI polish and contract alignment | daisyUI styling, auth and editor fixes, v1 payload contract, draft-on-add editor | 10 Frontend Styling with daisyUI; 2025-11-04 fixes; 2026-03-03 remediation (`f15c6a3`) | **Accepted** 2026-10-10, defects included |
 | M4 — Quality gate and hardening | Reproducible builds, passing gates, loopback defaults, safe outbound calls, real test suites, CI | 11 Testing and CI/CD, plus defects D1–D31 | **Accepted** 2026-10-10 (owner) after M4a, M4b, M4c were locally verified with CI green; [contract](docs/architecture/m4-quality-gate-contract.md) with owner decisions 1–17 ([ADR 0002](docs/decisions/ADR-0002-m4-quality-gate.md)); [record](docs/development/m4-verification.md) |
-| M5 — Local release | A reproducible, documented, independently runnable local product | 12 Deployment Preparation (local half) | **Planned** |
+| M5 — Local release | A reproducible, documented, independently runnable local product | 12 Deployment Preparation (local half) | **In progress**; [contract](docs/architecture/m5-local-release-contract.md) **accepted** 2026-10-10 with owner decisions 1–9 ([ADR 0003](docs/decisions/ADR-0003-m5-local-release.md)) |
 | M6 — AWS readiness | Cloud adapters and an inspectable, synth-only experiment proposal, without deployment | 12 Deployment Preparation (cloud half) | **Planned** |
 | M7 — AWS experiment | A validated and cleaned-up cloud execution path | none | **Deferred**; owner approval and a $0 path required |
 
@@ -463,7 +463,8 @@ Permission to change code is not permission for any of these.
    for a missing key; title from `name`; auto-save with visible errors; keyboard layout editing to the backlog).
 3. **License:** decided 2026-10-10 — MIT (M4 decision 16); `LICENSE` committed in M4a (`2780fc0`).
 4. **Provider keys for B5:** decided 2026-10-10 — free-tier keys, entered by the owner into `.env`.
-5. **M5:** container images or a compose profile; whether to tag a version.
+5. **M5:** decided 2026-10-10 — one application image with a compose profile (the backend serves the frontend);
+   version `1.0.0` and tag `v1.0.0` on request after acceptance ([ADR 0003](docs/decisions/ADR-0003-m5-local-release.md)).
 6. **M6:** IaC tool; whether Cognito lands in M6 or stays in the backlog.
 7. **Backlog:** which section 5 items, if any, become milestones.
 
