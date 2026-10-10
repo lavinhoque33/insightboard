@@ -20,6 +20,7 @@ by the owner 2026-10-10; **locally verified** on this workstation 2026-10-10 as 
 | Postgres `:5432` | `127.0.0.1` (`docker-compose.yml`, `'127.0.0.1:5432:5432'`) | `POSTGRES_USER` / `POSTGRES_PASSWORD` from `.env`, required by compose |
 | Redis `:6379` | `127.0.0.1` (`'127.0.0.1:6379:6379'`) | `REDIS_PASSWORD` from `.env`, required by compose |
 | Vite `:5173` | `127.0.0.1` (`frontend/vite.config.ts`) | n/a |
+| `make e2e` only: fixtures `:18090`/`:18091`, backend `:8090`, Vite `:5175` | `127.0.0.1` (`frontend/playwright.config.ts`, `frontend/e2e/fixtures/server.mjs`); they stop when the run ends | Fixture endpoints accept only the run's dummy keys; the backend uses a throwaway e2e `JWT_SECRET` |
 
 **Observed** on this workstation on 2026-10-10: firewalld zone `FedoraWorkstation` on `wlp1s0` opens
 `1025-65535/tcp` and `1025-65535/udp`. Before decision 4 the services listened on all interfaces and were
@@ -66,6 +67,7 @@ make web-dev       # terminal 2: Vite on 127.0.0.1:5173
 | `make backend-dev` | `cargo run` in `backend/` with the root `.env`; needs host Rust. |
 | `make web-dev` | `npm run dev` in `frontend/`. |
 | `make backend-check`, `make web-check`, `make verify`, `make format` | The quality gates; see [testing](testing.md). |
+| `make e2e` | Playwright browser journeys on their own loopback ports (fixture 18090/18091, backend 8090, Vite 5175), next to running dev services; needs `make db-up`, host Rust, and a one-time `cd frontend && npx playwright install chromium`. See [testing](testing.md#browser-journeys-playwright). |
 
 Manual path, when you cannot or do not want to use `make setup`: complete step 1 before starting anything, because
 compose refuses to start without the secrets.
@@ -124,7 +126,8 @@ compose refuses to start without the secrets.
    ```
 
 6. **Open** `http://127.0.0.1:5173`, register an account, create a dashboard, and add a widget. The Vite dev
-   server proxies `/api` to `http://127.0.0.1:8080` (`frontend/vite.config.ts`).
+   server proxies `/api` to `http://127.0.0.1:8080` (`frontend/vite.config.ts`); the `API_PROXY_TARGET`
+   environment variable overrides the target (the Playwright harness sets `http://127.0.0.1:8090`).
 
 ## Configuration
 
@@ -134,7 +137,7 @@ compose refuses to start without the secrets.
 | Variable | Default | Rule |
 | --- | --- | --- |
 | `APP_HOST` | `127.0.0.1` | IP address the backend binds (`std::net::IpAddr`); unparsable values fail startup. Non-loopback values are a deliberate owner-approved change. |
-| `APP_PORT` | `8080` | Port only. Changing it also needs the Vite proxy target changed. |
+| `APP_PORT` | `8080` | Port only. Changing it also needs the Vite proxy target changed (`API_PROXY_TARGET`). |
 | `POSTGRES_USER`, `POSTGRES_PASSWORD` | none, required by compose | Read by compose only; the container is initialised with them on first start. Database name is `insightboard`. |
 | `REDIS_PASSWORD` | none, required by compose | Read by compose only (`--requirepass`, and `REDISCLI_AUTH` inside the container so `docker compose exec redis redis-cli ...` works without `-a`). |
 | `DATABASE_URL` | none, required | `postgres://<POSTGRES_USER>:<POSTGRES_PASSWORD>@127.0.0.1:5432/insightboard`; same values as above. |

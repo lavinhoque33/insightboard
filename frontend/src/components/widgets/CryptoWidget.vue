@@ -1,8 +1,8 @@
-/** * Crypto Widget * Displays cryptocurrency prices with price change
-indicators */
+<!-- Crypto Widget: cryptocurrency prices with 24h change -->
 <script setup lang="ts">
 import { computed } from 'vue';
 import BaseWidget from '../BaseWidget.vue';
+import AppIcon from '../ui/AppIcon.vue';
 import { useWidgetData } from '../../composables/useWidgetData';
 import { fetchCryptoData } from '../../api/widgets';
 
@@ -43,24 +43,44 @@ const formatPrice = (price: number | null): string => {
 	return `$${price.toFixed(6)}`;
 };
 
-const formatMarketCap = (marketCap: number | null): string => {
-	if (marketCap === null) return NO_VALUE;
-	if (marketCap >= 1e12) return `$${(marketCap / 1e12).toFixed(2)}T`;
-	if (marketCap >= 1e9) return `$${(marketCap / 1e9).toFixed(2)}B`;
-	if (marketCap >= 1e6) return `$${(marketCap / 1e6).toFixed(2)}M`;
-	return `$${marketCap.toLocaleString()}`;
+const formatCompact = (value: number | null): string => {
+	if (value === null) return NO_VALUE;
+	if (value >= 1e12) return `$${(value / 1e12).toFixed(2)}T`;
+	if (value >= 1e9) return `$${(value / 1e9).toFixed(2)}B`;
+	if (value >= 1e6) return `$${(value / 1e6).toFixed(2)}M`;
+	return `$${value.toLocaleString()}`;
 };
 
-const getPriceChangeIcon = (change: number | null): string => {
-	if (change === null) return '━';
-	if (change > 0) return '▲';
-	if (change < 0) return '▼';
-	return '━';
+type Trend = 'up' | 'down' | 'flat';
+
+const trend = (change: number | null): Trend => {
+	if (change === null || change === 0) return 'flat';
+	return change > 0 ? 'up' : 'down';
+};
+
+const TREND_BADGE: Record<Trend, string> = {
+	up: 'bg-success/12 text-success',
+	down: 'bg-error/12 text-error',
+	flat: 'bg-base-200 text-base-content/70',
+};
+
+const TREND_ICON = {
+	up: 'arrow-up-right',
+	down: 'arrow-down-right',
+	flat: 'minus',
+} as const;
+
+// Signed text, so the direction never depends on colour alone
+const formatChange = (change: number | null): string => {
+	if (change === null) return NO_VALUE;
+	const sign = change > 0 ? '+' : change < 0 ? '−' : '';
+	return `${sign}${Math.abs(change).toFixed(2)}%`;
 };
 </script>
 
 <template>
 	<BaseWidget
+		type="crypto"
 		title="Cryptocurrency Prices"
 		:loading="loading"
 		:error="error"
@@ -69,89 +89,67 @@ const getPriceChangeIcon = (change: number | null): string => {
 		@configure="emit('configure')"
 		@remove="emit('remove')"
 	>
-		<!-- Empty State -->
 		<div
 			v-if="cryptos.length === 0 && !loading && !error"
-			class="flex flex-col items-center justify-center py-8 text-center"
+			class="flex h-full flex-col items-center justify-center gap-2 py-6 text-center"
 		>
-			<div class="text-4xl mb-3">💰</div>
-			<p class="text-sm text-base-content/60">No cryptocurrency data found</p>
+			<AppIcon name="coins" class="size-7 text-base-content/40" />
+			<p class="text-sm text-base-content/70">No cryptocurrency data found</p>
 		</div>
 
-		<!-- Crypto List -->
-		<div v-else class="space-y-3">
-			<div
+		<ul v-else class="flex flex-col divide-y divide-base-300/70">
+			<li
 				v-for="crypto in cryptos"
 				:key="crypto.id"
-				class="card card-border border-base-300 bg-linear-to-br from-base-100 to-base-200 hover:shadow-lg transition-all duration-300 group"
+				class="flex flex-col gap-2 py-2.5 first:pt-0 last:pb-0"
 			>
-				<div class="card-body p-4">
-					<!-- Header: Symbol and Price -->
-					<div class="flex items-center justify-between mb-3">
-						<div class="flex items-center gap-2">
-							<div class="badge badge-primary gap-1 font-bold">
-								{{ crypto.symbol.toUpperCase() }}
-							</div>
-							<span class="text-sm text-base-content/60">
-								{{ crypto.name }}
-							</span>
-						</div>
-						<div class="text-right">
-							<div
-								class="text-xl font-bold text-transparent bg-linear-to-r from-primary to-secondary bg-clip-text"
-							>
-								{{ formatPrice(crypto.current_price) }}
-							</div>
-						</div>
+				<div class="flex items-center gap-3">
+					<span
+						class="grid size-9 shrink-0 place-items-center rounded-full bg-linear-to-br from-widget-crypto/25 to-primary/15 text-[11px] font-bold uppercase tracking-wide text-base-content ring-1 ring-inset ring-base-content/5"
+						aria-hidden="true"
+					>
+						{{ crypto.symbol.slice(0, 4) }}
+					</span>
+					<div class="min-w-0 flex-1">
+						<p class="truncate text-sm font-semibold">{{ crypto.name }}</p>
+						<p class="text-xs font-medium text-base-content/70">
+							{{ crypto.symbol.toUpperCase() }}
+						</p>
 					</div>
-
-					<!-- Divider -->
-					<div class="divider my-1"></div>
-
-					<!-- Price Change and Market Cap -->
-					<div class="flex items-center justify-between text-sm">
-						<!-- Price Change Badge -->
-						<div
-							class="badge"
-							:class="{
-								'badge-success': (crypto.price_change_percentage_24h ?? 0) > 0,
-								'badge-error': (crypto.price_change_percentage_24h ?? 0) < 0,
-								'badge-ghost': (crypto.price_change_percentage_24h ?? 0) === 0,
-							}"
+					<div class="flex flex-col items-end gap-1">
+						<p class="text-sm font-semibold tabular-nums @xs:text-base">
+							{{ formatPrice(crypto.current_price) }}
+						</p>
+						<p
+							class="inline-flex items-center gap-0.5 rounded-md px-1.5 py-0.5 text-xs font-semibold tabular-nums"
+							:class="TREND_BADGE[trend(crypto.price_change_percentage_24h)]"
 						>
-							<span>{{
-								getPriceChangeIcon(crypto.price_change_percentage_24h)
-							}}</span>
-							<span>{{
-								crypto.price_change_percentage_24h === null
-									? NO_VALUE
-									: `${Math.abs(crypto.price_change_percentage_24h).toFixed(2)}%`
-							}}</span>
-							<span class="text-xs">(24h)</span>
-						</div>
-
-						<!-- Market Cap -->
-						<div class="text-base-content/70">
-							<span class="text-xs">MCap: </span>
-							<span class="font-semibold">{{
-								formatMarketCap(crypto.market_cap)
-							}}</span>
-						</div>
-					</div>
-
-					<!-- Volume -->
-					<div class="mt-2 pt-2 border-t border-base-300">
-						<div
-							class="flex items-center justify-between text-xs text-base-content/60"
-						>
-							<span>24h Volume</span>
-							<span class="font-semibold text-base-content">{{
-								formatMarketCap(crypto.total_volume)
-							}}</span>
-						</div>
+							<AppIcon
+								:name="TREND_ICON[trend(crypto.price_change_percentage_24h)]"
+								class="size-3"
+							/>
+							{{ formatChange(crypto.price_change_percentage_24h) }}
+							<span class="sr-only">in 24 hours</span>
+						</p>
 					</div>
 				</div>
-			</div>
-		</div>
+				<dl
+					class="flex flex-wrap gap-x-4 gap-y-0.5 pl-12 text-[11px] text-base-content/70"
+				>
+					<div class="flex gap-1">
+						<dt>Market cap</dt>
+						<dd class="font-medium tabular-nums text-base-content">
+							{{ formatCompact(crypto.market_cap) }}
+						</dd>
+					</div>
+					<div class="flex gap-1">
+						<dt>24h volume</dt>
+						<dd class="font-medium tabular-nums text-base-content">
+							{{ formatCompact(crypto.total_volume) }}
+						</dd>
+					</div>
+				</dl>
+			</li>
+		</ul>
 	</BaseWidget>
 </template>

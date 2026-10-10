@@ -1,6 +1,8 @@
-/** * Weather Widget * Displays current weather for a city */
+<!-- Weather Widget: current weather for a city -->
 <script setup lang="ts">
 import BaseWidget from '../BaseWidget.vue';
+import AppIcon from '../ui/AppIcon.vue';
+import type { IconName } from '../ui/icons';
 import { useWidgetData } from '../../composables/useWidgetData';
 import { fetchWeatherData } from '../../api/widgets';
 
@@ -33,33 +35,28 @@ const {
 	failure: 'Failed to load weather data',
 });
 
-const getWeatherIcon = (iconCode: string): string => {
-	const icons: Record<string, string> = {
-		'01d': '☀️',
-		'01n': '🌙',
-		'02d': '⛅',
-		'02n': '☁️',
-		'03d': '☁️',
-		'03n': '☁️',
-		'04d': '☁️',
-		'04n': '☁️',
-		'09d': '🌧️',
-		'09n': '🌧️',
-		'10d': '🌦️',
-		'10n': '🌧️',
-		'11d': '⛈️',
-		'11n': '⛈️',
-		'13d': '❄️',
-		'13n': '❄️',
-		'50d': '🌫️',
-		'50n': '🌫️',
-	};
-	return icons[iconCode] || '🌤️';
+// OpenWeather icon code (e.g. "10d") to a drawn icon
+const CONDITION_ICONS: Record<string, IconName> = {
+	'01d': 'sun',
+	'01n': 'moon',
+	'02d': 'cloud-sun',
+	'02n': 'cloud',
+	'03': 'cloud',
+	'04': 'cloud',
+	'09': 'cloud-rain',
+	'10': 'cloud-rain',
+	'11': 'cloud-lightning',
+	'13': 'snowflake',
+	'50': 'fog',
 };
+
+const conditionIcon = (code: string): IconName =>
+	CONDITION_ICONS[code] ?? CONDITION_ICONS[code.slice(0, 2)] ?? 'cloud-sun';
 </script>
 
 <template>
 	<BaseWidget
+		type="weather"
 		:title="`Weather: ${config.city || 'Not configured'}`"
 		:loading="loading"
 		:error="error"
@@ -68,64 +65,72 @@ const getWeatherIcon = (iconCode: string): string => {
 		@configure="emit('configure')"
 		@remove="emit('remove')"
 	>
-		<div
-			v-if="weather"
-			class="flex flex-col items-center justify-center space-y-6 py-4"
-		>
-			<!-- Main Temperature Card -->
-			<div
-				class="bg-linear-to-br from-primary/10 to-secondary/10 rounded-2xl p-8 w-full text-center border border-base-300"
-			>
-				<!-- Weather Icon -->
-				<div class="text-7xl mb-4">
-					{{ getWeatherIcon(weather.icon) }}
+		<div v-if="weather" class="flex h-full flex-col justify-between gap-3">
+			<div class="flex items-center justify-between gap-3">
+				<div class="min-w-0">
+					<p
+						class="flex items-start text-5xl font-semibold leading-none tracking-tighter tabular-nums"
+					>
+						{{ Math.round(weather.temperature) }}
+						<span class="ml-0.5 mt-1 text-xl font-medium text-base-content/70"
+							>°C</span
+						>
+					</p>
+					<p class="mt-2 truncate text-sm">
+						<span class="font-medium capitalize">{{
+							weather.description
+						}}</span>
+						<span class="text-base-content/70">
+							· {{ weather.city }}, {{ weather.country }}</span
+						>
+					</p>
 				</div>
-
-				<!-- Temperature -->
-				<div
-					class="text-5xl font-bold text-transparent bg-linear-to-r from-primary to-secondary bg-clip-text mb-2"
-				>
-					{{ Math.round(weather.temperature) }}°C
+				<div class="relative shrink-0" aria-hidden="true">
+					<div
+						class="absolute inset-0 scale-125 rounded-full bg-widget-weather/20 blur-xl"
+					></div>
+					<AppIcon
+						:name="conditionIcon(weather.icon)"
+						class="relative size-12 text-widget-weather @xs:size-14"
+					/>
 				</div>
-
-				<!-- Feels Like -->
-				<div class="text-sm text-base-content/60 mb-4">
-					Feels like {{ Math.round(weather.feels_like) }}°C
-				</div>
-
-				<!-- Description -->
-				<p class="text-lg font-semibold text-base-content capitalize">
-					{{ weather.description }}
-				</p>
-				<p class="text-sm text-base-content/60 mt-1">
-					{{ weather.city }}, {{ weather.country }}
-				</p>
 			</div>
 
-			<!-- Weather Details Grid -->
-			<div class="divider my-2"></div>
-
-			<div class="grid grid-cols-2 gap-3 w-full">
-				<!-- Humidity -->
-				<div class="stat bg-base-200 rounded-lg p-3">
-					<div class="stat-title text-sm flex items-center gap-1">
-						<span>💧 Humidity</span>
-					</div>
-					<div class="stat-value text-2xl text-primary text-center">
+			<dl class="grid grid-cols-3 gap-2">
+				<div class="rounded-lg bg-base-200/70 px-2.5 py-1.5">
+					<dt
+						class="flex items-center gap-1 truncate text-[11px] text-base-content/70"
+					>
+						<AppIcon name="thermometer" class="size-3" />
+						Feels like
+					</dt>
+					<dd class="mt-0.5 text-sm font-semibold tabular-nums">
+						{{ Math.round(weather.feels_like) }}°C
+					</dd>
+				</div>
+				<div class="rounded-lg bg-base-200/70 px-2.5 py-1.5">
+					<dt
+						class="flex items-center gap-1 truncate text-[11px] text-base-content/70"
+					>
+						<AppIcon name="droplet" class="size-3" />
+						Humidity
+					</dt>
+					<dd class="mt-0.5 text-sm font-semibold tabular-nums">
 						{{ weather.humidity }}%
-					</div>
+					</dd>
 				</div>
-
-				<!-- Wind Speed -->
-				<div class="stat bg-base-200 rounded-lg p-3">
-					<div class="stat-title text-sm flex items-center gap-1">
-						<span>💨 Wind Speed</span>
-					</div>
-					<div class="stat-value text-2xl text-secondary text-center">
+				<div class="rounded-lg bg-base-200/70 px-2.5 py-1.5">
+					<dt
+						class="flex items-center gap-1 truncate text-[11px] text-base-content/70"
+					>
+						<AppIcon name="wind" class="size-3" />
+						Wind
+					</dt>
+					<dd class="mt-0.5 text-sm font-semibold tabular-nums">
 						{{ weather.wind_speed }} m/s
-					</div>
+					</dd>
 				</div>
-			</div>
+			</dl>
 		</div>
 	</BaseWidget>
 </template>

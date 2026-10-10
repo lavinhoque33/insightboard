@@ -16,7 +16,6 @@ export interface WidgetType {
 	id: WidgetKind;
 	name: string;
 	description: string;
-	icon: string; // Icon class or emoji
 	component: Component;
 	defaultConfig: WidgetConfig;
 	configSchema: WidgetConfigField[];

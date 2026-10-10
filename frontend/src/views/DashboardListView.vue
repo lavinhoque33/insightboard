@@ -1,153 +1,200 @@
 <template>
-	<div class="flex-1 bg-base-100">
-		<header class="border-b border-base-300 bg-base-200">
-			<div
-				class="container mx-auto flex flex-wrap items-center justify-between gap-4 px-4 py-6"
-			>
-				<div class="min-w-0">
-					<h1
-						class="mb-1 bg-linear-to-r from-primary to-secondary bg-clip-text text-3xl font-bold text-transparent sm:text-4xl"
-					>
-						My Dashboards
-					</h1>
-					<p class="text-base-content/70">
-						Organize and manage your data visualizations
-					</p>
-				</div>
-				<button
-					type="button"
-					class="btn btn-primary"
-					:aria-disabled="creating"
-					@click="handleCreateDashboard"
-				>
-					<svg
-						aria-hidden="true"
-						xmlns="http://www.w3.org/2000/svg"
-						class="h-5 w-5"
-						fill="none"
-						viewBox="0 0 24 24"
-						stroke="currentColor"
-					>
-						<path
-							stroke-linecap="round"
-							stroke-linejoin="round"
-							stroke-width="2"
-							d="M12 4v16m8-8H4"
-						/>
-					</svg>
-					New Dashboard
-				</button>
+	<div class="mx-auto w-full max-w-7xl flex-1 px-4 py-8 sm:px-6 sm:py-12">
+		<header
+			class="mb-8 flex animate-rise flex-wrap items-end justify-between gap-4 sm:mb-10"
+		>
+			<div class="min-w-0">
+				<h1 class="text-3xl font-semibold tracking-tight sm:text-4xl">
+					My Dashboards
+				</h1>
+				<p class="mt-2 text-base-content/70">
+					Organize and manage your data visualizations
+				</p>
 			</div>
-		</header>
-
-		<div class="container mx-auto px-4 py-8">
-			<div
-				v-if="dashboardStore.actionError"
-				class="alert alert-error mb-6"
-				role="alert"
-			>
-				<span class="text-sm">{{ dashboardStore.actionError }}</span>
-			</div>
-
-			<div
-				v-if="dashboardStore.listLoading && !dashboardStore.dashboards.length"
-				class="flex flex-col items-center justify-center py-24"
-				role="status"
+			<button
+				type="button"
+				class="btn btn-primary shadow-sm"
+				:aria-disabled="creating"
+				@click="handleCreateDashboard"
 			>
 				<span
-					class="loading loading-spinner loading-lg text-primary"
+					v-if="creating"
+					class="loading loading-spinner loading-sm"
 					aria-hidden="true"
 				></span>
-				<p class="mt-4 text-lg text-base-content/70">
-					Loading your dashboards…
-				</p>
-			</div>
+				<AppIcon v-else name="plus" class="size-4" />
+				New Dashboard
+			</button>
+		</header>
 
+		<div
+			v-if="dashboardStore.actionError"
+			class="alert alert-error alert-soft mb-6"
+			role="alert"
+		>
+			<AppIcon name="alert-circle" class="size-5" />
+			<span class="text-sm">{{ dashboardStore.actionError }}</span>
+		</div>
+
+		<div
+			v-if="dashboardStore.listLoading && !dashboardStore.dashboards.length"
+			role="status"
+		>
+			<span class="sr-only">Loading your dashboards…</span>
 			<div
-				v-else-if="dashboardStore.listError"
-				class="alert alert-error"
-				role="alert"
+				class="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-3"
+				aria-hidden="true"
 			>
-				<div>
-					<h2 class="font-bold">Error loading dashboards</h2>
-					<p class="text-sm">{{ dashboardStore.listError }}</p>
+				<div v-for="n in 3" :key="n" class="surface overflow-hidden">
+					<div class="skeleton aspect-[16/7] rounded-none"></div>
+					<div class="flex flex-col gap-3 p-4">
+						<div class="skeleton h-5 w-2/3"></div>
+						<div class="skeleton h-3.5 w-1/2"></div>
+					</div>
 				</div>
-				<button
-					type="button"
-					class="btn btn-sm"
-					@click="dashboardStore.fetchDashboards"
-				>
-					Retry
-				</button>
 			</div>
+		</div>
 
-			<div
-				v-else-if="!dashboardStore.dashboards.length"
-				class="mx-auto flex max-w-md flex-col items-center gap-4 py-24 text-center"
+		<div
+			v-else-if="dashboardStore.listError"
+			class="alert alert-error alert-soft"
+			role="alert"
+		>
+			<AppIcon name="alert-circle" class="size-5" />
+			<div>
+				<h2 class="font-semibold">Error loading dashboards</h2>
+				<p class="text-sm">{{ dashboardStore.listError }}</p>
+			</div>
+			<button
+				type="button"
+				class="btn btn-sm"
+				@click="dashboardStore.fetchDashboards"
 			>
-				<h2 class="text-2xl font-bold">No dashboards yet</h2>
-				<p class="text-base-content/70">
-					Create your first dashboard to start visualizing your data and
-					insights.
-				</p>
-				<button
-					type="button"
-					class="btn btn-primary"
-					:aria-disabled="creating"
-					@click="handleCreateDashboard"
-				>
-					Create Dashboard
-				</button>
-			</div>
+				<AppIcon name="refresh" class="size-4" />
+				Retry
+			</button>
+		</div>
 
-			<ul v-else class="grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-3">
-				<li
-					v-for="dashboard in dashboardStore.dashboards"
-					:key="dashboard.id"
-					class="card card-border bg-base-100 shadow-sm transition-shadow hover:shadow-md"
+		<div
+			v-else-if="!dashboardStore.dashboards.length"
+			class="surface mx-auto flex max-w-xl animate-rise flex-col items-center gap-4 border-dashed px-6 py-12 text-center sm:py-16"
+		>
+			<EmptyIllustration class="max-w-60" />
+			<h2 class="text-2xl font-semibold tracking-tight">No dashboards yet</h2>
+			<p class="max-w-sm text-base-content/70">
+				Create your first dashboard to start visualizing your data and insights.
+			</p>
+			<button
+				type="button"
+				class="btn btn-primary mt-2"
+				:aria-disabled="creating"
+				@click="handleCreateDashboard"
+			>
+				<AppIcon name="plus" class="size-4" />
+				Create Dashboard
+			</button>
+		</div>
+
+		<ul v-else class="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-3">
+			<li
+				v-for="(dashboard, index) in dashboardStore.dashboards"
+				:key="dashboard.id"
+				class="group surface relative flex animate-rise flex-col overflow-hidden transition-[transform,box-shadow,border-color] duration-200 focus-within:border-primary/50 hover:-translate-y-0.5 hover:border-primary/40 hover:shadow-float"
+				:style="{ animationDelay: `${Math.min(index, 8) * 40}ms` }"
+			>
+				<div
+					class="relative aspect-[16/7] border-b border-base-300 bg-base-200/60 p-3"
 				>
-					<div class="card-body">
-						<h2 class="card-title line-clamp-2 break-words">
+					<div
+						v-if="dashboard.layout.widgets.length"
+						class="relative size-full"
+					>
+						<LayoutThumbnail :layout="dashboard.layout" />
+					</div>
+					<p
+						v-else
+						class="grid h-full place-items-center rounded-lg border border-dashed border-base-300 text-xs text-base-content/70"
+					>
+						Empty canvas
+					</p>
+				</div>
+
+				<div class="flex flex-1 flex-col gap-3 p-4">
+					<div class="flex min-h-7 items-center justify-between gap-3">
+						<h2 class="line-clamp-2 break-words font-semibold leading-snug">
 							{{ dashboard.name }}
 						</h2>
-
-						<dl class="my-2 grid grid-cols-2 gap-3">
-							<div class="rounded-box bg-base-200 p-3">
-								<dt class="text-xs text-base-content/70">Widgets</dt>
-								<dd class="text-2xl font-bold text-primary">
-									{{ dashboard.layout.widgets.length }}
-								</dd>
-							</div>
-							<div class="rounded-box bg-base-200 p-3">
-								<dt class="text-xs text-base-content/70">Created</dt>
-								<dd class="text-sm font-semibold">
-									<time :datetime="dashboard.created_at">
-										{{ formatDate(dashboard.created_at) }}
-									</time>
-								</dd>
-							</div>
-						</dl>
-
-						<div class="card-actions">
-							<router-link
-								:to="`/dashboards/${dashboard.id}`"
-								class="btn btn-primary btn-sm flex-1"
+						<div
+							v-if="widgetTypes(dashboard).length"
+							class="flex shrink-0 -space-x-1.5"
+						>
+							<span
+								v-for="type in widgetTypes(dashboard)"
+								:key="type"
+								class="flex rounded-md bg-base-100 ring-2 ring-base-100"
 							>
-								Open<span class="sr-only"> {{ dashboard.name }}</span>
-							</router-link>
-							<button
-								type="button"
-								class="btn btn-ghost btn-sm text-error"
-								:aria-disabled="deletingId === dashboard.id"
-								@click="handleDeleteDashboard(dashboard.id)"
-							>
-								Delete<span class="sr-only"> {{ dashboard.name }}</span>
-							</button>
+								<WidgetTypeIcon :type="type" size="sm" />
+							</span>
 						</div>
 					</div>
-				</li>
-			</ul>
-		</div>
+
+					<dl
+						class="flex flex-wrap gap-x-4 gap-y-1 text-xs text-base-content/70"
+					>
+						<div class="flex items-center gap-1.5">
+							<dt class="sr-only">Widgets</dt>
+							<AppIcon name="dashboards" class="size-3.5" />
+							<dd class="tabular-nums">
+								{{ dashboard.layout.widgets.length }}
+								{{
+									dashboard.layout.widgets.length === 1 ? 'widget' : 'widgets'
+								}}
+							</dd>
+						</div>
+						<div class="flex items-center gap-1.5">
+							<dt class="sr-only">Updated</dt>
+							<AppIcon name="clock" class="size-3.5" />
+							<dd>
+								<time
+									:datetime="dashboard.updated_at"
+									:title="new Date(dashboard.updated_at).toLocaleString()"
+								>
+									Updated {{ formatDate(dashboard.updated_at) }}
+								</time>
+							</dd>
+						</div>
+					</dl>
+
+					<div class="mt-auto flex items-center gap-2 pt-1">
+						<router-link
+							:to="`/dashboards/${dashboard.id}`"
+							class="btn btn-sm btn-soft btn-primary flex-1 after:absolute after:inset-0 after:content-['']"
+						>
+							Open<span class="sr-only"> {{ dashboard.name }}</span>
+							<AppIcon
+								name="arrow-right"
+								class="size-4 transition-transform duration-200 group-hover:translate-x-0.5"
+							/>
+						</router-link>
+						<button
+							type="button"
+							class="btn btn-ghost btn-sm btn-square relative z-10 text-base-content/70 hover:bg-error/10 hover:text-error"
+							:title="`Delete ${dashboard.name}`"
+							:aria-disabled="deletingId === dashboard.id"
+							@click="handleDeleteDashboard(dashboard.id)"
+						>
+							<span
+								v-if="deletingId === dashboard.id"
+								class="loading loading-spinner loading-xs"
+								aria-hidden="true"
+							></span>
+							<AppIcon v-else name="trash" class="size-4" />
+							<span class="sr-only">Delete {{ dashboard.name }}</span>
+						</button>
+					</div>
+				</div>
+			</li>
+		</ul>
 	</div>
 </template>
 
@@ -155,6 +202,11 @@
 import { ref, onMounted } from 'vue';
 import { useRouter } from 'vue-router';
 import { useDashboardStore } from '../stores/dashboard';
+import type { Dashboard, WidgetType as WidgetKind } from '../types';
+import AppIcon from '../components/ui/AppIcon.vue';
+import EmptyIllustration from '../components/ui/EmptyIllustration.vue';
+import WidgetTypeIcon from '../components/ui/WidgetTypeIcon.vue';
+import LayoutThumbnail from '../components/LayoutThumbnail.vue';
 
 const router = useRouter();
 const dashboardStore = useDashboardStore();
@@ -163,6 +215,11 @@ const creating = ref(false);
 const deletingId = ref<string | null>(null);
 
 onMounted(() => dashboardStore.fetchDashboards());
+
+// Distinct widget types in layout order
+const widgetTypes = (dashboard: Dashboard): WidgetKind[] => [
+	...new Set(dashboard.layout.widgets.map((w) => w.type)),
+];
 
 const handleCreateDashboard = async () => {
 	if (creating.value) return;
@@ -199,13 +256,18 @@ const handleDeleteDashboard = async (id: string) => {
 
 const formatDate = (dateString: string): string => {
 	const date = new Date(dateString);
-	const diffDays = Math.floor(
-		Math.abs(Date.now() - date.getTime()) / (1000 * 60 * 60 * 24),
-	);
+	const minutes = Math.floor(Math.max(0, Date.now() - date.getTime()) / 60_000);
 
-	if (diffDays === 0) return 'today';
-	if (diffDays === 1) return 'yesterday';
-	if (diffDays < 7) return `${diffDays}d ago`;
-	return date.toLocaleDateString();
+	if (minutes < 1) return 'just now';
+	if (minutes < 60) return `${minutes}m ago`;
+	if (minutes < 24 * 60) return `${Math.floor(minutes / 60)}h ago`;
+	const days = Math.floor(minutes / (24 * 60));
+	if (days === 1) return 'yesterday';
+	if (days < 7) return `${days}d ago`;
+	return date.toLocaleDateString(undefined, {
+		month: 'short',
+		day: 'numeric',
+		year: 'numeric',
+	});
 };
 </script>

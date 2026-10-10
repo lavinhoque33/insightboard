@@ -37,6 +37,7 @@ flush. The Vitest suites mock the API and need neither.
 | `make backend-check` | Checks Postgres and Redis are running, then in `backend/`: `cargo fmt --check`, `cargo clippy --locked --all-targets -- -D warnings`, `cargo test --locked` (environment from `.env`), `cargo build --locked` (`--locked` fails instead of silently changing the committed `Cargo.lock`) |
 | `make web-check` | In `frontend/`: `npm run lint` (ESLint with `--max-warnings 0`, then `prettier --check .`), `npm test` (`vitest run`), `npm run build` (`vue-tsc -b && vite build`) |
 | `make verify` | `backend-check` then `web-check`; works from a fresh clone after `make setup` and `make db-up` |
+| `make e2e` | Playwright browser journeys (Chromium) against the real backend with providers on a local fixture; needs `make db-up` and host Rust; not part of `verify` (see "Browser journeys") |
 | `make format` | `cargo fmt` and `npm run format` (Prettier write); needs host Rust |
 | `make setup` | `npm ci` (and a generated `.env` if absent); run once per clone before `web-check` |
 
@@ -50,12 +51,14 @@ The chain stops at the first failing step. Frontend commands use the project Nod
 | `npm ci` | Clean install from `package-lock.json` |
 | `npm run lint` | ESLint (flat config, `eslint-plugin-vue`, `typescript-eslint`, `eslint-config-prettier`; `@typescript-eslint/no-explicit-any` is an error) and the Prettier check |
 | `npm run test` | `vitest run` (jsdom, setup `src/test/setup.ts`) |
-| `npm run build` | `vue-tsc -b && vite build`: type-checks app, spec files, and `vite.config.ts`/`vitest.config.ts` (`tsconfig.node.json`), then bundles |
+| `npm run build` | `vue-tsc -b && vite build`: type-checks app, spec files, `vite.config.ts`/`vitest.config.ts` (`tsconfig.node.json`), and `playwright.config.ts` plus `e2e/**/*.ts` (`tsconfig.e2e.json`), then bundles |
+| `npm run e2e` | `playwright test`; expects `DATABASE_URL` and `REDIS_URL` exported and the backend built (`make e2e` does both) |
+| `npx playwright test --headed` / `--ui` | The journeys in a visible browser or the Playwright UI (same environment as `npm run e2e`) |
 | `npm audit --omit=dev` | Advisories in production dependencies |
 | `npx vitest run src/components/__tests__/BaseWidget.spec.ts` | One test file |
 | `cargo test jwt_roundtrip` | One backend test by name filter (from `backend/`; export `.env` first for database and Redis tests: `set -a; . ../.env; set +a`) |
 
-There are no `test:watch`, `test:coverage`, or `test:e2e` scripts; Playwright is not installed (M4c).
+There are no `test:watch` or `test:coverage` scripts.
 
 **Backend toolchain.** `rust-toolchain.toml` pins Rust 1.99.0 with `rustfmt` and `clippy`; `backend/Cargo.lock` is
 committed, so builds use the locked dependency versions. With host rustup, `cargo` fetches the pinned toolchain on
@@ -75,6 +78,45 @@ allowlisted loopback fixtures; `jsonschema` is built without its HTTP/file `$ref
 workstation on 2026-10-10 by running the test binary under `strace -f -e trace=connect`: every `connect` went to
 `127.0.0.1` (plus resolver address-selection probes to `::1` port 0 when resolving `localhost`).
 
+## Browser journeys (Playwright)
+
+`make e2e` builds the backend (`cargo build --locked`), exports `DATABASE_URL` and `REDIS_URL` from `.env` without
+printing them (in GitHub Actions they come from the job), and runs `npm run e2e` in `frontend/`. Playwright
+(`frontend/playwright.config.ts`, Chromium only, one worker) starts three loopback servers and stops them at the
+end; it never reuses the dev services, and a busy port fails the run:
+
+| Server | Address | Role |
+| --- | --- | --- |
+| Fixtures (`frontend/e2e/fixtures/server.mjs`, `node:http`, no dependencies) | `127.0.0.1:18090`, `127.0.0.1:18091` | 18090 imitates the GitHub, OpenWeather, NewsAPI, and CoinGecko paths the backend calls and answers only the run's dummy credentials (anything else gets 401); 18091 is the status target and answers 200 |
+| Backend (`backend/target/debug/insightboard-backend`) | `127.0.0.1:8090` | Started from the temp directory so `dotenvy` finds no `.env`. The config sets every `*_API_BASE_URL` to the fixture, dummy `GITHUB_API_TOKEN`/`OPENWEATHER_API_KEY`/`NEWSAPI_API_KEY`, a throwaway `JWT_SECRET`, `CORS_ORIGINS=http://127.0.0.1:5175`, and `STATUS_ALLOWED_FIXTURES=127.0.0.1:18091`, overriding any value in the environment |
+| Vite | `127.0.0.1:5175` | `API_PROXY_TARGET=http://127.0.0.1:8090`, `VITE_API_URL` empty (same-origin `/api`) |
+
+The browser runs with `--host-resolver-rules=MAP * ~NOTFOUND, EXCLUDE 127.0.0.1`, so pages cannot resolve any
+other host. Journeys (`frontend/e2e/journeys.e2e.ts`; the `.e2e.ts` suffix keeps them out of Vitest) use a new
+`e2e-<timestamp>-<random>@example.com` user per test and select by role, label, and visible text only:
+
+- register, log out, log in; create a dashboard; add a Weather widget (fixture data through the real backend) and
+  a Status widget for `http://127.0.0.1:18091/`; reopen both configurations and see them prefilled, Save keeps the
+  configuration (drill 12); rename; reload and see name, widgets, and data persisted; change a widget and leave
+  through "Back to dashboards" within the auto-save delay: the change is saved, and no `PUT` follows within 3 s
+  after leaving (drill 14); log out, and `/dashboards` redirects to the login page;
+- a rename whose `PUT` the browser fails (`page.route`, 500) shows "Your changes are not saved" with Retry and
+  keeps the new name on screen; Retry after the failure is lifted saves it, and a reload shows it (drill 13).
+
+Data: each run adds two users with one dashboard each to the compose database (unique emails; nothing is
+deleted), and short-lived cache entries under fresh weather and status keys in the compose Redis. Browser binaries
+are a one-time download per machine: `cd frontend && npx playwright install chromium` (on Fedora, Playwright warns
+that the OS is unsupported and uses its Ubuntu build, which runs here). Reports and traces land in
+`frontend/e2e/playwright-report/` and `frontend/e2e/test-results/` (gitignored).
+
+**Observed** on this workstation on 2026-10-10 (Fedora 44, Playwright 1.64.0, Chrome Headless Shell 156): `make e2e`
+2 passed twice in a row (26 s and 28 s wall, backend already built; tests about 24 s). Under
+`strace -f -e trace=connect` of one `npm run e2e`, all 90 IPv4 connects went to `127.0.0.1` (ports 5175, 8090,
+18090, 18091, 5432, 6379); the only other connects were local Unix sockets (D-Bus, Wayland) and Chromium's IPv6
+reachability probe, a UDP `connect` to `[2001:4860:4860::8888]:443` that failed with `ENETUNREACH` (a UDP
+`connect` sends no packet `[INFERENCE: socket semantics]`). `ss -ltn` during the run showed the four harness
+listeners on `127.0.0.1` only.
+
 ## CI
 
 `.github/workflows/ci.yml` runs on push and pull request to `main` and on manual dispatch, with `contents: read`
@@ -85,6 +127,10 @@ permission and a per-ref concurrency group that cancels superseded runs. No secr
   `make backend-check`. With `GITHUB_ACTIONS=true` (set by Actions) `require-db` only checks that `DATABASE_URL`
   and `REDIS_URL` are set, and `.env` is optional; locally the behaviour is unchanged, even with `CI=true`.
 - **web** job: Node from `.nvmrc`, `npm ci`, then `make web-check`.
+- **e2e** job: the backend job's Postgres and Redis service containers and throwaway credentials, the Rust
+  toolchain and cargo cache, Node from `.nvmrc`, `npm ci`, `npx playwright install --with-deps chromium`, then
+  `make e2e`. The Playwright HTML report and failure traces are uploaded as the `playwright-report` artifact only
+  when the job fails. Providers are the local fixture; the job has no keys.
 
 To mirror CI locally, run `GITHUB_ACTIONS=true make backend-check` with `DATABASE_URL` and `REDIS_URL` exported.
 
@@ -112,9 +158,9 @@ Totals: 87 backend tests (**observed** 2026-10-10, `make backend-check` on this 
 automated tests: the `dns_error` status class (it would need a non-resolving name, which could query external DNS)
 and live provider behaviour (manual, human-scale smoke only).
 
-Frontend (Vitest): component tests under `frontend/src/**/__tests__/` and the M4b client and contract (ajv) tests;
-run `npm test` for the current list and count. Store, guard, modal, editor, and Playwright suites and CI are
-**pending** (M4c).
+Frontend (Vitest): component, store, router-guard, configuration-modal, and editor tests under
+`frontend/src/**/__tests__/` and the M4b client and contract (ajv) tests; run `npm test` for the current list and
+count. Browser journeys: `frontend/e2e/journeys.e2e.ts` (2 Playwright tests, see "Browser journeys").
 
 ## Gate status
 
@@ -159,8 +205,8 @@ From the [M4 contract](../architecture/m4-quality-gate-contract.md), **accepted*
   ESLint, Prettier, `vue-tsc`, Vitest, and `cargo test`, run by `make verify`.
 
 The gates above exist. Since M4b the backend contract, provider-mock, `#[sqlx::test]`, and Redis tests exist, and
-the frontend has ajv contract tests; the frontend store/guard/modal/editor tests, Playwright, and CI items are
-**pending** (M4c).
+the frontend has ajv contract tests; M4c added the frontend store/guard/modal/editor tests, CI, and the Playwright
+journeys (`make e2e`, CI job `e2e`).
 
 ## What a verification record contains
 

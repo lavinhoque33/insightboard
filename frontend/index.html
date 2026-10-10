@@ -2,9 +2,37 @@
 <html lang="en">
 	<head>
 		<meta charset="UTF-8" />
-		<link rel="icon" type="image/svg+xml" href="/vite.svg" />
 		<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+		<meta name="color-scheme" content="light dark" />
+		<meta name="theme-color" content="#f6f7fa" />
+		<link rel="icon" type="image/svg+xml" href="/favicon.svg" />
 		<title>InsightBoard</title>
+		<!--
+			Applies the stored theme choice (or the OS preference) before the first
+			paint, so the page never flashes the wrong theme. Keep in sync with
+			src/composables/useTheme.ts.
+		-->
+		<script>
+			(function () {
+				var choice = 'system';
+				try {
+					choice = localStorage.getItem('insightboard-theme') || 'system';
+				} catch (e) {}
+				var dark =
+					choice === 'dark' ||
+					(choice !== 'light' &&
+						window.matchMedia('(prefers-color-scheme: dark)').matches);
+				var root = document.documentElement;
+				root.setAttribute(
+					'data-theme',
+					dark ? 'insight-dark' : 'insight-light',
+				);
+				root.style.colorScheme = dark ? 'dark' : 'light';
+				document
+					.querySelector('meta[name="theme-color"]')
+					.setAttribute('content', dark ? '#0d0e14' : '#f6f7fa');
+			})();
+		</script>
 	</head>
 	<body>
 		<div id="app"></div>

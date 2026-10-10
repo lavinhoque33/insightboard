@@ -24,6 +24,9 @@ import type {
 import WidgetConfigModal from '../components/WidgetConfigModal.vue';
 import { useSaveQueue } from '../composables/useSaveQueue';
 import { useDisclosure } from '../composables/useDisclosure';
+import AppIcon from '../components/ui/AppIcon.vue';
+import EmptyIllustration from '../components/ui/EmptyIllustration.vue';
+import WidgetTypeIcon from '../components/ui/WidgetTypeIcon.vue';
 
 const AUTO_SAVE_DELAY_MS = 2000;
 const FULL_COLUMNS = 12;
@@ -299,6 +302,12 @@ const saveStatusText = computed(() => {
 			return '';
 	}
 });
+
+const STATUS_DOT: Record<string, string> = {
+	saving: 'bg-primary animate-pulse',
+	pending: 'bg-warning',
+	saved: 'bg-success',
+};
 </script>
 
 <template>
@@ -306,78 +315,104 @@ const saveStatusText = computed(() => {
 		<!-- Loading -->
 		<div
 			v-if="dashboardStore.currentLoading"
-			class="flex flex-1 flex-col items-center justify-center gap-3 py-24"
+			class="flex flex-1 flex-col"
 			role="status"
 		>
-			<span
-				class="loading loading-spinner loading-lg text-primary"
+			<span class="sr-only">Loading dashboard…</span>
+			<div
+				class="flex items-center gap-3 border-b border-base-content/10 px-3 py-3 sm:px-6"
 				aria-hidden="true"
-			></span>
-			<p class="text-base-content/70">Loading dashboard…</p>
+			>
+				<div class="skeleton size-8 rounded-lg"></div>
+				<div class="skeleton h-6 w-48"></div>
+				<div class="skeleton ml-auto h-8 w-28 rounded-field"></div>
+			</div>
+			<div
+				class="grid grid-cols-1 gap-4 p-4 sm:p-6 md:grid-cols-12"
+				aria-hidden="true"
+			>
+				<div class="skeleton h-56 md:col-span-4"></div>
+				<div class="skeleton h-56 md:col-span-3"></div>
+				<div class="skeleton h-56 md:col-span-5"></div>
+			</div>
 		</div>
 
 		<!-- Unknown or foreign id -->
 		<div
 			v-else-if="dashboardStore.currentNotFound"
-			class="mx-auto flex max-w-md flex-col items-center gap-4 px-4 py-24 text-center"
+			class="flex flex-1 items-center justify-center px-4 py-16"
 		>
-			<h1 class="text-2xl font-bold">Dashboard not found</h1>
-			<p class="text-base-content/70">
-				This dashboard does not exist or belongs to another account.
-			</p>
-			<router-link to="/dashboards" class="btn btn-primary"
-				>Back to dashboards</router-link
+			<div
+				class="surface flex w-full max-w-md animate-rise flex-col items-center gap-4 px-6 py-10 text-center"
 			>
+				<span
+					class="grid size-14 place-items-center rounded-2xl bg-base-200 text-base-content/70 ring-1 ring-inset ring-base-300"
+					aria-hidden="true"
+				>
+					<AppIcon name="search" class="size-6" />
+				</span>
+				<h1 class="text-2xl font-semibold tracking-tight">
+					Dashboard not found
+				</h1>
+				<p class="text-base-content/70">
+					This dashboard does not exist or belongs to another account.
+				</p>
+				<router-link to="/dashboards" class="btn btn-primary mt-2">
+					<AppIcon name="arrow-left" class="size-4" />
+					Back to dashboards
+				</router-link>
+			</div>
 		</div>
 
 		<!-- Load failure -->
 		<div
 			v-else-if="dashboardStore.currentError"
-			class="mx-auto flex w-full max-w-md flex-col gap-4 px-4 py-24"
+			class="flex flex-1 items-center justify-center px-4 py-16"
 		>
-			<div class="alert alert-error" role="alert">
-				<div>
-					<h1 class="font-bold">Could not load the dashboard</h1>
-					<p class="text-sm">{{ dashboardStore.currentError }}</p>
-				</div>
-				<button
-					type="button"
-					class="btn btn-sm"
-					@click="load(String(route.params.id))"
-				>
-					Retry
-				</button>
-			</div>
-			<router-link to="/dashboards" class="link"
-				>Back to dashboards</router-link
+			<div
+				class="surface flex w-full max-w-md animate-rise flex-col items-center gap-4 px-6 py-10 text-center"
 			>
+				<span
+					class="grid size-14 place-items-center rounded-2xl bg-error/10 text-error"
+					aria-hidden="true"
+				>
+					<AppIcon name="alert-triangle" class="size-6" />
+				</span>
+				<div role="alert" class="flex flex-col gap-1.5">
+					<h1 class="text-xl font-semibold tracking-tight">
+						Could not load the dashboard
+					</h1>
+					<p class="text-sm text-base-content/70">
+						{{ dashboardStore.currentError }}
+					</p>
+				</div>
+				<div class="mt-2 flex flex-wrap justify-center gap-2">
+					<button
+						type="button"
+						class="btn btn-primary btn-sm"
+						@click="load(String(route.params.id))"
+					>
+						<AppIcon name="refresh" class="size-4" />
+						Retry
+					</button>
+					<router-link to="/dashboards" class="btn btn-ghost btn-sm"
+						>Back to dashboards</router-link
+					>
+				</div>
+			</div>
 		</div>
 
 		<template v-else-if="ready">
 			<!-- Toolbar -->
 			<div
-				class="flex flex-wrap items-center gap-2 border-b border-base-300 bg-base-200 px-3 py-2 sm:px-6"
+				class="sticky top-14 z-40 flex flex-wrap items-center gap-x-2 gap-y-2 border-b border-base-content/10 bg-base-100/60 px-3 py-2.5 backdrop-blur-xl sm:px-6"
 			>
 				<router-link
 					to="/dashboards"
-					class="btn btn-ghost btn-sm btn-square"
+					class="btn btn-ghost btn-sm btn-square text-base-content/70 hover:text-base-content"
 					aria-label="Back to dashboards"
 				>
-					<svg
-						aria-hidden="true"
-						xmlns="http://www.w3.org/2000/svg"
-						class="h-5 w-5"
-						fill="none"
-						viewBox="0 0 24 24"
-						stroke="currentColor"
-					>
-						<path
-							stroke-linecap="round"
-							stroke-linejoin="round"
-							stroke-width="2"
-							d="M10 19l-7-7m0 0l7-7m-7 7h18"
-						/>
-					</svg>
+					<AppIcon name="arrow-left" class="size-4" />
 				</router-link>
 
 				<form
@@ -392,7 +427,7 @@ const saveStatusText = computed(() => {
 						ref="nameInput"
 						v-model="nameDraft"
 						type="text"
-						class="input input-sm min-w-0 flex-1"
+						class="input input-sm min-w-0 flex-1 basis-40 font-medium"
 						:class="{ 'input-error': nameError }"
 						:aria-invalid="!!nameError"
 						:aria-describedby="nameError ? 'dashboard-name-error' : undefined"
@@ -411,121 +446,121 @@ const saveStatusText = computed(() => {
 						{{ nameError }}
 					</p>
 				</form>
-				<div v-else class="flex min-w-0 flex-1 items-center gap-1">
-					<h1 class="truncate text-lg font-bold sm:text-2xl">{{ name }}</h1>
+				<div v-else class="flex min-w-0 flex-1 basis-48 items-center gap-1">
+					<h1 class="truncate text-lg font-semibold tracking-tight sm:text-xl">
+						{{ name }}
+					</h1>
 					<button
 						ref="renameButton"
 						type="button"
-						class="btn btn-ghost btn-xs btn-square shrink-0"
+						class="btn btn-ghost btn-xs btn-square shrink-0 text-base-content/70 hover:text-base-content"
 						aria-label="Rename dashboard"
 						@click="startRename"
 					>
-						<svg
-							aria-hidden="true"
-							xmlns="http://www.w3.org/2000/svg"
-							class="h-4 w-4"
-							fill="none"
-							viewBox="0 0 24 24"
-							stroke="currentColor"
-						>
-							<path
-								stroke-linecap="round"
-								stroke-linejoin="round"
-								stroke-width="2"
-								d="M15.232 5.232l3.536 3.536M9 13l6.232-6.232a2.5 2.5 0 113.536 3.536L12.536 16.536 9 17l.464-3.536z"
-							/>
-						</svg>
+						<AppIcon name="pencil" class="size-3.5" />
 					</button>
 				</div>
 
-				<p
-					class="text-sm text-base-content/70"
-					role="status"
-					data-testid="save-status"
-				>
-					{{ saveStatusText }}
-				</p>
-
-				<div ref="pickerRoot" class="relative">
-					<button
-						ref="pickerTrigger"
-						type="button"
-						class="btn btn-primary btn-sm"
-						aria-controls="widget-picker"
-						:aria-expanded="picker.open.value"
-						@click="picker.toggle"
+				<div class="ml-auto flex items-center gap-2">
+					<p
+						class="inline-flex items-center gap-1.5 text-xs font-medium text-base-content/70"
+						:class="{
+							'rounded-full border border-base-300 bg-base-100/70 px-2.5 py-1':
+								saveStatusText,
+						}"
+						role="status"
+						data-testid="save-status"
 					>
-						<svg
+						<span
+							v-if="saveStatusText"
+							class="size-1.5 rounded-full"
+							:class="STATUS_DOT[saver.status.value]"
 							aria-hidden="true"
-							xmlns="http://www.w3.org/2000/svg"
-							class="h-4 w-4"
-							fill="none"
-							viewBox="0 0 24 24"
-							stroke="currentColor"
+						></span>
+						{{ saveStatusText }}
+					</p>
+
+					<div ref="pickerRoot" class="relative">
+						<button
+							ref="pickerTrigger"
+							type="button"
+							class="btn btn-primary btn-sm shadow-sm"
+							aria-controls="widget-picker"
+							:aria-expanded="picker.open.value"
+							@click="picker.toggle"
 						>
-							<path
-								stroke-linecap="round"
-								stroke-linejoin="round"
-								stroke-width="2"
-								d="M12 4v16m8-8H4"
-							/>
-						</svg>
-						Add Widget
-					</button>
-					<ul
-						v-if="picker.open.value"
-						id="widget-picker"
-						data-menu-panel
-						class="menu absolute right-0 top-full z-50 mt-1 w-72 max-w-[calc(100vw-1.5rem)] rounded-box border border-base-300 bg-base-100 p-1 shadow-lg"
-					>
-						<li v-for="type in widgetStore.availableWidgets" :key="type.id">
-							<button
-								type="button"
-								class="flex items-start gap-3"
-								@click="addWidget(type.id)"
-							>
-								<span class="text-xl" aria-hidden="true">{{ type.icon }}</span>
-								<span class="flex flex-col items-start">
-									<span class="font-semibold">{{ type.name }}</span>
-									<span class="text-xs text-base-content/70">{{
-										type.description
-									}}</span>
-								</span>
-							</button>
-						</li>
-					</ul>
+							<AppIcon name="plus" class="size-4" />
+							Add Widget
+						</button>
+						<ul
+							v-if="picker.open.value"
+							id="widget-picker"
+							data-menu-panel
+							class="menu absolute right-0 top-full z-50 mt-2 w-80 max-w-[calc(100vw-1.5rem)] origin-top-right animate-pop rounded-box border border-base-300 bg-base-100 p-1.5 shadow-float"
+						>
+							<li v-for="type in widgetStore.availableWidgets" :key="type.id">
+								<button
+									type="button"
+									class="flex items-center gap-3 px-2.5 py-2"
+									@click="addWidget(type.id)"
+								>
+									<WidgetTypeIcon :type="type.id" />
+									<span class="flex min-w-0 flex-col items-start">
+										<span class="text-sm font-medium">{{ type.name }}</span>
+										<span class="text-xs text-base-content/70">{{
+											type.description
+										}}</span>
+									</span>
+								</button>
+							</li>
+						</ul>
+					</div>
 				</div>
 			</div>
 
 			<!-- Save failure: edits stay in memory until a save succeeds -->
 			<div
 				v-if="saver.status.value === 'error'"
-				class="alert alert-error mx-3 mt-3 sm:mx-6"
+				class="alert alert-error alert-soft mx-3 mt-4 animate-rise sm:mx-6"
 				role="alert"
 			>
+				<AppIcon name="alert-triangle" class="size-5" />
 				<div>
-					<h2 class="font-bold">Your changes are not saved</h2>
+					<h2 class="font-semibold">Your changes are not saved</h2>
 					<p class="text-sm">{{ saver.error.value }}</p>
 				</div>
 				<button type="button" class="btn btn-sm" @click="saver.flush">
+					<AppIcon name="refresh" class="size-4" />
 					Retry
 				</button>
 			</div>
 
-			<p v-if="compact" class="px-3 pt-3 text-sm text-base-content/70 sm:px-6">
+			<p
+				v-if="compact"
+				class="mx-3 mt-3 flex items-center gap-2 text-xs text-base-content/70 sm:mx-6"
+			>
+				<AppIcon name="move" class="size-3.5" />
 				Moving and resizing widgets is available on wider screens.
 			</p>
 
-			<div class="flex-1 p-3 sm:p-6">
+			<div class="flex-1 p-1.5 sm:p-4">
 				<div
 					v-if="widgets.length === 0"
-					class="mx-auto flex max-w-md flex-col items-center gap-4 py-16 text-center"
+					class="surface mx-auto mt-6 flex max-w-xl animate-rise flex-col items-center gap-4 border-dashed px-6 py-12 text-center sm:mt-10"
 				>
-					<h2 class="text-2xl font-bold">Build your dashboard</h2>
-					<p class="text-base-content/70">
+					<EmptyIllustration class="max-w-60" />
+					<h2 class="text-2xl font-semibold tracking-tight">
+						Build your dashboard
+					</h2>
+					<p class="max-w-sm text-base-content/70">
 						Add widgets to bring your data together in one place.
 					</p>
-					<button type="button" class="btn btn-primary" @click="openPicker">
+					<button
+						type="button"
+						class="btn btn-primary mt-2"
+						@click="openPicker"
+					>
+						<AppIcon name="plus" class="size-4" />
 						Add your first widget
 					</button>
 				</div>
@@ -563,6 +598,7 @@ const saveStatusText = computed(() => {
 			v-if="configTarget"
 			:key="configTarget.instance.id"
 			:widget-type-name="widgetType(configTarget.instance.type)?.name ?? ''"
+			:widget-type="configTarget.instance.type"
 			:config-schema="
 				widgetType(configTarget.instance.type)?.configSchema ?? []
 			"

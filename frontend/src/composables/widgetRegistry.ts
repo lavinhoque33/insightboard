@@ -23,7 +23,6 @@ export const initializeWidgets = () => {
 		id: 'github',
 		name: 'GitHub Activity',
 		description: 'Display recent GitHub events for a user',
-		icon: '🐙',
 		component: markRaw(GitHubWidget),
 		defaultConfig: {
 			username: '',
@@ -54,7 +53,6 @@ export const initializeWidgets = () => {
 		id: 'weather',
 		name: 'Weather',
 		description: 'Display current weather for a city',
-		icon: '🌤️',
 		component: markRaw(WeatherWidget),
 		defaultConfig: {
 			city: '',
@@ -79,7 +77,6 @@ export const initializeWidgets = () => {
 		id: 'news',
 		name: 'News Feed',
 		description: 'Display latest news articles by topic',
-		icon: '📰',
 		component: markRaw(NewsWidget),
 		defaultConfig: {
 			topic: 'technology',
@@ -111,7 +108,6 @@ export const initializeWidgets = () => {
 		id: 'crypto',
 		name: 'Cryptocurrency Prices',
 		description: 'Track cryptocurrency prices and changes',
-		icon: '💰',
 		component: markRaw(CryptoWidget),
 		defaultConfig: {
 			cryptoIds: 'bitcoin,ethereum,cardano',
@@ -143,7 +139,6 @@ export const initializeWidgets = () => {
 		id: 'status',
 		name: 'Status Monitor',
 		description: 'Monitor website uptime and response times',
-		icon: '🔍',
 		component: markRaw(StatusWidget),
 		defaultConfig: {
 			urls: '',

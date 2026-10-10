@@ -19,7 +19,7 @@ RUST_VERSION := $(shell sed -n 's/^channel *= *"\(.*\)"/\1/p' rust-toolchain.tom
 RUST_IMAGE := rust:$(RUST_VERSION)-bookworm
 HAVE_CARGO := $(shell command -v cargo 2>/dev/null)
 
-.PHONY: help setup setup-env doctor db-up db-down db-reset backend-dev web-dev backend-check web-check verify format require-env require-db require-cargo require-web-deps
+.PHONY: help setup setup-env doctor db-up db-down db-reset backend-dev web-dev backend-check web-check e2e verify format require-env require-db require-cargo require-web-deps
 
 help:
 	@printf '%s\n' \
@@ -33,6 +33,7 @@ help:
 	  '  web-dev        Run Vite on 127.0.0.1:5173 with the /api proxy' \
 	  '  backend-check  cargo fmt --check, clippy -D warnings, test, build (host Rust, else container); needs db-up (GitHub Actions: uses DATABASE_URL/REDIS_URL)' \
 	  '  web-check      ESLint + Prettier check, Vitest, vue-tsc + vite build' \
+	  '  e2e            Playwright journeys (Chromium) on loopback fixtures: backend :8090, Vite :5175; needs db-up and host Rust' \
 	  '  verify         backend-check and web-check; backend tests need Postgres and Redis (make db-up)' \
 	  '  format         cargo fmt and Prettier write (needs host Rust)'
 
@@ -170,6 +171,18 @@ web-check: require-web-deps
 	cd $(FRONTEND) && npm run lint
 	cd $(FRONTEND) && npm test
 	cd $(FRONTEND) && npm run build
+
+# Playwright journeys (frontend/e2e, frontend/playwright.config.ts). Playwright starts the
+# provider/status fixture (18090/18091), the freshly built backend (8090), and Vite (5175);
+# it never reuses the dev services. The config fixes the backend's provider base URLs (the
+# fixture), provider keys (dummies), JWT secret, CORS origin, and status allowlist over any
+# value in .env; DATABASE_URL and REDIS_URL come from .env (exported without printing) or,
+# in CI, the workflow's service containers. One-time browser download:
+# cd frontend && npx playwright install chromium. Not part of verify.
+e2e: require-db require-cargo require-web-deps
+	cd $(BACKEND) && cargo build --locked
+	@printf '%s\n' 'cd $(FRONTEND) && npm run e2e  (DATABASE_URL and REDIS_URL from .env when present)'
+	@cd $(FRONTEND) && if [ -f ../.env ]; then set -a && . ../.env && set +a; fi && npm run e2e
 
 verify: backend-check web-check
 

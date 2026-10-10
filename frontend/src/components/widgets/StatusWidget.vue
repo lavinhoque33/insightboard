@@ -1,7 +1,8 @@
-/** * Status Widget * Displays URL status checks with response times */
+<!-- Status Widget: URL status checks with response times -->
 <script setup lang="ts">
 import { computed } from 'vue';
 import BaseWidget from '../BaseWidget.vue';
+import AppIcon from '../ui/AppIcon.vue';
 import { useWidgetData } from '../../composables/useWidgetData';
 import { fetchStatusData } from '../../api/widgets';
 
@@ -44,11 +45,25 @@ const summary = computed(() => {
 	return counts;
 });
 
-const BADGE: Record<Health, string> = {
-	success: 'badge-success',
-	warning: 'badge-warning',
-	error: 'badge-error',
+const PILL: Record<Health, string> = {
+	success: 'bg-success/12 text-success',
+	warning: 'bg-warning/12 text-warning',
+	error: 'bg-error/12 text-error',
 };
+
+const HEALTH_ORDER: Health[] = ['success', 'warning', 'error'];
+
+const BAR: Record<Health, string> = {
+	success: 'bg-success',
+	warning: 'bg-warning',
+	error: 'bg-error',
+};
+
+const ICON = {
+	success: 'check',
+	warning: 'arrow-right',
+	error: 'x',
+} as const;
 
 const getStatusText = (status: number): string => {
 	if (status === 0) return 'Unavailable';
@@ -57,14 +72,6 @@ const getStatusText = (status: number): string => {
 	if (status >= 400 && status < 500) return 'Client Error';
 	if (status >= 500) return 'Server Error';
 	return 'Unknown';
-};
-
-const getStatusIcon = (status: number): string => {
-	if (status === 0) return '✗';
-	if (status >= 200 && status < 300) return '✓';
-	if (status >= 300 && status < 400) return '↻';
-	if (status >= 400) return '✗';
-	return '?';
 };
 
 // Generic per-URL failure classes sent by the backend (never raw error text)
@@ -83,7 +90,7 @@ const describeError = (errorClass: string): string =>
 const formatUrl = (url: string): string => {
 	try {
 		const urlObj = new URL(url);
-		return urlObj.hostname + urlObj.pathname;
+		return urlObj.hostname + urlObj.pathname.replace(/\/$/, '');
 	} catch {
 		return url;
 	}
@@ -92,6 +99,7 @@ const formatUrl = (url: string): string => {
 
 <template>
 	<BaseWidget
+		type="status"
 		title="Status Monitor"
 		:loading="loading"
 		:error="error"
@@ -100,61 +108,83 @@ const formatUrl = (url: string): string => {
 		@configure="emit('configure')"
 		@remove="emit('remove')"
 	>
-		<!-- Empty State -->
 		<div
 			v-if="statuses.length === 0"
-			class="flex flex-col items-center justify-center py-8 text-center"
+			class="flex h-full flex-col items-center justify-center gap-2 py-6 text-center"
 		>
-			<div class="text-4xl mb-3" aria-hidden="true">🔍</div>
+			<AppIcon name="activity" class="size-7 text-base-content/40" />
 			<p class="text-sm text-base-content/70">No status results</p>
 		</div>
 
-		<div v-else class="flex flex-col gap-2">
+		<div v-else class="flex flex-col gap-3">
 			<!-- Summary first so it stays visible at the default size -->
-			<p class="flex flex-wrap gap-2 text-xs" data-testid="status-summary">
-				<span class="badge badge-sm badge-success"
-					>{{ summary.success }} healthy</span
+			<div class="flex flex-col gap-2">
+				<p
+					class="flex flex-wrap gap-1.5 text-xs font-medium tabular-nums"
+					data-testid="status-summary"
 				>
-				<span class="badge badge-sm badge-warning"
-					>{{ summary.warning }} redirects</span
+					<span class="rounded-full px-2 py-0.5" :class="PILL.success"
+						>{{ summary.success }} healthy</span
+					>
+					<span class="rounded-full px-2 py-0.5" :class="PILL.warning"
+						>{{ summary.warning }}
+						{{ summary.warning === 1 ? 'redirect' : 'redirects' }}</span
+					>
+					<span class="rounded-full px-2 py-0.5" :class="PILL.error"
+						>{{ summary.error }}
+						{{ summary.error === 1 ? 'error' : 'errors' }}</span
+					>
+				</p>
+				<div
+					class="flex h-1.5 gap-0.5 overflow-hidden rounded-full bg-base-200"
+					aria-hidden="true"
 				>
-				<span class="badge badge-sm badge-error"
-					>{{ summary.error }} errors</span
-				>
-			</p>
+					<template v-for="kind in HEALTH_ORDER" :key="kind">
+						<span
+							v-if="summary[kind]"
+							class="h-full"
+							:class="BAR[kind]"
+							:style="{ flexGrow: summary[kind] }"
+						></span>
+					</template>
+				</div>
+			</div>
 
-			<ul class="flex flex-col gap-2">
+			<ul class="flex flex-col divide-y divide-base-300/70">
 				<li
 					v-for="(status, index) in statuses"
 					:key="index"
-					class="rounded-box border border-base-300 p-2"
+					class="flex flex-col gap-1 py-2 first:pt-0 last:pb-0"
 				>
-					<div class="flex items-center justify-between gap-2">
-						<div class="flex items-center gap-2 min-w-0">
-							<span
-								class="badge badge-sm"
-								:class="BADGE[health(status.status)]"
-								aria-hidden="true"
-								>{{ getStatusIcon(status.status) }}</span
-							>
-							<span class="text-sm font-medium truncate" :title="status.url">{{
-								formatUrl(status.url)
-							}}</span>
-						</div>
+					<div class="flex items-center gap-2.5">
 						<span
-							class="badge badge-sm font-semibold shrink-0"
-							:class="BADGE[health(status.status)]"
+							class="grid size-5 shrink-0 place-items-center rounded-full"
+							:class="PILL[health(status.status)]"
+							aria-hidden="true"
+						>
+							<AppIcon :name="ICON[health(status.status)]" class="size-3" />
+						</span>
+						<span
+							class="min-w-0 flex-1 truncate text-sm font-medium"
+							:title="status.url"
+							>{{ formatUrl(status.url) }}</span
+						>
+						<span
+							class="shrink-0 rounded-md px-1.5 py-0.5 font-mono text-xs font-semibold tabular-nums"
+							:class="PILL[health(status.status)]"
 						>
 							{{ status.status === 0 ? 'ERR' : status.status }}
 						</span>
 					</div>
-					<div class="mt-1 flex items-center justify-between text-xs">
+					<div
+						class="flex items-center justify-between gap-2 pl-7.5 text-xs text-base-content/70"
+					>
 						<span>{{ getStatusText(status.status) }}</span>
-						<span>{{
+						<span class="tabular-nums">{{
 							status.status === 0 ? 'N/A' : `${status.response_time_ms} ms`
 						}}</span>
 					</div>
-					<p v-if="status.error" class="mt-1 text-xs text-error">
+					<p v-if="status.error" class="pl-7.5 text-xs text-error">
 						{{ describeError(status.error) }}
 					</p>
 				</li>

@@ -2,6 +2,8 @@
 node_modules
 dist
 coverage
+e2e/test-results
+e2e/playwright-report
 
 # npm-generated lockfile
 package-lock.json

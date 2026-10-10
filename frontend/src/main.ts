@@ -4,8 +4,12 @@ import './style.css';
 import App from './App.vue';
 import router from './router';
 import { initializeWidgets } from './composables/widgetRegistry';
+import { initTheme } from './composables/useTheme';
 import { onUnauthorized } from './api/client';
 import { useAuthStore } from './stores/auth';
+
+// index.html already applied the theme; this keeps it in sync from now on
+initTheme();
 
 const app = createApp(App);
 const pinia = createPinia();

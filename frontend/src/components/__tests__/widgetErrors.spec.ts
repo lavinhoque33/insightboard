@@ -84,7 +84,7 @@ describe('widget error and null rendering', () => {
 
 		const summary = wrapper.get('[data-testid="status-summary"]').text();
 		expect(summary).toContain('1 healthy');
-		expect(summary).toContain('1 redirects');
+		expect(summary).toMatch(/1 redirect(?!s)/);
 		expect(summary).toContain('2 errors');
 	});
 
