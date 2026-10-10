@@ -86,7 +86,10 @@
   catalogue. Weather 502 (OpenWeather 401); one manual request with a `User-Agent` got "Invalid API key", so the
   key is rejected regardless of headers (new keys may need time to activate `[INFERENCE]`). GitHub 200, empty
   array.
-- Upstream totals for the session: GitHub 2, CoinGecko 4, NewsAPI 3, OpenWeather 2, example.com 2.
+- Recheck at the owner's request, about 06:01 UTC: `.env` had been edited at 06:00 UTC; backend restarted; the
+  weather request and one manual request still got 401 "Invalid API key" (key format: 32 hex characters, as
+  expected). OpenWeather's FAQ: keys activate up to 2 hours after registration.
+- Upstream totals for the session: GitHub 2, CoinGecko 4, NewsAPI 3, OpenWeather 4, example.com 2.
 
 ## Close
 
