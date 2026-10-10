@@ -1,10 +1,9 @@
 # InsightBoard documentation
 
 InsightBoard is a personal dashboard builder: accounts, owner-scoped dashboards, and five provider widgets on a
-GridStack grid, served by a Rust/Axum API with Postgres and Redis and a Vue 3 client. M0–M3 are **implemented
-but unverified** (delivered under a legacy phase protocol, **reported** verified on a previous workstation;
-baseline drills on this workstation pending). M4 — Quality gate and hardening is **planned**, its contract
-**proposed**.
+GridStack grid, served by a Rust/Axum API with Postgres and Redis and a Vue 3 client. M0–M3 are **accepted**
+(2026-10-10, defects included, after baseline drills B0–B12 on this workstation). M4 — Quality gate and hardening
+is **planned**, its contract **proposed**.
 
 ## Start here
 
@@ -30,7 +29,7 @@ The root [README](../README.md) summarises status, limits, and layout.
 | Document | Purpose |
 | --- | --- |
 | [System overview](architecture/system-overview.md) | Components, request flows, data model, cache keys, ports and binds, boundaries, known gaps by defect ID, planned seams |
-| [M0–M3 baseline contract](architecture/m0-m3-baseline-contract.md) | **Proposed** as-built record at `f15c6a3`: routes, status codes, config, schema, widgets, editor; defect catalogue D1–D31; baseline drills B0–B12 |
+| [M0–M3 baseline contract](architecture/m0-m3-baseline-contract.md) | **Accepted** as-built record at `f15c6a3`: routes, status codes, config, schema, widgets, editor; defect catalogue D1–D31; baseline drills B0–B12 |
 | [M4 quality-gate contract](architecture/m4-quality-gate-contract.md) | **Proposed**: slices M4a–M4c, owner decisions, acceptance drills |
 
 ## Decisions

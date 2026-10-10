@@ -1,8 +1,9 @@
 # M0–M3 baseline contract: InsightBoard as built at `f15c6a3`
 
-- Status: **proposed** — the as-built record of M0–M3 at `f15c6a3` (2026-03-03). It records behaviour as it is,
-  defects included, not as it was intended. Owner acceptance follows baseline drills B1–B12 in the
-  [baseline verification record](../development/baseline-verification.md); M4 changes this behaviour only through
+- Status: **accepted** 2026-10-10 with M0–M3 — the as-built record of M0–M3 at `f15c6a3` (2026-03-03). It records
+  behaviour as it is, defects included, not as it was intended. Since `f15c6a3`, D3 is fixed (`354e06c`, M4
+  decision 4) and D30 and D31 were added from the drills recorded in the
+  [baseline verification record](../development/baseline-verification.md). M4 changes this behaviour only through
   the [M4 contract](m4-quality-gate-contract.md).
 - Sources: the code at `f15c6a3`; the three read-only audits of 2026-10-10 summarised in session
   [2026-10-10-01](../development/sessions/2026-10-10-01-workflow-onboarding.md);

@@ -95,6 +95,15 @@
   `User-Agent`, so OpenWeather is not affected by D30; the D30 entry was corrected.
 - Upstream totals for the session: GitHub 2, CoinGecko 4, NewsAPI 3, OpenWeather 5, example.com 2.
 
+## Owner decision: M0–M3 acceptance
+
+- Presented about 16:25 UTC with every drill outcome and the defects observed (B5 D30, B8 D9, B10 D23, B11
+  D13/D14, B12 D25/D31) and the plan's rule that acceptance records the product as built, defects included.
+  Options offered: accept; accept but fix D30 first; not yet.
+- Owner choice: **accept M0–M3** (2026-10-10). Recorded as **accepted** in the roadmap, plan, README, index,
+  baseline record, and checkpoint; the baseline contract, the as-built description of M0–M3, is marked
+  **accepted** with them. D30 stays scheduled in M4b.
+
 ## Close
 
 - Milestone and slice: M0–M3 baseline drills; M4a decision 4 landed early.
@@ -105,8 +114,8 @@
   keyless half of B5 about 05:00–05:20 UTC; the keyed news and github requests about 05:57 UTC; keyed weather
   about 16:22 UTC. All drills B0–B12 are recorded.
 - What remains unverified or blocked: nothing in the drills. Not pushed.
-- Decisions and permissions still needed: owner acceptance of M0–M3; M4 decisions 1–3 and 5–17; any push.
+- Decisions and permissions still needed: M4 decisions 1–3 and 5–17; any push.
 - Runtime state left: compose running (loopback); backend running from `backend/target/debug` on
   `127.0.0.1:8080` with the keys loaded; Vite stopped.
-- Next recommended action: present M0–M3 to the owner for acceptance against the baseline record, defects
-  included; then M4 preparation.
+- Next recommended action: M4 preparation — present decisions 1–3 and 5–17 with ★ recommendations, record the
+  choices, write ADR 0002, owner acceptance of the M4 contract; then M4a.

@@ -11,12 +11,12 @@ entry lives in [`sessions/`](sessions/) so this file stays short as history grow
 | --- | --- |
 | Updated | 2026-10-10 (UTC) |
 | Latest session | [2026-10-10-02-b0-loopback-and-drills](sessions/2026-10-10-02-b0-loopback-and-drills.md) |
-| Milestone | M0–M3 **implemented but unverified**, owner acceptance pending: baseline drills B0–B12 ran on this workstation on 2026-10-10 at `354e06c` (D9, D23, D25 observed; new D30 crypto and news always 502 without a `User-Agent`, D31 small-width layout). M4 — Quality gate and hardening **planned**; the [M4 contract](../architecture/m4-quality-gate-contract.md) is **proposed**; decision 4 **approved** and landed (`354e06c`), decisions 1–3 and 5–17 pending the owner. |
-| Last accepted task | Session 2026-10-10-02: decision 4 (D3 fix, `354e06c`, accepted after review and runtime B0 checks) and drills B0–B12, committed locally; not pushed. |
-| Active task | None in progress. Waiting on the owner's acceptance decision for M0–M3. |
+| Milestone | M0–M3 **accepted** by the owner on 2026-10-10 against the [baseline record](baseline-verification.md), defects included (drills B0–B12 on this workstation at `354e06c`; new D30 crypto and news always 502 without a `User-Agent`, D31 small-width layout). M4 — Quality gate and hardening **planned**; the [M4 contract](../architecture/m4-quality-gate-contract.md) is **proposed**; decision 4 **approved** and landed (`354e06c`), decisions 1–3 and 5–17 pending the owner. |
+| Last accepted task | Session 2026-10-10-02: decision 4 (D3 fix, `354e06c`), drills B0–B12, and the owner's acceptance of M0–M3, committed locally; not pushed. |
+| Active task | None in progress. Next: M4 preparation. |
 | Active delegates / write ownership | None. The main thread owns everything. |
 | Blockers | None for the drills. Any push to the public origin needs an explicit request. |
-| Exact next action | Owner acceptance of M0–M3 against the [baseline record](baseline-verification.md), defects included; then M4 preparation (decisions 1–3, 5–17, ADR 0002, contract acceptance). |
+| Exact next action | M4 preparation: present decisions 1–3 and 5–17 with ★ recommendations from the [M4 contract](../architecture/m4-quality-gate-contract.md), record the owner's choices in the roadmap, write ADR 0002, then owner acceptance of the contract; then M4a. |
 | Workspace | This workstation (Fedora 44): clone `/home/axeleratorx/PersProject/InsightBoard`, `origin` public; `main` is ahead of `origin/main` by the local commits of session 2026-10-10-02 (not pushed). `.env` present (gitignored, generated secrets, `POSTGRES_USER=postgres` for the 2026-10-01 volume with the password rotated in place). Compose running on `127.0.0.1`; backend debug build running on `127.0.0.1:8080`; Vite stopped. Host Rust via user-level rustup (rustc 1.99.0) plus `openssl-devel`; Node 20.19.0 in `.tools/`. Ignored local files `backend.log`, `frontend/dev.log`, `frontend/dev.pid` left as found. |
 
 ## Protocol
@@ -80,5 +80,5 @@ Create `sessions/YYYY-MM-DD-NN-short-topic.md`:
 
 | Session | Outcome |
 | --- | --- |
-| [2026-10-10-02-b0-loopback-and-drills](sessions/2026-10-10-02-b0-loopback-and-drills.md) | Owner approved decision 4, rustup, free-tier keys. Decision 4 landed (`implement-medium`, one main-thread fix) as `354e06c`; rustup and `openssl-devel` installed; drills B0–B12 run by the main thread (B5 weather passed once the new OpenWeather key activated); new D30 (crypto and news: no `User-Agent`) and D31. Committed locally, not pushed. |
+| [2026-10-10-02-b0-loopback-and-drills](sessions/2026-10-10-02-b0-loopback-and-drills.md) | Owner approved decision 4, rustup, free-tier keys. Decision 4 landed (`implement-medium`, one main-thread fix) as `354e06c`; rustup and `openssl-devel` installed; drills B0–B12 run by the main thread (B5 weather passed once the new OpenWeather key activated); new D30 (crypto and news: no `User-Agent`) and D31. Owner accepted M0–M3. Committed locally, not pushed. |
 | [2026-10-10-01-workflow-onboarding](sessions/2026-10-10-01-workflow-onboarding.md) | Pulled `2e1c4ac` → `f15c6a3`. Three read-only audits (`research-heavy` ×2, `research-medium`); automated baseline run on this workstation; StatusForge workflow adopted: `.omp/AGENTS.md`, plan, roadmap (M0–M7), contracts, ADR-0001, verification record, setup and testing docs, README rewrite (`implement-customHeavy` ×2); legacy docs condensed, moved, or removed. Committed and pushed at the owner's request. |

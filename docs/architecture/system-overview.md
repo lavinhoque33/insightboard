@@ -124,8 +124,9 @@ Optional provider credentials: `GITHUB_API_TOKEN`, `OPENWEATHER_API_KEY`, `NEWSA
 | Vite dev server | 5173 | `127.0.0.1` (`frontend/vite.config.ts`) | n/a |
 
 M4 decision 4 (owner-approved 2026-10-10) landed these loopback binds and credentials as the B0 mitigation for
-**D3**: **implemented but unverified**, no drill has run. Setting `APP_HOST` to a non-loopback address is a
-deliberate owner-approved change and is not blocked by code. CORS stays permissive (D4, decision 7).
+**D3** in `354e06c`; drill B0 observed loopback-only listeners on this workstation the same day. Setting `APP_HOST`
+to a non-loopback address is a deliberate owner-approved change and is not blocked by code. CORS stays permissive
+(D4, decision 7).
 
 ## Boundaries
 

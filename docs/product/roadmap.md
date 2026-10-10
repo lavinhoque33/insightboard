@@ -13,10 +13,10 @@ they matter.
 
 | Milestone | Outcome | Status |
 | --- | --- | --- |
-| M0 — Foundation | Toolchain, compose Postgres and Redis, Axum skeleton with config, migrations, and health; Vue shell | **Implemented but unverified**; see the qualification below and the [baseline verification record](../development/baseline-verification.md) |
-| M1 — Accounts and dashboards | Register and login with JWT sessions; owner-scoped dashboard CRUD; frontend auth flow and dashboard list | **Implemented but unverified**; see the qualification below and the [baseline verification record](../development/baseline-verification.md) |
-| M2 — Widgets and editor | Five provider widgets through a cached backend proxy; GridStack editor with persisted layout | **Implemented but unverified**; see the qualification below and the [baseline verification record](../development/baseline-verification.md) |
-| M3 — UI polish and contract alignment | daisyUI styling, auth and editor fixes, v1 payload contract, draft-on-add editor | **Implemented but unverified**; see the qualification below and the [baseline verification record](../development/baseline-verification.md) |
+| M0 — Foundation | Toolchain, compose Postgres and Redis, Axum skeleton with config, migrations, and health; Vue shell | **Accepted** 2026-10-10 (owner), defects included; see the qualification below and the [baseline verification record](../development/baseline-verification.md) |
+| M1 — Accounts and dashboards | Register and login with JWT sessions; owner-scoped dashboard CRUD; frontend auth flow and dashboard list | **Accepted** 2026-10-10 (owner), defects included; see the qualification below and the [baseline verification record](../development/baseline-verification.md) |
+| M2 — Widgets and editor | Five provider widgets through a cached backend proxy; GridStack editor with persisted layout | **Accepted** 2026-10-10 (owner), defects included; see the qualification below and the [baseline verification record](../development/baseline-verification.md) |
+| M3 — UI polish and contract alignment | daisyUI styling, auth and editor fixes, v1 payload contract, draft-on-add editor | **Accepted** 2026-10-10 (owner), defects included; see the qualification below and the [baseline verification record](../development/baseline-verification.md) |
 | M4 — Quality gate and hardening | Reproducible builds, passing gates, loopback defaults, safe outbound calls, real test suites, CI | **Planned**; [contract](../architecture/m4-quality-gate-contract.md) **proposed**, owner decisions pending |
 | M5 — Local release | A reproducible, documented, independently runnable local product | **Planned** |
 | M6 — AWS readiness | Cloud adapters and an inspectable, synth-only experiment proposal, without deployment | **Planned** |
@@ -33,14 +33,15 @@ they matter.
   `cargo clippy -D warnings`, and `npm audit` fail (D13, D14).
 - Drills B0–B12 ran on this workstation on 2026-10-10 at `354e06c` after the decision 4 change (B0); they observed
   D9, D23, D25, and two new defects, D30 (crypto and news always 502: no `User-Agent`) and D31 (small-width
-  layout). Owner acceptance of M0–M3 follows a review of the
-  [baseline verification record](../development/baseline-verification.md).
+  layout).
+- **Accepted** by the owner on 2026-10-10 against the
+  [baseline verification record](../development/baseline-verification.md), defects included.
 
 The binding as-built behaviour, the defect catalogue D1–D31, and drills B0–B12 are in the
-[M0–M3 baseline contract](../architecture/m0-m3-baseline-contract.md) (**proposed**). Acceptance of M0–M3 records
-the product as it is, defects included; fixing defects is M4 work.
+[M0–M3 baseline contract](../architecture/m0-m3-baseline-contract.md) (**accepted** with M0–M3). Acceptance of M0–M3
+records the product as it is, defects included; fixing defects is M4 work.
 
-## M0 — Foundation (implemented but unverified)
+## M0 — Foundation (accepted)
 
 **Objective (plan 12/M0):** a local development baseline that starts, persists data, and builds.
 
@@ -53,7 +54,7 @@ the product as it is, defects included; fixing defects is M4 work.
 - `frontend/`: Vue 3 + Vite + TypeScript shell with Pinia, Vue Router, and an axios client.
 - `.env.example`, `frontend/.env.example`, `.nvmrc` (Node 20.19.0), ignore rules.
 
-**Status:** **implemented but unverified** (qualification above); owner acceptance pending drills B1–B12.
+**Status:** **accepted** 2026-10-10 (qualification above).
 
 **Exit evidence and where it is recorded:**
 
@@ -66,7 +67,7 @@ the product as it is, defects included; fixing defects is M4 work.
 
 **Keep out:** cloud resources, public access, production builds.
 
-## M1 — Accounts and dashboards (implemented but unverified)
+## M1 — Accounts and dashboards (accepted)
 
 **Objective (plan 12/M1):** a user can create an account, sign in, and manage their own dashboards.
 
@@ -76,7 +77,7 @@ the product as it is, defects included; fixing defects is M4 work.
 - `GET|POST /api/dashboards`, `GET|PUT|DELETE /api/dashboards/:id`, all scoped to the token's user.
 - Login and register views, guarded routes, session in localStorage, dashboard list with create, open, delete.
 
-**Status:** **implemented but unverified** (qualification above); owner acceptance pending drills B1–B12.
+**Status:** **accepted** 2026-10-10 (qualification above).
 
 | Gate | Evidence |
 | --- | --- |
@@ -87,7 +88,7 @@ the product as it is, defects included; fixing defects is M4 work.
 
 **Keep out:** refresh tokens, Cognito, roles, public dashboards.
 
-## M2 — Widgets and editor (implemented but unverified)
+## M2 — Widgets and editor (accepted)
 
 **Objective (plan 12/M2):** five useful widgets on a dashboard the user can arrange, with provider data fetched
 and cached by the backend.
@@ -98,7 +99,7 @@ and cached by the backend.
 - Widget registry, `BaseWidget`, five widget components with interval refresh, the configuration modal.
 - GridStack editor (12 columns) with drag, resize, add, configure, remove, and 2 s auto-save of `layout_json`.
 
-**Status:** **implemented but unverified** (qualification above); owner acceptance pending drills B1–B12.
+**Status:** **accepted** 2026-10-10 (qualification above).
 
 | Gate | Evidence |
 | --- | --- |
@@ -110,7 +111,7 @@ and cached by the backend.
 
 **Keep out:** new providers, background refresh, charts.
 
-## M3 — UI polish and contract alignment (implemented but unverified)
+## M3 — UI polish and contract alignment (accepted)
 
 **Objective (plan 12/M3):** a consistent interface and one agreed payload shape across backend and frontend.
 
@@ -124,7 +125,7 @@ and cached by the backend.
 - Draft-on-add: a new widget exists only after **Save Changes**.
 - 5 backend unit tests and 3 frontend component tests.
 
-**Status:** **implemented but unverified** (qualification above); owner acceptance pending drills B1–B12.
+**Status:** **accepted** 2026-10-10 (qualification above).
 
 | Gate | Evidence |
 | --- | --- |
@@ -215,6 +216,7 @@ before any other external request.
 
 ## Next action
 
-1. Owner acceptance of M0–M3 against the [baseline verification record](../development/baseline-verification.md),
-   defects included.
-2. M4 preparation: decisions 1–3 and 5–17, ADR 0002, contract acceptance; then M4a.
+1. M4 preparation: the owner decides 1–3 and 5–17 (★ recommendations in the
+   [M4 contract](../architecture/m4-quality-gate-contract.md)); the main thread records the choices above, writes
+   ADR 0002, and the owner accepts the contract.
+2. M4a.

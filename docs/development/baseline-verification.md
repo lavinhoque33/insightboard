@@ -8,7 +8,7 @@ behaviour and the drills are defined in the [M0–M3 baseline contract](../archi
 ## Status
 
 M0 — Foundation, M1 — Accounts and dashboards, M2 — Widgets and editor, and M3 — UI polish and contract alignment
-are **implemented but unverified**:
+are **accepted** by the owner on 2026-10-10 against this record, defects included:
 
 - Delivered 2025-10-28 to 2026-03-03 under the legacy stop-and-confirm phase protocol, which treated phases as
   milestones and marked them "COMPLETED & VERIFIED".
@@ -17,8 +17,8 @@ are **implemented but unverified**:
 - The 2026-03-03 audit (`f15c6a3`) found and fixed defects inside phases already marked completed.
 - The 2026-10-10 automated baseline on this workstation passes builds and tests; `cargo fmt --check`,
   `cargo clippy -D warnings`, and `npm audit` fail (section "Automated baseline").
-- Drills B0–B12 ran on this workstation on 2026-10-10 at `354e06c` (section "Drills"). Owner acceptance of M0–M3
-  follows the owner's review of this record and the recorded defects.
+- Drills B0–B12 ran on this workstation on 2026-10-10 at `354e06c` (section "Drills"). The recorded defects are
+  scheduled in M4 or later; acceptance does not change them.
 
 ## Environment
 

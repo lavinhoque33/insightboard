@@ -8,15 +8,14 @@ is deployed.
 - **$0 of spending.** Free provider tiers only, with keys you supply; no cloud resources.
 - **Local only.** Binds loopback by default (M4 decision 4, below).
 
-**Status:** M0–M3 are **implemented but unverified**. They were delivered between 2025-10-28 and 2026-03-03
-under a legacy phase protocol and **reported** verified on a previous workstation, with no evidence beyond
-prose; the 2026-03-03 audit (`f15c6a3`) still found and fixed defects in phases marked complete. On this
-workstation, the 2026-10-10 automated baseline **observed** passing builds and tests, and failing
-`cargo fmt --check`, `cargo clippy -D warnings`, and `npm audit`. User journeys have not been re-exercised here;
-owner acceptance follows baseline drills B1–B12 in the
+**Status:** M0–M3 are **accepted** (2026-10-10), defects included. They were delivered between 2025-10-28 and
+2026-03-03 under a legacy phase protocol and **reported** verified on a previous workstation, with no evidence
+beyond prose. On this workstation, the 2026-10-10 baseline drills B0–B12 **observed** passing builds, tests, and
+user journeys, failing `cargo fmt --check`, `cargo clippy -D warnings`, and `npm audit`, and defects including
+D9, D23, D25, D30 (crypto and news widgets always fail), and D31 (small-width layout); see the
 [baseline verification record](docs/development/baseline-verification.md). M4 — Quality gate and hardening is
-next: **planned**, with its [contract](docs/architecture/m4-quality-gate-contract.md) **proposed** and owner
-decisions pending. See the [roadmap](docs/product/roadmap.md).
+next: **planned**, with its [contract](docs/architecture/m4-quality-gate-contract.md) **proposed**, decision 4
+landed, and the other owner decisions pending. See the [roadmap](docs/product/roadmap.md).
 
 ## What works (as built at `f15c6a3`)
 
