@@ -15,7 +15,7 @@ entry lives in [`sessions/`](sessions/) so this file stays short as history grow
 | Last accepted task | Session 2026-10-10-04: M4b — `b20986e` (outbound safety, rate limits, auth, error model, dashboard JSON, Redis/`/readyz`, contract tests); drills 5–11 pass. Earlier the same session: ADR 0001 accepted and `main` pushed to origin at `42555eb` on the owner's request. M4b commits are local, not pushed. |
 | Active task | None in progress. Next: M4c. |
 | Active delegates / write ownership | None. The main thread owns everything. |
-| Blockers | None. Any further push (and enabling CI in M4c) needs a new explicit request. |
+| Blockers | None. Standing push authorization since 2026-10-10 (scope in `.omp/AGENTS.md`); force-push, tags, releases, PRs, and visibility changes still need an explicit request. |
 | Exact next action | M4c: brief `implement-heavy` with contract sections 9 (frontend), 10, 11 (daisyUI), 12, the M4c drills, and the carry-forward items in the M4 verification record; then `verify-browser`; record evidence; ask the owner to accept M4. |
 | Workspace | This workstation (Fedora 44): clone `/home/axeleratorx/PersProject/InsightBoard`, `origin` public at `42555eb`; local commits after it not pushed. `.env` present (gitignored, mode 600; Postgres and Redis passwords rotated 2026-10-10). Compose project containers `insightboard-postgres-1`, `insightboard-redis-1` on `127.0.0.1`; backend `b20986e` debug build on `127.0.0.1:8080`; Vite on `127.0.0.1:5173`. Backend tests need `make db-up`. rustc 1.99.0 (pinned); Node 20.19.0 in `.tools/`. |
 

@@ -426,7 +426,9 @@ Ask the owner before:
 
 - spending of any kind, new paid services, or new keys;
 - cloud resources or deploys;
-- any push to the public origin, tags, releases, opening pull requests, enabling CI, or visibility changes;
+- pushes to the public origin beyond the owner's standing push authorization (2026-10-10; scope in
+  `.omp/AGENTS.md`, "Git publication"), and always force-pushes, history rewrites, tags, releases, opening pull
+  requests, or visibility changes;
 - destructive data operations (`docker compose down -v`, dropping the database or volumes);
 - LAN or public exposure;
 - external targets beyond the approved list in the roadmap;
@@ -447,7 +449,7 @@ Permission to change code is not permission for any of these.
 | Legacy "verified" claims mistaken for evidence | Label them **reported**; accept M0–M3 only after drills |
 | Non-reproducible builds hide regressions (D12) | Lockfile, toolchain pin, `engines` (M4a) |
 | Vulnerable or beta dependencies (D14, D24) | Audit fixes and daisyUI stable in M4 with owner approval |
-| Every push publishes (public origin) | Commits stay local until the owner asks for a push |
+| Every push publishes (public origin) | Reviewed commits only, secret scan before every push (standing authorization, 2026-10-10) |
 | Provider free tiers change terms, quotas, or require payment | Human-scale manual use only; drop the provider rather than pay |
 | Backlog features pulled in without a milestone | Section 5 backlog requires an owner decision and a milestone |
 

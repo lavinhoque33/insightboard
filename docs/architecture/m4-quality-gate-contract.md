@@ -208,7 +208,7 @@ All providers:
 - GitHub Actions workflow with backend and web jobs and Postgres and Redis service containers; it runs
   `make backend-check` and `make web-check` (or their documented equivalents).
 - No secrets, no provider keys, no live provider calls, no deploy step.
-- Enabling CI is a push to the public origin and needs an explicit owner request.
+- Enabling CI is a push to the public origin; the owner's standing push authorization (2026-10-10) covers it.
 
 ## 11. Dependencies (M4a and M4c; decision 14; D14, D24, D26)
 
@@ -277,7 +277,7 @@ local mocks; manual provider smoke stays within the approved external targets in
 | 12 | Configure an existing widget in the browser (the D9 prefill drill) | The form shows the current configuration; Save keeps unchanged fields |
 | 13 | Make a save fail (backend stopped) | A visible error with retry; no silent loss |
 | 14 | Edit, then leave the editor | No extra PUT after leaving |
-| 15 | CI on a pushed branch (after an explicit push request) | fmt, clippy, ESLint, Vitest, and `cargo test` green |
+| 15 | CI on a pushed branch | fmt, clippy, ESLint, Vitest, and `cargo test` green |
 | 16 | Rerun baseline drills B1–B10 | All green; B8 now passes as drill 12 |
 
 ## 15. Out of scope

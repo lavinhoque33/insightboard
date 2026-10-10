@@ -172,7 +172,7 @@ rate limits, dashboard cap, 422 shape, `/readyz`) in the contract's "Preparation
 | 10 | Error model; owner calls: 400 vs 422 with details, 400 vs 503 for a missing key | no ★ | **approved**; 422 with details; 503 | 2026-10-10 |
 | 11 | Contract tests on both sides; OpenAPI later | ★ as proposed | **approved** ★ | 2026-10-10 |
 | 12 | Test suites with local mocks, no live providers | ★ as proposed | **approved** ★ | 2026-10-10 |
-| 13 | GitHub Actions CI without secrets or live providers | ★ as proposed | **approved** ★; enabling needs a push request | 2026-10-10 |
+| 13 | GitHub Actions CI without secrets or live providers | ★ as proposed | **approved** ★; enabling needs a push request (granted as a standing push authorization, 2026-10-10) | 2026-10-10 |
 | 14 | Dependency fixes, daisyUI stable, unused removals, `engines` | no ★ | **approved** as written | 2026-10-10 |
 | 15 | Frontend defects; owner calls: title source (`name` ★), auto-save with visible errors ★, keyboard layout editing | partial ★ | **approved**; `name`; auto-save with error and retry; keyboard layout editing to the backlog | 2026-10-10 |
 | 16 | MIT `LICENSE` | ★ as proposed | **approved** ★ | 2026-10-10 |
@@ -231,5 +231,5 @@ before any other external request.
 1. M4c: brief `implement-heavy` with contract sections 9 (frontend part), 10, 11 (daisyUI), and 12, the M4c drills,
    and the M4a/M4b carry-forward items in the [M4 verification record](../development/m4-verification.md); one
    writer for `frontend/package.json` and `frontend/package-lock.json`; then `verify-browser` (desktop, 390 px,
-   keyboard). Enabling CI needs an explicit push request.
+   keyboard). CI is pushed under the standing push authorization.
 2. Record M4c evidence; then ask the owner to accept M4.
