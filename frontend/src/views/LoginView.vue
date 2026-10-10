@@ -26,8 +26,7 @@
 						<!-- Email Field -->
 						<div class="form-control w-full">
 							<label class="label">
-								<span
-									class="label-text font-semibold text-base-content"
+								<span class="label-text font-semibold text-base-content"
 									>Email Address</span
 								>
 								<span class="label-text-alt text-error">*</span>
@@ -42,8 +41,7 @@
 								:disabled="authStore.loading"
 							/>
 							<label class="label">
-								<span
-									class="label-text-alt text-base-content/60"
+								<span class="label-text-alt text-base-content/60"
 									>We'll never share your email</span
 								>
 							</label>
@@ -52,8 +50,7 @@
 						<!-- Password Field -->
 						<div class="form-control w-full">
 							<label class="label">
-								<span
-									class="label-text font-semibold text-base-content"
+								<span class="label-text font-semibold text-base-content"
 									>Password</span
 								>
 								<span class="label-text-alt text-error">*</span>
@@ -96,9 +93,7 @@
 										d="M10 14l-2-2m0 0l-2-2m2 2l2-2m-2 2l-2 2m2-2l2 2m7-2a9 9 0 11-18 0 9 9 0 0118 0z"
 									/>
 								</svg>
-								<span class="text-sm">{{
-									authStore.error
-								}}</span>
+								<span class="text-sm">{{ authStore.error }}</span>
 							</div>
 						</transition>
 
@@ -126,9 +121,7 @@
 								Sign In
 							</template>
 							<template v-else>
-								<span
-									class="loading loading-spinner loading-sm"
-								></span>
+								<span class="loading loading-spinner loading-sm"></span>
 								Signing in...
 							</template>
 						</button>
@@ -166,8 +159,7 @@
 							></path>
 						</svg>
 						<span class="text-sm"
-							>Test with any email and password. Development mode
-							enabled!</span
+							>Test with any email and password. Development mode enabled!</span
 						>
 					</div>
 				</div>
@@ -190,9 +182,9 @@ const password = ref('');
 
 // Clear error as user edits fields for smoother UX
 watch([email, password], () => {
-    if (authStore.error) {
-        authStore.clearError();
-    }
+	if (authStore.error) {
+		authStore.clearError();
+	}
 });
 
 const handleSubmit = async () => {

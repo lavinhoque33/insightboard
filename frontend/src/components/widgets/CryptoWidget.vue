@@ -77,7 +77,6 @@ const formatMarketCap = (marketCap: number): string => {
 	return `$${marketCap.toLocaleString()}`;
 };
 
-
 const getPriceChangeIcon = (change: number): string => {
 	if (change > 0) return '▲';
 	if (change < 0) return '▼';
@@ -127,9 +126,7 @@ onUnmounted(() => {
 			class="flex flex-col items-center justify-center py-8 text-center"
 		>
 			<div class="text-4xl mb-3">💰</div>
-			<p class="text-sm text-base-content/60">
-				No cryptocurrency data found
-			</p>
+			<p class="text-sm text-base-content/60">No cryptocurrency data found</p>
 		</div>
 
 		<!-- Crypto List -->
@@ -168,24 +165,17 @@ onUnmounted(() => {
 						<div
 							class="badge"
 							:class="{
-								'badge-success':
-									crypto.price_change_percentage_24h > 0,
-								'badge-error':
-									crypto.price_change_percentage_24h < 0,
-								'badge-ghost':
-									crypto.price_change_percentage_24h === 0,
+								'badge-success': crypto.price_change_percentage_24h > 0,
+								'badge-error': crypto.price_change_percentage_24h < 0,
+								'badge-ghost': crypto.price_change_percentage_24h === 0,
 							}"
 						>
 							<span>{{
-								getPriceChangeIcon(
-									crypto.price_change_percentage_24h,
-								)
+								getPriceChangeIcon(crypto.price_change_percentage_24h)
 							}}</span>
 							<span
 								>{{
-									Math.abs(
-										crypto.price_change_percentage_24h,
-									).toFixed(2)
+									Math.abs(crypto.price_change_percentage_24h).toFixed(2)
 								}}%</span
 							>
 							<span class="text-xs">(24h)</span>

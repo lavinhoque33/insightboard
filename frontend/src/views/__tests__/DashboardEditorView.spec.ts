@@ -94,13 +94,8 @@ vi.mock('gridstack', () => ({
 	},
 }));
 
-const findButtonByText = (
-	root: ReturnType<typeof mount>,
-	text: string,
-) => {
-	return root
-		.findAll('button')
-		.find((button) => button.text().includes(text));
+const findButtonByText = (root: ReturnType<typeof mount>, text: string) => {
+	return root.findAll('button').find((button) => button.text().includes(text));
 };
 
 describe('DashboardEditorView', () => {

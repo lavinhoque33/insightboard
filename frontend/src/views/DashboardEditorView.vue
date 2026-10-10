@@ -306,15 +306,15 @@ onBeforeUnmount(() => {
 			</div>
 
 			<!-- Add Widget Dropdown -->
-				<div
-					class="dropdown dropdown-end"
-					:class="{ 'dropdown-open': showWidgetPicker }"
+			<div
+				class="dropdown dropdown-end"
+				:class="{ 'dropdown-open': showWidgetPicker }"
+			>
+				<button
+					class="btn btn-primary gap-2 shadow-lg"
+					@click="showWidgetPicker = !showWidgetPicker"
+					type="button"
 				>
-					<button
-						class="btn btn-primary gap-2 shadow-lg"
-						@click="showWidgetPicker = !showWidgetPicker"
-						type="button"
-					>
 					<svg
 						xmlns="http://www.w3.org/2000/svg"
 						class="h-5 w-5"
@@ -338,22 +338,18 @@ onBeforeUnmount(() => {
 						v-for="widgetType in widgetStore.availableWidgets"
 						:key="widgetType.id"
 					>
-							<button
-								@click="addWidget(widgetType.id, $event)"
-								type="button"
+						<button
+							@click="addWidget(widgetType.id, $event)"
+							type="button"
 							class="p-3 text-left w-full hover:bg-base-200 rounded transition-colors"
 						>
 							<div class="flex items-start gap-3 w-full">
-								<span class="text-2xl">{{
-									widgetType.icon
-								}}</span>
+								<span class="text-2xl">{{ widgetType.icon }}</span>
 								<div class="flex-1">
 									<div class="font-bold text-base-content">
 										{{ widgetType.name }}
 									</div>
-									<div
-										class="text-sm text-base-content/60 mt-1"
-									>
+									<div class="text-sm text-base-content/60 mt-1">
 										{{ widgetType.description }}
 									</div>
 								</div>
@@ -396,8 +392,8 @@ onBeforeUnmount(() => {
 						Build Your Dashboard
 					</h2>
 					<p class="text-base-content/60 mb-8">
-						Add widgets to visualize your data and create a
-						personalized dashboard experience.
+						Add widgets to visualize your data and create a personalized
+						dashboard experience.
 					</p>
 					<button
 						@click="showWidgetPicker = true"

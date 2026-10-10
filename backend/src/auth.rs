@@ -2,12 +2,7 @@ use argon2::{
     password_hash::{rand_core::OsRng, PasswordHash, PasswordHasher, PasswordVerifier, SaltString},
     Argon2,
 };
-use axum::{
-    async_trait,
-    extract::FromRequestParts,
-    http::request::Parts,
-    RequestPartsExt,
-};
+use axum::{async_trait, extract::FromRequestParts, http::request::Parts, RequestPartsExt};
 use axum_extra::{
     headers::{authorization::Bearer, Authorization},
     TypedHeader,
@@ -16,15 +11,18 @@ use jsonwebtoken::{decode, encode, DecodingKey, EncodingKey, Header, Validation}
 use serde::{Deserialize, Serialize};
 use uuid::Uuid;
 
-use crate::{error::{AppError, Result}, AppState};
+use crate::{
+    error::{AppError, Result},
+    AppState,
+};
 
 /// JWT claims
 #[derive(Debug, Serialize, Deserialize)]
 pub struct Claims {
-    pub sub: String,  // Subject (user ID)
+    pub sub: String, // Subject (user ID)
     pub email: String,
-    pub exp: usize,   // Expiration time
-    pub iat: usize,   // Issued at
+    pub exp: usize, // Expiration time
+    pub iat: usize, // Issued at
 }
 
 /// User context extracted from JWT
@@ -38,12 +36,12 @@ pub struct UserCtx {
 pub fn hash_password(password: &str) -> Result<String> {
     let salt = SaltString::generate(&mut OsRng);
     let argon2 = Argon2::default();
-    
+
     let password_hash = argon2
         .hash_password(password.as_bytes(), &salt)
         .map_err(|e| AppError::Internal(format!("Failed to hash password: {}", e)))?
         .to_string();
-    
+
     Ok(password_hash)
 }
 
@@ -51,10 +49,12 @@ pub fn hash_password(password: &str) -> Result<String> {
 pub fn verify_password(password: &str, password_hash: &str) -> Result<bool> {
     let parsed_hash = PasswordHash::new(password_hash)
         .map_err(|e| AppError::Internal(format!("Failed to parse password hash: {}", e)))?;
-    
+
     let argon2 = Argon2::default();
-    
-    Ok(argon2.verify_password(password.as_bytes(), &parsed_hash).is_ok())
+
+    Ok(argon2
+        .verify_password(password.as_bytes(), &parsed_hash)
+        .is_ok())
 }
 
 /// Generate a JWT token
@@ -137,7 +137,8 @@ mod tests {
     #[test]
     fn password_hash_rejects_wrong_password() {
         let hashed = hash_password("password123").expect("password should hash");
-        let valid = verify_password("wrong-password", &hashed).expect("verification should succeed");
+        let valid =
+            verify_password("wrong-password", &hashed).expect("verification should succeed");
         assert!(!valid);
     }
 
@@ -147,7 +148,8 @@ mod tests {
         let email = "contract@example.com";
         let secret = "test-secret";
 
-        let token = generate_token(user_id, email, secret).expect("token generation should succeed");
+        let token =
+            generate_token(user_id, email, secret).expect("token generation should succeed");
         let claims = validate_token(&token, secret).expect("token validation should succeed");
 
         assert_eq!(claims.sub, user_id.to_string());

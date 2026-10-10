@@ -13,11 +13,13 @@ const handleLogout = () => {
 };
 
 // Dynamic classes for auth buttons (daisyUI)
-const loginBtnClass = computed(() =>
-    `btn btn-sm gap-2 transition-colors duration-200 ${route.path.startsWith('/login') ? 'btn-primary' : 'btn-ghost'}`,
+const loginBtnClass = computed(
+	() =>
+		`btn btn-sm gap-2 transition-colors duration-200 ${route.path.startsWith('/login') ? 'btn-primary' : 'btn-ghost'}`,
 );
-const registerBtnClass = computed(() =>
-    `btn btn-sm gap-2 transition-colors duration-200 ${route.path.startsWith('/register') ? 'btn-primary' : 'btn-ghost'}`,
+const registerBtnClass = computed(
+	() =>
+		`btn btn-sm gap-2 transition-colors duration-200 ${route.path.startsWith('/register') ? 'btn-primary' : 'btn-ghost'}`,
 );
 </script>
 
@@ -70,11 +72,7 @@ const registerBtnClass = computed(() =>
 								class="bg-gradient-to-br from-primary to-secondary text-white w-10 rounded-full flex items-center justify-center"
 							>
 								<span class="text-lg font-bold">
-									{{
-										authStore.user?.email
-											?.charAt(0)
-											.toUpperCase()
-									}}
+									{{ authStore.user?.email?.charAt(0).toUpperCase() }}
 								</span>
 							</div>
 						</div>
@@ -160,8 +158,7 @@ const registerBtnClass = computed(() =>
 			<aside>
 				<p class="text-sm">
 					© 2025 InsightBoard. Built with
-					<span class="text-error">♥</span> using Rust, Vue 3 &
-					daisyUI.
+					<span class="text-error">♥</span> using Rust, Vue 3 & daisyUI.
 				</p>
 			</aside>
 		</footer>

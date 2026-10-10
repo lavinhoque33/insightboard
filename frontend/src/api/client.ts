@@ -46,8 +46,7 @@ apiClient.interceptors.response.use(
 			// Try to surface validation details for 422 responses so UI can show
 			// helpful messages instead of a generic error.
 			let message = data.message || data.error || 'An error occurred';
-			const details =
-				data.details ?? data.errors ?? data.validation ?? null;
+			const details = data.details ?? data.errors ?? data.validation ?? null;
 
 			if (error.response.status === 422 && details) {
 				// Format details into a readable string depending on their shape
@@ -59,10 +58,8 @@ apiClient.interceptors.response.use(
 				} else if (typeof details === 'object') {
 					formatted = Object.entries(details)
 						.map(([k, v]) => {
-							if (Array.isArray(v))
-								return `${k}: ${v.join(', ')}`;
-							if (typeof v === 'object')
-								return `${k}: ${JSON.stringify(v)}`;
+							if (Array.isArray(v)) return `${k}: ${v.join(', ')}`;
+							if (typeof v === 'object') return `${k}: ${JSON.stringify(v)}`;
 							return `${k}: ${v}`;
 						})
 						.join('; ');
@@ -105,8 +102,7 @@ apiClient.interceptors.response.use(
 		} else if (error.request) {
 			// Request made but no response
 			const apiError: ApiError = {
-				message:
-					'No response from server. Please check your connection.',
+				message: 'No response from server. Please check your connection.',
 				status: 0,
 			};
 			return Promise.reject(apiError);

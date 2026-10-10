@@ -1,7 +1,15 @@
-use axum::{extract::{Query, State}, response::IntoResponse, Json};
+use axum::{
+    extract::{Query, State},
+    response::IntoResponse,
+    Json,
+};
 use serde::{Deserialize, Serialize};
 
-use crate::{auth::UserCtx, error::{AppError, Result}, AppState};
+use crate::{
+    auth::UserCtx,
+    error::{AppError, Result},
+    AppState,
+};
 
 #[derive(Debug, Deserialize)]
 pub struct NewsQuery {
@@ -35,35 +43,48 @@ pub async fn fetch_news_data(
     State(state): State<AppState>,
     Query(query): Query<NewsQuery>,
 ) -> Result<impl IntoResponse> {
-    let api_key = state.config.newsapi_api_key.as_ref()
+    let api_key = state
+        .config
+        .newsapi_api_key
+        .as_ref()
         .ok_or_else(|| AppError::Validation("NewsAPI key not configured".to_string()))?;
-    
+
     let cache_key = format!("news:{}", query.topic);
-    
+
     // Check cache first
-    if let Some(cached) = state.cache.get::<Vec<NewsArticle>>(&cache_key).await.ok().flatten() {
+    if let Some(cached) = state
+        .cache
+        .get::<Vec<NewsArticle>>(&cache_key)
+        .await
+        .ok()
+        .flatten()
+    {
         tracing::debug!("Cache hit for news data: {}", query.topic);
         return Ok(Json(cached));
     }
-    
+
     // Fetch from NewsAPI
     let url = format!(
         "https://newsapi.org/v2/everything?q={}&apiKey={}&pageSize=10&sortBy=publishedAt",
         query.topic, api_key
     );
-    
-    let response = reqwest::get(&url).await
+
+    let response = reqwest::get(&url)
+        .await
         .map_err(|e| AppError::ExternalApi(format!("NewsAPI error: {}", e)))?;
-    
+
     if !response.status().is_success() {
-        return Err(AppError::ExternalApi(
-            format!("NewsAPI returned status: {}", response.status())
-        ));
+        return Err(AppError::ExternalApi(format!(
+            "NewsAPI returned status: {}",
+            response.status()
+        )));
     }
-    
-    let json: serde_json::Value = response.json().await
+
+    let json: serde_json::Value = response
+        .json()
+        .await
         .map_err(|e| AppError::ExternalApi(format!("Failed to parse news response: {}", e)))?;
-    
+
     let articles: Vec<NewsArticle> = json["articles"]
         .as_array()
         .unwrap_or(&vec![])
@@ -73,15 +94,18 @@ pub async fn fetch_news_data(
             description: article["description"].as_str().unwrap_or("").to_string(),
             url: article["url"].as_str().unwrap_or("").to_string(),
             source: NewsSource {
-                name: article["source"]["name"].as_str().unwrap_or("Unknown").to_string(),
+                name: article["source"]["name"]
+                    .as_str()
+                    .unwrap_or("Unknown")
+                    .to_string(),
             },
             published_at: article["publishedAt"].as_str().unwrap_or("").to_string(),
             url_to_image: article["urlToImage"].as_str().map(|s| s.to_string()),
         })
         .collect();
-    
+
     // Cache for 15 minutes
     let _ = state.cache.set(&cache_key, &articles, 900).await;
-    
+
     Ok(Json(articles))
 }

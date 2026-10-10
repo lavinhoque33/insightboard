@@ -90,10 +90,7 @@ const handleBackdropClick = (event: MouseEvent) => {
 	<Transition name="modal">
 		<!-- daisyUI Modal Dialog -->
 		<div v-if="show" class="modal modal-open" @click="handleBackdropClick">
-			<div
-				class="modal-box w-full max-w-md bg-base-100 shadow-2xl"
-				@click.stop
-			>
+			<div class="modal-box w-full max-w-md bg-base-100 shadow-2xl" @click.stop>
 				<!-- Modal Header with Gradient -->
 				<div class="pb-4 border-b border-base-300">
 					<div class="flex items-center justify-between">
@@ -139,11 +136,7 @@ const handleBackdropClick = (event: MouseEvent) => {
 						<label :for="field.key" class="label">
 							<span class="label-text font-medium">
 								{{ field.label }}
-								<span
-									v-if="field.required"
-									class="text-error ml-1"
-									>*</span
-								>
+								<span v-if="field.required" class="text-error ml-1">*</span>
 							</span>
 						</label>
 
@@ -215,10 +208,7 @@ const handleBackdropClick = (event: MouseEvent) => {
 								type="checkbox"
 								class="checkbox checkbox-primary"
 							/>
-							<label
-								:for="field.key"
-								class="label cursor-pointer flex-1"
-							>
+							<label :for="field.key" class="label cursor-pointer flex-1">
 								<span class="label-text">
 									{{ field.helpText || 'Enable' }}
 								</span>
@@ -231,9 +221,7 @@ const handleBackdropClick = (event: MouseEvent) => {
 							:for="field.key"
 							class="label"
 						>
-							<span
-								class="label-text-alt text-base-content/60 italic"
-							>
+							<span class="label-text-alt text-base-content/60 italic">
 								{{ field.helpText }}
 							</span>
 						</label>
@@ -259,9 +247,7 @@ const handleBackdropClick = (event: MouseEvent) => {
 									/>
 								</svg>
 								<div class="flex-1">
-									<h3
-										class="font-semibold text-sm leading-tight"
-									>
+									<h3 class="font-semibold text-sm leading-tight">
 										Validation Error
 									</h3>
 									<p class="text-xs mt-0.5">
@@ -274,9 +260,7 @@ const handleBackdropClick = (event: MouseEvent) => {
 				</form>
 
 				<!-- Modal Footer with Action Buttons -->
-				<div
-					class="modal-action pt-6 border-t border-base-300 gap-3 px-4"
-				>
+				<div class="modal-action pt-6 border-t border-base-300 gap-3 px-4">
 					<button
 						@click="handleClose"
 						type="button"

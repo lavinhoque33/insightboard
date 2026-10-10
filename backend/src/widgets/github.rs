@@ -1,8 +1,16 @@
-use axum::{extract::{Query, State}, response::IntoResponse, Json};
+use axum::{
+    extract::{Query, State},
+    response::IntoResponse,
+    Json,
+};
 use serde::{Deserialize, Serialize};
 use serde_json::Value as JsonValue;
 
-use crate::{auth::UserCtx, error::{AppError, Result}, AppState};
+use crate::{
+    auth::UserCtx,
+    error::{AppError, Result},
+    AppState,
+};
 
 #[derive(Debug, Deserialize)]
 pub struct GitHubQuery {
@@ -34,37 +42,50 @@ pub async fn fetch_github_data(
     }
 
     let cache_key = format!("github:{}", query.username);
-    
+
     // Check cache first
-    if let Some(cached) = state.cache.get::<Vec<GitHubEvent>>(&cache_key).await.ok().flatten() {
+    if let Some(cached) = state
+        .cache
+        .get::<Vec<GitHubEvent>>(&cache_key)
+        .await
+        .ok()
+        .flatten()
+    {
         tracing::debug!("Cache hit for GitHub data: {}", query.username);
         return Ok(Json(cached));
     }
-    
+
     // Fetch from GitHub API
     let client = reqwest::Client::new();
     let mut request = client
-        .get(format!("https://api.github.com/users/{}/events/public", query.username))
+        .get(format!(
+            "https://api.github.com/users/{}/events/public",
+            query.username
+        ))
         .header("User-Agent", "InsightBoard");
-    
+
     if let Some(token) = &state.config.github_api_token {
         request = request.header("Authorization", format!("token {}", token));
     }
-    
-    let response = request.send().await
+
+    let response = request
+        .send()
+        .await
         .map_err(|e| crate::error::AppError::ExternalApi(format!("GitHub API error: {}", e)))?;
-    
+
     if !response.status().is_success() {
-        return Err(crate::error::AppError::ExternalApi(
-            format!("GitHub API returned status: {}", response.status())
-        ));
+        return Err(crate::error::AppError::ExternalApi(format!(
+            "GitHub API returned status: {}",
+            response.status()
+        )));
     }
-    
-    let events: Vec<GitHubEvent> = response.json().await
-        .map_err(|e| crate::error::AppError::ExternalApi(format!("Failed to parse GitHub response: {}", e)))?;
-    
+
+    let events: Vec<GitHubEvent> = response.json().await.map_err(|e| {
+        crate::error::AppError::ExternalApi(format!("Failed to parse GitHub response: {}", e))
+    })?;
+
     // Cache for 5 minutes
     let _ = state.cache.set(&cache_key, &events, 300).await;
-    
+
     Ok(Json(events))
 }

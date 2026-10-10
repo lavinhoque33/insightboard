@@ -14,9 +14,7 @@ describe('BaseWidget', () => {
 
 		await wrapper.get('[data-testid="widget-options-btn"]').trigger('click');
 
-		const configureButton = wrapper.get(
-			'[data-testid="widget-configure-btn"]',
-		);
+		const configureButton = wrapper.get('[data-testid="widget-configure-btn"]');
 		expect(configureButton.attributes('disabled')).toBeUndefined();
 
 		await configureButton.trigger('click');

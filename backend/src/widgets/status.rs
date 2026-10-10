@@ -1,8 +1,16 @@
-use axum::{extract::{Query, State}, response::IntoResponse, Json};
+use axum::{
+    extract::{Query, State},
+    response::IntoResponse,
+    Json,
+};
 use serde::{Deserialize, Serialize};
 use std::time::Duration;
 
-use crate::{auth::UserCtx, error::{AppError, Result}, AppState};
+use crate::{
+    auth::UserCtx,
+    error::{AppError, Result},
+    AppState,
+};
 
 #[derive(Debug, Deserialize)]
 pub struct StatusQuery {
@@ -27,29 +35,35 @@ pub async fn fetch_status_data(
     }
 
     let cache_key = format!("status:{}", query.urls);
-    
+
     // Check cache first
-    if let Some(cached) = state.cache.get::<Vec<StatusCheck>>(&cache_key).await.ok().flatten() {
+    if let Some(cached) = state
+        .cache
+        .get::<Vec<StatusCheck>>(&cache_key)
+        .await
+        .ok()
+        .flatten()
+    {
         tracing::debug!("Cache hit for status data");
         return Ok(Json(cached));
     }
-    
+
     let urls: Vec<&str> = query.urls.split(',').collect();
     let client = reqwest::Client::builder()
         .timeout(Duration::from_secs(5))
         .build()
         .unwrap();
-    
+
     let mut checks = Vec::new();
-    
+
     for url in urls {
         let url = url.trim();
         if url.is_empty() {
             continue;
         }
-        
+
         let start = std::time::Instant::now();
-        
+
         match client.get(url).send().await {
             Ok(response) => {
                 let elapsed = start.elapsed().as_millis() as u64;
@@ -70,9 +84,9 @@ pub async fn fetch_status_data(
             }
         }
     }
-    
+
     // Cache for 2 minutes
     let _ = state.cache.set(&cache_key, &checks, 120).await;
-    
+
     Ok(Json(checks))
 }

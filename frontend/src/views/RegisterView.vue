@@ -14,8 +14,7 @@
 							Join InsightBoard
 						</h1>
 						<p class="text-base-content/70 text-sm">
-							Create your free account to start building
-							dashboards
+							Create your free account to start building dashboards
 						</p>
 					</div>
 
@@ -27,8 +26,7 @@
 						<!-- Email Field -->
 						<div class="form-control w-full">
 							<label class="label">
-								<span
-									class="label-text font-semibold text-base-content"
+								<span class="label-text font-semibold text-base-content"
 									>Email Address</span
 								>
 								<span class="label-text-alt text-error">*</span>
@@ -43,8 +41,7 @@
 								:disabled="authStore.loading"
 							/>
 							<label class="label">
-								<span
-									class="label-text-alt text-base-content/60"
+								<span class="label-text-alt text-base-content/60"
 									>This will be your unique login</span
 								>
 							</label>
@@ -53,8 +50,7 @@
 						<!-- Password Field -->
 						<div class="form-control w-full">
 							<label class="label">
-								<span
-									class="label-text font-semibold text-base-content"
+								<span class="label-text font-semibold text-base-content"
 									>Password</span
 								>
 								<span class="label-text-alt text-error">*</span>
@@ -70,26 +66,20 @@
 								:disabled="authStore.loading"
 							/>
 							<label class="label">
-								<span
-									class="label-text-alt text-base-content/60"
+								<span class="label-text-alt text-base-content/60"
 									>Minimum 8 characters</span
 								>
 								<span
 									class="label-text-alt flex items-center gap-1"
 									:class="
-										password.length >= 8
-											? 'text-success'
-											: 'text-warning'
+										password.length >= 8 ? 'text-success' : 'text-warning'
 									"
 								>
 									<span
 										v-if="password.length >= 8"
 										class="badge badge-success badge-xs"
 									></span>
-									<span
-										v-else
-										class="badge badge-warning badge-xs"
-									></span>
+									<span v-else class="badge badge-warning badge-xs"></span>
 									{{ password.length }}/8
 								</span>
 							</label>
@@ -98,8 +88,7 @@
 						<!-- Confirm Password Field -->
 						<div class="form-control w-full">
 							<label class="label">
-								<span
-									class="label-text font-semibold text-base-content"
+								<span class="label-text font-semibold text-base-content"
 									>Confirm Password</span
 								>
 								<span class="label-text-alt text-error">*</span>
@@ -117,20 +106,15 @@
 								<span
 									class="label-text-alt flex items-center gap-1"
 									:class="
-										confirmPassword &&
-										password === confirmPassword
+										confirmPassword && password === confirmPassword
 											? 'text-success'
-											: confirmPassword &&
-											  password !== confirmPassword
-											? 'text-error'
-											: ''
+											: confirmPassword && password !== confirmPassword
+												? 'text-error'
+												: ''
 									"
 								>
 									<template
-										v-if="
-											confirmPassword &&
-											password === confirmPassword
-										"
+										v-if="confirmPassword && password === confirmPassword"
 									>
 										<svg
 											xmlns="http://www.w3.org/2000/svg"
@@ -149,10 +133,7 @@
 										Passwords match
 									</template>
 									<template
-										v-else-if="
-											confirmPassword &&
-											password !== confirmPassword
-										"
+										v-else-if="confirmPassword && password !== confirmPassword"
 									>
 										<svg
 											xmlns="http://www.w3.org/2000/svg"
@@ -202,9 +183,7 @@
 										d="M12 8v4m0 4v.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
 									/>
 								</svg>
-								<span class="text-sm">{{
-									validationError
-								}}</span>
+								<span class="text-sm">{{ validationError }}</span>
 							</div>
 						</transition>
 
@@ -235,9 +214,7 @@
 										d="M10 14l-2-2m0 0l-2-2m2 2l2-2m-2 2l-2 2m2-2l2 2m7-2a9 9 0 11-18 0 9 9 0 0118 0z"
 									/>
 								</svg>
-								<span class="text-sm">{{
-									authStore.error
-								}}</span>
+								<span class="text-sm">{{ authStore.error }}</span>
 							</div>
 						</transition>
 
@@ -265,9 +242,7 @@
 								Create Account
 							</template>
 							<template v-else>
-								<span
-									class="loading loading-spinner loading-sm"
-								></span>
+								<span class="loading loading-spinner loading-sm"></span>
 								Creating Account...
 							</template>
 						</button>
@@ -280,10 +255,7 @@
 					<div class="text-center">
 						<p class="text-sm text-base-content/70">
 							Already have an account?
-							<router-link
-								to="/login"
-								class="link link-primary font-semibold"
-							>
+							<router-link to="/login" class="link link-primary font-semibold">
 								Sign in here
 							</router-link>
 						</p>
@@ -305,8 +277,7 @@
 							></path>
 						</svg>
 						<span class="text-sm"
-							>Your account is free and instant. No credit card
-							required.</span
+							>Your account is free and instant. No credit card required.</span
 						>
 					</div>
 				</div>
@@ -353,12 +324,12 @@ const handleSubmit = async () => {
 		return;
 	}
 
-		try {
-			await authStore.register(email.value, password.value);
+	try {
+		await authStore.register(email.value, password.value);
 
-			// Register endpoint returns a token; continue as authenticated user.
-			router.push('/dashboards');
-		} catch (error) {
+		// Register endpoint returns a token; continue as authenticated user.
+		router.push('/dashboards');
+	} catch (error) {
 		// Error is handled by the store
 		console.error('Registration failed:', error);
 	}

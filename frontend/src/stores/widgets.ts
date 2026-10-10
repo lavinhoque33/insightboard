@@ -97,9 +97,7 @@ export const useWidgetStore = defineStore('widgets', () => {
 		if (!widgetType) return null;
 
 		return {
-			id: `widget-${Date.now()}-${Math.random()
-				.toString(36)
-				.substr(2, 9)}`,
+			id: `widget-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
 			type: typeId,
 			config: { ...widgetType.defaultConfig },
 			layout: {

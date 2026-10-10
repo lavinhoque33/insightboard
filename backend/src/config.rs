@@ -23,12 +23,9 @@ impl Config {
             app_port: env::var("APP_PORT")
                 .unwrap_or_else(|_| "8080".to_string())
                 .parse()?,
-            database_url: env::var("DATABASE_URL")
-                .expect("DATABASE_URL must be set"),
-            redis_url: env::var("REDIS_URL")
-                .expect("REDIS_URL must be set"),
-            jwt_secret: env::var("JWT_SECRET")
-                .expect("JWT_SECRET must be set"),
+            database_url: env::var("DATABASE_URL").expect("DATABASE_URL must be set"),
+            redis_url: env::var("REDIS_URL").expect("REDIS_URL must be set"),
+            jwt_secret: env::var("JWT_SECRET").expect("JWT_SECRET must be set"),
             github_api_token: optional_env("GITHUB_API_TOKEN"),
             openweather_api_key: optional_env("OPENWEATHER_API_KEY"),
             newsapi_api_key: optional_env("NEWSAPI_API_KEY"),

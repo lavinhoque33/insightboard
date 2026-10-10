@@ -9,7 +9,10 @@ import type {
 	RegisterRequest,
 	User,
 } from '../types';
-import type { ContractAuthResponse, ContractUser } from '../contracts/apiContract';
+import type {
+	ContractAuthResponse,
+	ContractUser,
+} from '../contracts/apiContract';
 
 export const authApi = {
 	/**

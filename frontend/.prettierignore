@@ -1,0 +1,10 @@
+# Dependencies and build output
+node_modules
+dist
+coverage
+
+# npm-generated lockfile
+package-lock.json
+
+# Static assets (not source)
+public

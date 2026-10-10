@@ -37,9 +37,7 @@ export const initializeWidgets = () => {
 				placeholder: 'e.g., octocat',
 				helpText: 'Enter a GitHub username to track their activity',
 				validation: (value: string) => {
-					if (
-						!/^[a-z\d](?:[a-z\d]|-(?=[a-z\d])){0,38}$/i.test(value)
-					) {
+					if (!/^[a-z\d](?:[a-z\d]|-(?=[a-z\d])){0,38}$/i.test(value)) {
 						return 'Invalid GitHub username format';
 					}
 					return null;
@@ -157,8 +155,7 @@ export const initializeWidgets = () => {
 				type: 'textarea',
 				required: true,
 				placeholder: 'https://example.com,https://api.example.com',
-				helpText:
-					'Enter comma-separated URLs to monitor (include https://)',
+				helpText: 'Enter comma-separated URLs to monitor (include https://)',
 				validation: (value: string) => {
 					const urls = value.split(',').map((u) => u.trim());
 					for (const url of urls) {

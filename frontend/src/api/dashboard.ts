@@ -3,11 +3,7 @@
  */
 
 import apiClient from './client';
-import type {
-	Dashboard,
-	LayoutConfig,
-	DashboardSettings,
-} from '../types';
+import type { Dashboard, LayoutConfig, DashboardSettings } from '../types';
 import type { ContractDashboard } from '../contracts/apiContract';
 
 // Helper to convert server dashboard shape to frontend `Dashboard`
@@ -36,7 +32,9 @@ export const dashboardApi = {
 	 * Get a specific dashboard by ID
 	 */
 	async get(id: string): Promise<Dashboard> {
-		const response = await apiClient.get<ContractDashboard>(`/dashboards/${id}`);
+		const response = await apiClient.get<ContractDashboard>(
+			`/dashboards/${id}`,
+		);
 		return mapServerToClient(response.data);
 	},
 
@@ -53,12 +51,12 @@ export const dashboardApi = {
 			layout_json: layout,
 			settings_json: settings,
 		};
-			const response = await apiClient.post<ContractDashboard>(
-				'/dashboards',
-				request,
-			);
-			return mapServerToClient(response.data);
-		},
+		const response = await apiClient.post<ContractDashboard>(
+			'/dashboards',
+			request,
+		);
+		return mapServerToClient(response.data);
+	},
 
 	/**
 	 * Update an existing dashboard
@@ -69,17 +67,17 @@ export const dashboardApi = {
 		settings?: DashboardSettings,
 	): Promise<Dashboard> {
 		// Backend update endpoint expects partial fields mapped to name/layout_json/settings_json
-			const request: Record<string, unknown> = {};
-			if (settings?.title) request.name = settings.title;
-			if (layout) request.layout_json = layout;
-			if (settings) request.settings_json = settings;
+		const request: Record<string, unknown> = {};
+		if (settings?.title) request.name = settings.title;
+		if (layout) request.layout_json = layout;
+		if (settings) request.settings_json = settings;
 
-			const response = await apiClient.put<ContractDashboard>(
-				`/dashboards/${id}`,
-				request,
-			);
-			return mapServerToClient(response.data);
-		},
+		const response = await apiClient.put<ContractDashboard>(
+			`/dashboards/${id}`,
+			request,
+		);
+		return mapServerToClient(response.data);
+	},
 
 	/**
 	 * Delete a dashboard

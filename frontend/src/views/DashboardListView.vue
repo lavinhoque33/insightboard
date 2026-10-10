@@ -48,9 +48,7 @@
 				v-if="loading && !dashboardStore.dashboards.length"
 				class="flex flex-col items-center justify-center py-32"
 			>
-				<span
-					class="loading loading-spinner loading-lg text-primary"
-				></span>
+				<span class="loading loading-spinner loading-lg text-primary"></span>
 				<p class="mt-4 text-base-content/60 text-lg font-medium">
 					Loading your dashboards...
 				</p>
@@ -87,10 +85,7 @@
 						<h3 class="font-bold">Error loading dashboards</h3>
 						<div class="text-sm">{{ dashboardStore.error }}</div>
 					</div>
-					<button
-						@click="loadDashboards"
-						class="btn btn-sm btn-ghost gap-2"
-					>
+					<button @click="loadDashboards" class="btn btn-sm btn-ghost gap-2">
 						<svg
 							xmlns="http://www.w3.org/2000/svg"
 							class="h-4 w-4"
@@ -138,8 +133,8 @@
 						No dashboards yet
 					</h3>
 					<p class="text-base-content/60 mb-8">
-						Create your first dashboard to start visualizing your
-						data and insights.
+						Create your first dashboard to start visualizing your data and
+						insights.
 					</p>
 					<button
 						@click="handleCreateDashboard"
@@ -197,12 +192,8 @@
 					<!-- Card Body -->
 					<div class="card-body">
 						<!-- Title -->
-						<h2
-							class="card-title text-xl line-clamp-2 text-base-content"
-						>
-							{{
-								dashboard.settings.title || 'Untitled Dashboard'
-							}}
+						<h2 class="card-title text-xl line-clamp-2 text-base-content">
+							{{ dashboard.settings.title || 'Untitled Dashboard' }}
 						</h2>
 
 						<!-- Stats -->
@@ -216,10 +207,7 @@
 							<div class="stat bg-base-200 rounded-lg p-3">
 								<div class="stat-title text-xs">Created</div>
 								<div class="stat-value text-xs">
-									<time
-										:datetime="dashboard.created_at"
-										class="block"
-									>
+									<time :datetime="dashboard.created_at" class="block">
 										{{ formatDate(dashboard.created_at) }}
 									</time>
 								</div>

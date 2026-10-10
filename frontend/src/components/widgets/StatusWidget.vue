@@ -59,7 +59,6 @@ const setupAutoRefresh = () => {
 	}
 };
 
-
 const getStatusText = (status: number): string => {
 	if (status === 0) return 'Unavailable';
 	if (status >= 200 && status < 300) return 'Healthy';
@@ -76,7 +75,6 @@ const getStatusIcon = (status: number): string => {
 	if (status >= 400) return '✗';
 	return '?';
 };
-
 
 const formatUrl = (url: string): string => {
 	try {
@@ -149,15 +147,9 @@ onUnmounted(() => {
 							<div
 								class="badge badge-lg"
 								:class="{
-									'badge-success':
-										status.status >= 200 &&
-										status.status < 300,
-									'badge-warning':
-										status.status >= 300 &&
-										status.status < 400,
-									'badge-error':
-										status.status === 0 ||
-										status.status >= 400,
+									'badge-success': status.status >= 200 && status.status < 300,
+									'badge-warning': status.status >= 300 && status.status < 400,
+									'badge-error': status.status === 0 || status.status >= 400,
 								}"
 							>
 								{{ getStatusIcon(status.status) }}
@@ -175,17 +167,13 @@ onUnmounted(() => {
 						<!-- Status Code -->
 						<span
 							class="badge badge-lg font-semibold flex-shrink-0"
-								:class="{
-									'badge-success':
-										status.status >= 200 && status.status < 300,
-									'badge-warning':
-										status.status >= 300 && status.status < 400,
-									'badge-error':
-										status.status === 0 ||
-										status.status >= 400,
-								}"
-							>
-								{{ status.status === 0 ? 'ERR' : status.status }}
+							:class="{
+								'badge-success': status.status >= 200 && status.status < 300,
+								'badge-warning': status.status >= 300 && status.status < 400,
+								'badge-error': status.status === 0 || status.status >= 400,
+							}"
+						>
+							{{ status.status === 0 ? 'ERR' : status.status }}
 						</span>
 					</div>
 
@@ -196,15 +184,11 @@ onUnmounted(() => {
 						<!-- Status Text -->
 						<div
 							class="font-medium"
-								:class="{
-									'text-success':
-										status.status >= 200 && status.status < 300,
-									'text-warning':
-										status.status >= 300 && status.status < 400,
-									'text-error':
-										status.status === 0 ||
-										status.status >= 400,
-								}"
+							:class="{
+								'text-success': status.status >= 200 && status.status < 300,
+								'text-warning': status.status >= 300 && status.status < 400,
+								'text-error': status.status === 0 || status.status >= 400,
+							}"
 						>
 							{{ getStatusText(status.status) }}
 						</div>
@@ -212,25 +196,19 @@ onUnmounted(() => {
 						<!-- Response Time -->
 						<div
 							class="font-semibold"
-								:class="{
-									'text-success':
-										status.status !== 0 &&
-										status.response_time_ms < 200,
-									'text-warning':
-										status.status !== 0 &&
-										status.response_time_ms >= 200 &&
-										status.response_time_ms < 1000,
-									'text-error':
-										status.status === 0 ||
-										status.response_time_ms >= 1000,
-								}"
-							>
-								{{
-									status.status === 0
-										? 'N/A'
-										: `${status.response_time_ms}ms`
-								}}
-							</div>
+							:class="{
+								'text-success':
+									status.status !== 0 && status.response_time_ms < 200,
+								'text-warning':
+									status.status !== 0 &&
+									status.response_time_ms >= 200 &&
+									status.response_time_ms < 1000,
+								'text-error':
+									status.status === 0 || status.response_time_ms >= 1000,
+							}"
+						>
+							{{ status.status === 0 ? 'N/A' : `${status.response_time_ms}ms` }}
+						</div>
 					</div>
 
 					<!-- Error Message -->
@@ -267,10 +245,8 @@ onUnmounted(() => {
 						<div class="stat bg-base-100 rounded-lg p-2">
 							<div class="stat-value text-success text-2xl">
 								{{
-									statuses.filter(
-										(s) =>
-											s.status >= 200 && s.status < 300,
-									).length
+									statuses.filter((s) => s.status >= 200 && s.status < 300)
+										.length
 								}}
 							</div>
 							<div class="stat-title text-xs">Healthy</div>
@@ -280,10 +256,8 @@ onUnmounted(() => {
 						<div class="stat bg-base-100 rounded-lg p-2">
 							<div class="stat-value text-warning text-2xl">
 								{{
-									statuses.filter(
-										(s) =>
-											s.status >= 300 && s.status < 400,
-									).length
+									statuses.filter((s) => s.status >= 300 && s.status < 400)
+										.length
 								}}
 							</div>
 							<div class="stat-title text-xs">Redirects</div>
@@ -292,10 +266,7 @@ onUnmounted(() => {
 						<!-- Errors Count -->
 						<div class="stat bg-base-100 rounded-lg p-2">
 							<div class="stat-value text-error text-2xl">
-								{{
-									statuses.filter((s) => s.status >= 400)
-										.length
-								}}
+								{{ statuses.filter((s) => s.status >= 400).length }}
 							</div>
 							<div class="stat-title text-xs">Errors</div>
 						</div>

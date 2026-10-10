@@ -1,5 +1,5 @@
-pub mod user;
 pub mod dashboard;
+pub mod user;
 
-pub use user::*;
 pub use dashboard::*;
+pub use user::*;

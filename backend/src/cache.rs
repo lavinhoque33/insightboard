@@ -11,11 +11,11 @@ impl Cache {
     /// Create a new Redis cache connection
     pub async fn new(redis_url: &str) -> anyhow::Result<Self> {
         let client = Client::open(redis_url)?;
-        
+
         // Test the connection
         let mut conn = client.get_multiplexed_async_connection().await?;
         let _: String = redis::cmd("PING").query_async(&mut conn).await?;
-        
+
         Ok(Self { client })
     }
 
@@ -31,7 +31,7 @@ impl Cache {
     {
         let mut conn = self.get_connection().await?;
         let value: Option<String> = conn.get(key).await?;
-        
+
         match value {
             Some(v) => {
                 let deserialized = serde_json::from_str(&v)?;

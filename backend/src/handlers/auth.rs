@@ -14,20 +14,23 @@ pub async fn register(
 ) -> Result<impl IntoResponse> {
     // Validate input
     if payload.email.is_empty() || payload.password.is_empty() {
-        return Err(AppError::Validation("Email and password are required".to_string()));
+        return Err(AppError::Validation(
+            "Email and password are required".to_string(),
+        ));
     }
 
     if payload.password.len() < 8 {
-        return Err(AppError::Validation("Password must be at least 8 characters".to_string()));
+        return Err(AppError::Validation(
+            "Password must be at least 8 characters".to_string(),
+        ));
     }
 
     // Check if user already exists
-    let existing_user: Option<User> = sqlx::query_as(
-        "SELECT id, email, password_hash, created_at FROM users WHERE email = $1"
-    )
-    .bind(&payload.email)
-    .fetch_optional(state.db.pool())
-    .await?;
+    let existing_user: Option<User> =
+        sqlx::query_as("SELECT id, email, password_hash, created_at FROM users WHERE email = $1")
+            .bind(&payload.email)
+            .fetch_optional(state.db.pool())
+            .await?;
 
     if existing_user.is_some() {
         return Err(AppError::Validation("Email already registered".to_string()));
@@ -64,16 +67,17 @@ pub async fn login(
 ) -> Result<impl IntoResponse> {
     // Validate input
     if payload.email.is_empty() || payload.password.is_empty() {
-        return Err(AppError::Validation("Email and password are required".to_string()));
+        return Err(AppError::Validation(
+            "Email and password are required".to_string(),
+        ));
     }
 
     // Find user
-    let user: Option<User> = sqlx::query_as(
-        "SELECT id, email, password_hash, created_at FROM users WHERE email = $1"
-    )
-    .bind(&payload.email)
-    .fetch_optional(state.db.pool())
-    .await?;
+    let user: Option<User> =
+        sqlx::query_as("SELECT id, email, password_hash, created_at FROM users WHERE email = $1")
+            .bind(&payload.email)
+            .fetch_optional(state.db.pool())
+            .await?;
 
     let user = user.ok_or_else(|| AppError::Auth("Invalid credentials".to_string()))?;
 
@@ -93,16 +97,12 @@ pub async fn login(
 }
 
 /// Get current authenticated user
-pub async fn me(
-    user_ctx: UserCtx,
-    State(state): State<AppState>,
-) -> Result<impl IntoResponse> {
-    let user: User = sqlx::query_as(
-        "SELECT id, email, password_hash, created_at FROM users WHERE id = $1"
-    )
-    .bind(user_ctx.user_id)
-    .fetch_one(state.db.pool())
-    .await?;
+pub async fn me(user_ctx: UserCtx, State(state): State<AppState>) -> Result<impl IntoResponse> {
+    let user: User =
+        sqlx::query_as("SELECT id, email, password_hash, created_at FROM users WHERE id = $1")
+            .bind(user_ctx.user_id)
+            .fetch_one(state.db.pool())
+            .await?;
 
     Ok(Json(UserResponse::from(user)))
 }

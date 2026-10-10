@@ -8,22 +8,14 @@ mod models;
 mod widgets;
 
 use axum::{
-    routing::{get, post, put, delete},
+    routing::{delete, get, post, put},
     Router,
 };
 use std::net::SocketAddr;
-use tower_http::{
-    cors::CorsLayer,
-    trace::TraceLayer,
-    compression::CompressionLayer,
-};
+use tower_http::{compression::CompressionLayer, cors::CorsLayer, trace::TraceLayer};
 use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt};
 
-use crate::{
-    config::Config,
-    db::Database,
-    cache::Cache,
-};
+use crate::{cache::Cache, config::Config, db::Database};
 
 /// Application state shared across all handlers
 #[derive(Clone)]
@@ -64,31 +56,24 @@ async fn main() -> anyhow::Result<()> {
     tracing::info!("Redis cache connection established");
 
     // Create application state
-    let state = AppState {
-        db,
-        cache,
-        config,
-    };
+    let state = AppState { db, cache, config };
 
     // Build the router
     let app = Router::new()
         // Health check endpoint
         .route("/healthz", get(handlers::health::health_check))
-        
         // API routes
         .nest("/api", api_routes())
-        
         // Middleware
         .layer(CorsLayer::permissive()) // Configure CORS properly in production
         .layer(CompressionLayer::new())
         .layer(TraceLayer::new_for_http())
-        
         // Share state
         .with_state(state);
 
     // Bind to address
     let listener = tokio::net::TcpListener::bind(addr).await?;
-    
+
     tracing::info!("Listening on {}", addr);
 
     // Start server with graceful shutdown
@@ -106,14 +91,18 @@ fn api_routes() -> Router<AppState> {
         .route("/auth/register", post(handlers::auth::register))
         .route("/auth/login", post(handlers::auth::login))
         .route("/me", get(handlers::auth::me))
-        
         // Dashboard routes (protected)
         .route("/dashboards", get(handlers::dashboard::list_dashboards))
         .route("/dashboards", post(handlers::dashboard::create_dashboard))
         .route("/dashboards/:id", get(handlers::dashboard::get_dashboard))
-        .route("/dashboards/:id", put(handlers::dashboard::update_dashboard))
-        .route("/dashboards/:id", delete(handlers::dashboard::delete_dashboard))
-        
+        .route(
+            "/dashboards/:id",
+            put(handlers::dashboard::update_dashboard),
+        )
+        .route(
+            "/dashboards/:id",
+            delete(handlers::dashboard::delete_dashboard),
+        )
         // Widget data routes (protected)
         .route("/data/github", get(widgets::github::fetch_github_data))
         .route("/data/weather", get(widgets::weather::fetch_weather_data))

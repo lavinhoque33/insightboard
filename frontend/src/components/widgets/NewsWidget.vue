@@ -139,14 +139,14 @@ onUnmounted(() => {
 								:src="article.urlToImage"
 								:alt="article.title"
 								class="w-full h-full object-cover"
-								@error="(e) => ((e.target as HTMLImageElement).style.display = 'none')"
+								@error="
+									(e) => ((e.target as HTMLImageElement).style.display = 'none')
+								"
 							/>
 						</div>
 
 						<!-- Article Content -->
-						<div
-							class="flex-1 min-w-0 flex flex-col justify-between"
-						>
+						<div class="flex-1 min-w-0 flex flex-col justify-between">
 							<!-- Title -->
 							<h4
 								class="text-sm font-semibold text-base-content line-clamp-2 group-hover:text-primary transition-colors"
@@ -155,12 +155,8 @@ onUnmounted(() => {
 							</h4>
 
 							<!-- Source and Time -->
-							<div
-								class="flex items-center justify-between gap-2 mt-2"
-							>
-								<span
-									class="badge badge-sm badge-ghost text-xs"
-								>
+							<div class="flex items-center justify-between gap-2 mt-2">
+								<span class="badge badge-sm badge-ghost text-xs">
 									{{ article.source.name }}
 								</span>
 								<span class="text-xs text-base-content/50">
