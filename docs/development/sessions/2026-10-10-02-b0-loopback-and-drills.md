@@ -68,12 +68,25 @@
 - New defects, IDs assigned by the main thread in the
   [baseline contract](../../architecture/m0-m3-baseline-contract.md): **D30** (High) — CoinGecko returns 403 to
   requests without a `User-Agent` and `reqwest::get` sends none, so the crypto widget always fails; confirmed with
-  one manual request with and one without a `User-Agent` (200 and 403). **D31** (Medium) — small-width layout and
-  clipped menu and widget content.
+  one manual request with and one without a `User-Agent` (200 and 403); widened to news after the keyed run below.
+  **D31** (Medium) — small-width layout and clipped menu and widget content.
 - Upstream requests this session: GitHub 1, CoinGecko 4, example.com 2; nothing else external besides crates.io,
   the npm registry, rustup, and the Fedora mirrors.
 - Incidental: another local client polled `/api/notifications/attention` on port 8080 (404) while the backend ran
   `[INFERENCE: another project's browser tab]`.
+
+## Report summary: 2026-10-10-02/b5-keys
+
+- Report source / role: main thread. The owner entered free-tier keys into `.env` (the owner chose "Later" when
+  first asked, then reported the keys added). Presence checked by length only; values never printed.
+- Work performed, about 05:57 UTC: backend restarted to read `.env`; one weather (`London`), one news
+  (`technology`), and one github (`octocat`, now with the token) request.
+- Results: news 502 (NewsAPI 400). One manual request without a `User-Agent` got `userAgentMissing` and one with a
+  `User-Agent` got `ok` and 10 articles, so the key works and D30 covers news as well; D30 widened in the
+  catalogue. Weather 502 (OpenWeather 401); one manual request with a `User-Agent` got "Invalid API key", so the
+  key is rejected regardless of headers (new keys may need time to activate `[INFERENCE]`). GitHub 200, empty
+  array.
+- Upstream totals for the session: GitHub 2, CoinGecko 4, NewsAPI 3, OpenWeather 2, example.com 2.
 
 ## Close
 
@@ -82,13 +95,13 @@
   record, baseline contract D3 status and D30/D31, M4 contract slices, plan, `CODING_PRACTICES.md`,
   `.omp/AGENTS.md`, testing, index, terminology, system overview gaps) in the session commit.
 - What was verified, and in which environment: on this workstation, 2026-10-10 about 05:00–05:20 UTC, at
-  `354e06c`: B0–B4, B6–B12 and the keyless half of B5, as recorded.
-- What remains unverified or blocked: the key half of B5 (weather and news with free-tier keys) waits for the
-  owner to enter `OPENWEATHER_API_KEY` and `NEWSAPI_API_KEY` (optional `GITHUB_API_TOKEN`) into `.env`. Not
-  pushed.
-- Decisions and permissions still needed: owner keys for B5; owner acceptance of M0–M3; M4 decisions 1–3 and
-  5–17; any push.
+  `354e06c`: B0–B4, B6–B12 and the keyless half of B5; about 05:57 UTC the keyed news and github requests, as
+  recorded.
+- What remains unverified or blocked: B5 keyed weather; OpenWeather rejected the key in `.env`. Not pushed.
+- Decisions and permissions still needed: a working OpenWeather key; owner acceptance of M0–M3; M4 decisions 1–3
+  and 5–17; any push.
 - Runtime state left: compose running (loopback); backend running from `backend/target/debug` on
-  `127.0.0.1:8080`; Vite stopped.
-- Next recommended action: after the owner adds keys, restart the backend and run one weather and one news request
-  (B5 key half), record it, then present M0–M3 for acceptance and start M4 preparation.
+  `127.0.0.1:8080` with the keys loaded; Vite stopped.
+- Next recommended action: once the owner confirms the OpenWeather key is active or replaced, restart the backend
+  if `.env` changed, run one weather request, record B5, then present M0–M3 for acceptance and start M4
+  preparation.
