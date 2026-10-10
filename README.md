@@ -1,753 +1,110 @@
 # InsightBoard
 
-A production‑grade, full‑stack, cloud‑ready dashboard aggregating data from multiple external APIs into a customizable interface.
+InsightBoard is a personal dashboard builder. You register, create dashboards, and arrange widgets on a
+drag-and-drop grid; each widget shows data from a public provider, fetched and cached by the backend. It is a
+Rust/Axum API backed by Postgres and Redis, with a Vue 3 and TypeScript client. Everything runs locally; nothing
+is deployed.
 
-**[Live Demo](#)** | **[Documentation](#documentation)** | **[Contributing](#contributing)** | **[License](#license)**
+- **$0 of spending.** Free provider tiers only, with keys you supply; no cloud resources.
+- **Local only.** Intended to bind to loopback; the current code does not yet (D3, below).
 
----
+**Status:** M0–M3 are **implemented but unverified**. They were delivered between 2025-10-28 and 2026-03-03
+under a legacy phase protocol and **reported** verified on a previous workstation, with no evidence beyond
+prose; the 2026-03-03 audit (`f15c6a3`) still found and fixed defects in phases marked complete. On this
+workstation, the 2026-10-10 automated baseline **observed** passing builds and tests, and failing
+`cargo fmt --check`, `cargo clippy -D warnings`, and `npm audit`. User journeys have not been re-exercised here;
+owner acceptance follows baseline drills B1–B12 in the
+[baseline verification record](docs/development/baseline-verification.md). M4 — Quality gate and hardening is
+next: **planned**, with its [contract](docs/architecture/m4-quality-gate-contract.md) **proposed** and owner
+decisions pending. See the [roadmap](docs/product/roadmap.md).
 
-## 🎯 Overview
+## What works (as built at `f15c6a3`)
 
-InsightBoard normalizes and caches data from third‑party APIs (GitHub, Weather, News, Crypto, Status) into a single, modern dashboard. Built with **Rust** (Axum) backend and **Vue 3** frontend, designed for AWS serverless deployment and showcasing fullstack cloud‑native architecture.
+- **Accounts:** register and log in with email and password (Argon2 hashing, 7-day HS256 JWT kept in
+  `localStorage`); `GET /api/me` returns the current user.
+- **Dashboards:** owner-scoped create, list, open, update, and delete. Another user's dashboard is a 404.
+- **Widgets:** five types, each proxied and cached in Redis by the backend:
 
-> **Perfect for portfolio**: Demonstrates async concurrency, caching strategies, clean architecture, cloud infrastructure, and modern DevEx practices.
+  | Widget | Input | Provider | Cache TTL |
+  | --- | --- | --- | --- |
+  | GitHub | `username` | GitHub public events (optional token) | 300 s |
+  | Weather | `city` | OpenWeather current weather (key required) | 600 s |
+  | News | `topic` | NewsAPI everything (key required) | 900 s |
+  | Crypto | `ids` (CoinGecko ids) | CoinGecko markets, no key | 300 s |
+  | Status | `urls` (comma list) | a GET to each URL, 5 s each | 120 s |
 
----
+  Without a key, Weather and News return 400 "OpenWeather API key not configured" and "NewsAPI key not
+  configured".
+- **Editor:** GridStack grid (12 columns). Adding a widget opens its configuration first and creates nothing
+  until you save; drag and resize; layout and configuration auto-save 2 s after the last change. Widgets
+  refresh on their own interval.
+- **Contract:** payload shapes are described in [`contracts/api-contract.v1.json`](contracts/api-contract.v1.json)
+  (JSON Schema) and mirrored by hand in
+  [`frontend/src/contracts/apiContract.ts`](frontend/src/contracts/apiContract.ts). Nothing enforces either yet.
+- **Tests:** 5 backend unit tests and 3 frontend component tests; no integration, end-to-end, or CI.
 
-## ✨ Features
+The full as-built reference, including every route and status code, is the
+[M0–M3 baseline contract](docs/architecture/m0-m3-baseline-contract.md).
 
-### MVP
+## Limits
 
--   🔐 **JWT Authentication** - Secure auth with Argon2 password hashing
--   📊 **5 Pre-built Widgets**
-    -   GitHub Activity tracking
-    -   Real-time Weather data
-    -   News aggregation
-    -   Cryptocurrency prices
-    -   Service status checks
--   🎨 **Drag-and-drop Dashboard Layout** - Powered by GridStack.js
--   🔄 **Auto-refresh with Smart Caching** - Redis-backed cache with TTL
--   ⚡ **Real-time Data Updates** - Reactive Vue 3 component system
--   📱 **Responsive Design** - Mobile-friendly UI
+The [defect catalogue](docs/architecture/m0-m3-baseline-contract.md) lists D1–D29 with references and the slice
+that fixes each. The ones to know first:
 
-### Advanced (Roadmap)
+- **D3 — network exposure.** The backend binds `0.0.0.0:8080`; compose publishes Postgres (`postgres/postgres`)
+  and Redis (no password) on all interfaces. On this workstation the host firewall opens ports 1025–65535, so
+  these are reachable from the local network while running `[INFERENCE: not probed]`. Read the
+  [local setup warning](docs/development/local-setup.md) before starting anything.
+- **D1 — status widget SSRF.** Any signed-in user can make the backend request any URL, including loopback,
+  private, and cloud-metadata addresses, and read back status and error text.
+- **D9 — widget configuration never pre-fills.** Editing an existing widget opens an empty form; saving replaces
+  its configuration.
+- **D11 — thin automated tests.** Provider base URLs are hard-coded, so nothing can be mocked yet.
+- **D14 — vulnerable npm dependencies.** `npm audit --omit=dev` **observed** 8 findings (7 high, 1 moderate) on
+  2026-10-10.
 
--   💾 **S3 File Uploads** - Dashboard snapshots and exports
--   🤖 **AI Summary Widget** - LLM-powered data insights
--   🌐 **Public Dashboards** - Share dashboards with link sharing
--   🔄 **Background Refresh Jobs** - EventBridge scheduled refreshes
--   🔌 **Cognito Integration** - Enterprise authentication
+## Run it locally
 
----
+Prerequisites: Docker with Compose, Node 20.19.0 (`.nvmrc`), and Rust stable. Steps, configuration, and
+troubleshooting are in [local setup](docs/development/local-setup.md). In short, after resolving D3 exposure as
+described there:
 
-## 🏗️ Architecture
-
-```
-┌─────────────────────────────────────────────────────────────┐
-│                     Vue 3 SPA (Frontend)                    │
-│              Vite · Pinia · Vue Router · Chart.js            │
-└──────────────────────┬──────────────────────────────────────┘
-                       │ HTTPS/WSS
-┌──────────────────────▼──────────────────────────────────────┐
-│                   API Gateway (AWS)                          │
-└──────────────────────┬──────────────────────────────────────┘
-                       │
-┌──────────────────────▼──────────────────────────────────────┐
-│          Lambda Runtime (Rust/Axum Backend)                 │
-│  • Auth Middleware (JWT)                                    │
-│  • Widget Handlers (GitHub, Weather, News, Crypto, Status) │
-│  • Rate Limiting & Caching Layer                            │
-│  • Error Handling & Observability                           │
-└──────────────────────┬──────────────────────────────────────┘
-                       │
-       ┌───────────────┼───────────────┐
-       │               │               │
-   ┌───▼───┐   ┌──────▼──────┐   ┌────▼────────┐
-   │Postgres│   │ Redis Cache │   │External APIs│
-   │ (Neon) │   │ (Upstash)   │   │  (3rd-party)│
-   └────────┘   └─────────────┘   └─────────────┘
-```
-
-### Data Flow
-
-1. **Request** → API Gateway → Lambda
-2. **Auth** → JWT validation middleware
-3. **Cache Check** → Redis (TTL-based)
-4. **Cache Miss** → Fetch from external API
-5. **Store** → Cache result in Redis
-6. **Persist** → Optional save to Postgres
-7. **Response** → Return to frontend
-
----
-
-## 🛠️ Tech Stack
-
-| Layer             | Technology                                          | Purpose                          |
-| ----------------- | --------------------------------------------------- | -------------------------------- |
-| **Backend**       | Rust + Axum                                         | Async, type-safe REST API        |
-| **Frontend**      | Vue 3 + TypeScript + Vite                           | Reactive SPA dashboard           |
-| **State Mgmt**    | Pinia                                               | Vue store management             |
-| **Database**      | PostgreSQL (Neon/Supabase)                          | User & dashboard persistence     |
-| **Cache**         | Redis (Upstash)                                     | Response caching & rate limiting |
-| **UI Components** | Mantine UI / Tailwind CSS                           | Modern component library         |
-| **Charting**      | Chart.js                                            | Data visualization               |
-| **Layout**        | GridStack.js                                        | Drag-and-drop dashboard          |
-| **Infra**         | AWS Lambda, API Gateway, S3, CloudFront             | Serverless deployment            |
-| **CI/CD**         | GitHub Actions                                      | Automated build & test           |
-| **Testing**       | Tokio + Criterion (Rust), Vitest + Playwright (Vue) | Comprehensive coverage           |
-
----
-
-## 🚀 Quick Start
-
-### Prerequisites
-
--   **Rust** 1.70+ (`rustup`)
--   **Node.js** 18+ & **pnpm**
--   **Docker** & **Docker Compose** (for local Postgres & Redis)
--   **Git**
-
-### Installation
-
-```bash
-# Clone repository
-git clone https://github.com/lavinhoque33/insightboard.git
-cd insightboard
-
-# 1. Start Docker services (Postgres + Redis)
-docker-compose up -d
-
-# Wait for services to be healthy (check with: docker-compose ps)
-
-# 2. Configure environment
-cp .env.example .env
-# Edit .env with your API keys (optional for basic functionality)
-
-# 3. Run database migrations
-cd backend
-cargo install sqlx-cli --no-default-features --features postgres
-sqlx migrate run
-
-# 4. Build backend
-cargo build
-
-# 5. Frontend setup (in a new terminal)
-cd ../frontend
-pnpm install
+```sh
+cp .env.example .env                    # then replace JWT_SECRET with a locally generated value
+docker compose up -d                    # Postgres 16 and Redis 7
+cd backend && cargo run                 # terminal 1: applies migrations, serves port 8080
+cd frontend && npm ci && npm run dev    # terminal 2, from the repo root: http://localhost:5173
 ```
 
-### Running Locally
+Provider keys are optional; without them Weather and News show their "not configured" errors.
 
-**Terminal 1 — Docker Services**
+## Checks
 
-```bash
-# Start Postgres and Redis
-docker-compose up
+Commands, current results, and known failing gates (D13, D14) are in [testing](docs/development/testing.md).
+Automated tests never call live providers.
 
-# Or run in detached mode:
-docker-compose up -d
+## Where to start
 
-# Check service health:
-docker-compose ps
+1. The [documentation index](docs/index.md).
+2. [.omp/AGENTS.md](.omp/AGENTS.md) and [CODING_PRACTICES.md](CODING_PRACTICES.md): how work is done here.
+3. The [session handoff](docs/development/session-handoff.md) for the current checkpoint, then the
+   [roadmap](docs/product/roadmap.md) and the [project plan](INSIGHTBOARD_PROJECT_PLAN.md).
 
-# View logs:
-docker-compose logs -f
+## Layout
+
+```text
+backend/            Rust crate insightboard-backend: src/{handlers,models,widgets}, auth, cache, config, db, error
+backend/migrations/ SQL migrations, embedded and applied at startup
+frontend/           Vue 3 + TypeScript + Vite client: src/{api,stores,router,views,components,composables,contracts}
+contracts/          api-contract.v1.json (JSON Schema, payload shapes)
+docs/               product, architecture, decisions, development, guides (non-authoritative walkthroughs)
+.omp/AGENTS.md      agent operating guide
+docker-compose.yml  Postgres and Redis only
 ```
 
-**Terminal 2 — Backend (Rust)**
-
-```bash
-cd backend
-cargo run
-# Runs on http://localhost:8080
-```
-
-**Terminal 3 — Frontend (Vue)**
-
-```bash
-cd frontend
-pnpm dev
-# Runs on http://localhost:5173
-```
-
-### Verify Everything Works
-
-```bash
-# Check Docker services are running
-docker-compose ps
-
-# Health check backend
-curl http://localhost:8080/healthz
-# Expected: "ok"
-
-# Test database connection
-psql postgres://postgres:postgres@localhost:5432/insightboard -c "SELECT 1"
-
-# Test Redis connection
-redis-cli -u redis://127.0.0.1:6379 ping
-# Expected: "PONG"
-
-# Frontend
-open http://localhost:5173
-```
-
-### Stopping Services
-
-```bash
-# Stop all services
-docker-compose down
-
-# Stop and remove volumes (clean slate)
-docker-compose down -v
-```
-
----
-
-## 📋 Configuration
-
-### Environment Variables
-
-Copy `.env.example` to `.env` and configure:
-
-```bash
-cp .env.example .env
-```
-
-**Minimal configuration for local development** (using Docker Compose):
-
-```env
-# Server
-APP_PORT=8080
-
-# Database (Docker Compose default)
-DATABASE_URL=postgres://postgres:postgres@localhost:5432/insightboard
-
-# Redis (Docker Compose default)
-REDIS_URL=redis://127.0.0.1:6379
-
-# Authentication (change in production!)
-JWT_SECRET=dev-secret-change-in-production
-
-# Logging
-RUST_LOG=info,insightboard=debug
-```
-
-**Optional API keys** (required for specific widgets):
-
-```env
-# GitHub Widget - Get at: https://github.com/settings/tokens
-GITHUB_API_TOKEN=ghp_yourtoken
-
-# Weather Widget - Get at: https://openweathermap.org/api
-OPENWEATHER_API_KEY=your_key_here
-
-# News Widget - Get at: https://newsapi.org/
-NEWSAPI_API_KEY=your_key_here
-```
-
-**Production configuration:**
-
-```env
-# Use production database (Neon/Supabase)
-DATABASE_URL=postgres://user:password@host:5432/dbname?sslmode=require
-
-# Use production Redis (Upstash)
-REDIS_URL=rediss://default:password@host:port
-
-# Strong JWT secret (generate with: openssl rand -base64 32)
-JWT_SECRET=your-random-generated-secret
-
-# AWS credentials
-AWS_REGION=us-east-1
-AWS_ACCESS_KEY_ID=
-AWS_SECRET_ACCESS_KEY=
-```
-
-> **Security Note**: Never commit `.env` to version control. The `.gitignore` file is configured to exclude it. Always use `.env.example` as a template.
-
----
-
-## 📁 Project Structure
-
-```
-insightboard/
-├─ .github/                      # GitHub-specific config
-│  ├─ workflows/                 # CI/CD pipelines
-│  ├─ ISSUE_TEMPLATE/            # Issue templates
-│  └─ InsightBoard_Condensed_Project_Spec.md
-│
-├─ backend/                      # Rust/Axum server
-│  ├─ src/
-│  │  ├─ main.rs                # App entry & route setup
-│  │  ├─ lib.rs                 # Public library interface
-│  │  ├─ config.rs              # Configuration loader
-│  │  ├─ auth.rs                # JWT middleware & logic
-│  │  ├─ db.rs                  # Database connection pool
-│  │  ├─ cache.rs               # Redis cache client
-│  │  ├─ error.rs               # Custom error types
-│  │  ├─ handlers/
-│  │  │  ├─ mod.rs
-│  │  │  ├─ auth.rs             # Auth endpoints (login, register)
-│  │  │  └─ dashboards.rs       # Dashboard CRUD
-│  │  ├─ widgets/
-│  │  │  ├─ mod.rs
-│  │  │  ├─ github.rs           # GitHub API integration
-│  │  │  ├─ weather.rs          # Weather API integration
-│  │  │  ├─ news.rs             # News API integration
-│  │  │  ├─ crypto.rs           # Crypto price integration
-│  │  │  └─ status.rs           # Status check widget
-│  │  └─ models.rs              # Shared data structures
-│  ├─ tests/                     # Integration tests
-│  ├─ Cargo.toml
-│  └─ sqlx-data.json             # SQLx offline query cache
-│
-├─ frontend/                     # Vue 3 + Vite SPA
-│  ├─ src/
-│  │  ├─ main.ts                # Vue app entry
-│  │  ├─ App.vue                # Root component
-│  │  ├─ pages/
-│  │  │  ├─ Dashboard.vue       # Main dashboard
-│  │  │  ├─ Login.vue           # Auth page
-│  │  │  └─ Profile.vue         # User settings
-│  │  ├─ components/
-│  │  │  ├─ widgets/
-│  │  │  │  ├─ GitHubWidget.vue
-│  │  │  │  ├─ WeatherWidget.vue
-│  │  │  │  ├─ NewsWidget.vue
-│  │  │  │  ├─ CryptoWidget.vue
-│  │  │  │  └─ StatusWidget.vue
-│  │  │  ├─ DashboardGrid.vue   # Drag-drop layout
-│  │  │  └─ Common.vue
-│  │  ├─ store/
-│  │  │  ├─ auth.ts             # Auth state (Pinia)
-│  │  │  ├─ dashboard.ts        # Dashboard state
-│  │  │  └─ widgets.ts          # Widget registry
-│  │  ├─ services/
-│  │  │  ├─ api.ts              # HTTP client (axios)
-│  │  │  └─ auth.ts             # Auth service
-│  │  ├─ types/
-│  │  │  ├─ index.ts            # Global types
-│  │  │  └─ models.ts           # API models
-│  │  └─ router/
-│  │     └─ index.ts            # Vue Router config
-│  ├─ public/
-│  ├─ package.json
-│  ├─ vite.config.ts
-│  └─ tsconfig.json
-│
-├─ infra/                        # Infrastructure as Code
-│  ├─ terraform/
-│  │  ├─ main.tf                # Lambda, API Gateway, S3
-│  │  ├─ rds.tf                 # Postgres setup
-│  │  ├─ redis.tf               # Redis cache
-│  │  ├─ variables.tf
-│  │  ├─ outputs.tf
-│  │  └─ terraform.tfvars.example
-│  └─ docker-compose.yml        # Local dev services
-│
-├─ .github/
-│  └─ workflows/
-│     ├─ backend-test.yml       # Rust test CI
-│     ├─ frontend-test.yml      # Vue test CI
-│     └─ deploy.yml             # Deploy to AWS
-│
-├─ docs/                         # Project documentation
-│  ├─ API.md                     # API reference
-│  ├─ ARCHITECTURE.md            # Deep dive
-│  ├─ WIDGETS.md                 # Widget dev guide
-│  └─ DEPLOYMENT.md              # Deploy guide
-│
-├─ .env.example                  # Environment template
-├─ .gitignore
-├─ docker-compose.yml            # Service orchestration
-├─ README.md                      # This file
-└─ LICENSE
-```
-
----
-
-## 🔐 Authentication
-
-### Local JWT (Development)
-
-1. **Register** → `POST /api/auth/register`
-    ```json
-    { "email": "user@example.com", "password": "secure_pwd" }
-    ```
-2. **Login** → `POST /api/auth/login`
-    ```json
-    { "email": "user@example.com", "password": "secure_pwd" }
-    ```
-    Returns: `{ "access_token": "jwt..." }`
-3. **Authenticated requests** → Include header:
-    ```
-    Authorization: Bearer <access_token>
-    ```
-
-### Password Security
-
--   Argon2id hashing (via `argon2` crate)
--   Never store plaintext passwords
--   JWT signed with `HS256`
-
-### Production (AWS Cognito)
-
--   Swap local JWT for Cognito token validation
--   Middleware extracts `cognito_user_id` from JWT claims
--   No password hashing needed
-
----
-
-## 📡 API Reference
-
-### Auth Endpoints
-
-| Method | Endpoint             | Description         | Auth |
-| ------ | -------------------- | ------------------- | ---- |
-| POST   | `/api/auth/register` | Create user account | —    |
-| POST   | `/api/auth/login`    | Get JWT token       | —    |
-| GET    | `/api/auth/me`       | Get current user    | ✅   |
-| POST   | `/api/auth/refresh`  | Refresh token       | ✅   |
-
-### Dashboard Endpoints
-
-| Method | Endpoint              | Description          | Auth |
-| ------ | --------------------- | -------------------- | ---- |
-| GET    | `/api/dashboards`     | List user dashboards | ✅   |
-| POST   | `/api/dashboards`     | Create dashboard     | ✅   |
-| GET    | `/api/dashboards/:id` | Get single dashboard | ✅   |
-| PUT    | `/api/dashboards/:id` | Update dashboard     | ✅   |
-| DELETE | `/api/dashboards/:id` | Delete dashboard     | ✅   |
-
-### Data Endpoints (Widgets)
-
-| Method | Endpoint            | Query Params                | Cache | Description          |
-| ------ | ------------------- | --------------------------- | ----- | -------------------- |
-| GET    | `/api/data/github`  | `username`                  | 5m    | GitHub user activity |
-| GET    | `/api/data/weather` | `city`                      | 30m   | Weather forecast     |
-| GET    | `/api/data/news`    | `topic`, `country`          | 1h    | News headlines       |
-| GET    | `/api/data/crypto`  | `symbols` (comma-separated) | 5m    | Crypto prices        |
-| GET    | `/api/data/status`  | `url`                       | 2m    | Service uptime check |
-
-**Example Requests**:
-
-```bash
-curl -H "Authorization: Bearer <token>" \
-  'http://localhost:8080/api/data/github?username=torvalds'
-
-curl -H "Authorization: Bearer <token>" \
-  'http://localhost:8080/api/data/weather?city=San%20Francisco'
-
-curl -H "Authorization: Bearer <token>" \
-  'http://localhost:8080/api/data/crypto?symbols=BTC,ETH'
-```
-
----
-
-## 🎨 Widget System
-
-### Widget Structure
-
-Each widget is independently modular:
-
-1. **Backend Handler** (Rust) — Fetches and caches data
-2. **Frontend Component** (Vue) — Displays widget UI
-3. **Registry Entry** — Maps widget ID to component
-
-### Adding a New Widget
-
-**Step 1: Backend (Rust)**
-
-```rust
-// backend/src/widgets/example.rs
-pub async fn example_handler(
-    State(st): State<AppState>,
-    Query(q): Query<ExampleQuery>,
-) -> Result<impl IntoResponse, AppError> {
-    let cache_key = format!("example:{}", q.param);
-
-    // Check cache
-    if let Some(cached) = st.cache.get(&cache_key).await? {
-        return Ok(Json(cached));
-    }
-
-    // Fetch data
-    let data = fetch_example_data(&q.param).await?;
-
-    // Cache for 1 hour
-    st.cache.put(&cache_key, &data, 3600).await?;
-
-    Ok(Json(data))
-}
-```
-
-**Step 2: Register Route** (in `main.rs`)
-
-```rust
-.nest("/api", routes![
-    // ... existing routes
-    post(example_handler).at("/data/example"),
-])
-```
-
-**Step 3: Frontend Component** (Vue)
-
-```vue
-<!-- frontend/src/components/widgets/ExampleWidget.vue -->
-<script setup lang="ts">
-import { ref, onMounted } from 'vue';
-import { api } from '@/services/api';
-
-const props = defineProps<{ param: string }>();
-const data = ref(null);
-const loading = ref(false);
-
-onMounted(async () => {
-	loading.value = true;
-	try {
-		const { data: result } = await api.get('/data/example', {
-			params: { param: props.param },
-		});
-		data.value = result;
-	} finally {
-		loading.value = false;
-	}
-});
-</script>
-
-<template>
-	<div class="widget">
-		<div v-if="loading">Loading...</div>
-		<div v-else>{{ data }}</div>
-	</div>
-</template>
-```
-
-**Step 4: Register in Store**
-
-```typescript
-// frontend/src/store/widgets.ts
-export const widgetRegistry = {
-	// ... existing widgets
-	example: ExampleWidget,
-};
-```
-
----
-
-## 🧪 Testing
-
-### Backend Tests (Rust)
-
-```bash
-# Run all tests
-cd backend
-cargo test
-
-# With output
-cargo test -- --nocapture
-
-# Specific test
-cargo test github_widget_fetch
-```
-
-Example test:
-
-```rust
-#[tokio::test]
-async fn test_github_handler_caches() {
-    let state = setup_test_state().await;
-    let result1 = github_handler(state.clone(), query.clone()).await;
-    let result2 = github_handler(state.clone(), query.clone()).await;
-
-    assert_eq!(result1, result2);
-    // Verify cache was hit (check metrics or timing)
-}
-```
-
-### Frontend Tests (Vue)
-
-```bash
-# Run unit tests
-cd frontend
-pnpm test
-
-# Watch mode
-pnpm test:watch
-
-# Coverage
-pnpm test:coverage
-```
-
-### E2E Tests (Playwright)
-
-```bash
-# Run E2E tests
-pnpm test:e2e
-
-# Debug mode
-pnpm test:e2e --debug
-```
-
----
-
-## 🚀 Deployment
-
-### Prerequisites
-
--   AWS account (free tier eligible)
--   Terraform configured
--   Domain name (optional)
-
-### Quick Deploy (AWS)
-
-```bash
-# 1. Configure AWS credentials
-aws configure
-
-# 2. Deploy infrastructure
-cd infra
-terraform init
-terraform apply
-
-# 3. Build backend for Lambda
-cd ../backend
-cargo build --release
-# (Creates optimized binary for Lambda)
-
-# 4. Deploy frontend to S3 + CloudFront
-cd ../frontend
-pnpm build
-# (Manual upload or use GitHub Actions)
-```
-
-### Free-Tier Services Used
-
--   **Lambda**: 1M free requests/month
--   **API Gateway**: 1M free calls/month
--   **Neon Postgres**: 5GB free storage
--   **Upstash Redis**: 10,000 commands/day free
--   **S3**: 5GB free storage
--   **CloudFront**: 1TB free data transfer
-
-**Total Monthly Cost**: ~$0-5 (after free tier)
-
-### Continuous Deployment
-
-GitHub Actions workflows automate:
-
-1. Run tests on every push
-2. Build Docker images
-3. Deploy to Lambda on merge to `main`
-
-See `.github/workflows/` for configuration.
-
----
-
-## 📚 Documentation
-
-| Document                                | Purpose                     |
-| --------------------------------------- | --------------------------- |
-| [API.md](docs/API.md)                   | Detailed API reference      |
-| [ARCHITECTURE.md](docs/ARCHITECTURE.md) | System design & decisions   |
-| [WIDGETS.md](docs/WIDGETS.md)           | Guide to building widgets   |
-| [DEPLOYMENT.md](docs/DEPLOYMENT.md)     | Production deployment guide |
-
----
-
-## 🐛 Troubleshooting
-
-### Backend won't start
-
-```bash
-# Check Postgres connection
-psql $DATABASE_URL -c "SELECT 1"
-
-# Check Redis connection
-redis-cli -u $REDIS_URL ping
-
-# View logs
-RUST_LOG=debug cargo run
-```
-
-### Frontend build fails
-
-```bash
-# Clear cache
-rm -rf node_modules pnpm-lock.yaml
-pnpm install
-
-# Check Node version
-node --version  # Should be 18+
-```
-
-### CORS errors
-
-Ensure backend has CORS middleware enabled:
-
-```rust
-.layer(CorsLayer::permissive())  // Dev only!
-```
-
----
-
-## 🤝 Contributing
-
-We welcome contributions! Please follow these steps:
-
-1. **Fork** the repository
-2. **Create** a feature branch (`git checkout -b feature/amazing-feature`)
-3. **Commit** changes (`git commit -m 'Add amazing feature'`)
-4. **Push** to branch (`git push origin feature/amazing-feature`)
-5. **Open** a Pull Request
-
-### Code Standards
-
--   **Rust**: `cargo fmt` and `cargo clippy` (no warnings)
--   **Vue**: `pnpm lint` and `pnpm format`
--   **Git**: Conventional commits (feat:, fix:, docs:, etc.)
-
----
-
-## 📋 Roadmap
-
--   [x] Core MVP (auth, 5 widgets, layout)
--   [ ] Background refresh jobs (EventBridge)
--   [ ] Cognito authentication
--   [ ] AI summary widget (LLM integration)
--   [ ] Public dashboard sharing
--   [ ] S3 file uploads
--   [ ] Mobile app (React Native)
--   [ ] Real-time WebSocket updates
--   [ ] Plugin marketplace
-
----
-
-## 📄 License
-
-This project is licensed under the **MIT License** — see [LICENSE](LICENSE) file for details.
-
----
-
-## 👥 Acknowledgments
-
--   [Axum](https://github.com/tokio-rs/axum) — Ergonomic and modular web framework
--   [Vue 3](https://vuejs.org/) — Progressive JavaScript framework
--   [Tokio](https://tokio.rs/) — Async Rust runtime
--   [Pinia](https://pinia.vuejs.org/) — Store management
--   The awesome Rust & Vue communities
-
----
-
-## 📞 Support
-
--   📧 Email: [ihoque33@yahoo.com]
--   🐛 Issues: [GitHub Issues](https://github.com/yourusername/insightboard/issues)
-
----
-
-**⭐ If you found this useful, please star the repository!**
-
----
-
-_Last updated: October 28, 2025_
+There is no `Makefile`, Dockerfile, or CI workflow yet. M4 proposes the `Makefile` and CI; container images
+belong to M5.
+
+License: MIT intended; no LICENSE file committed. Repository:
+[github.com/lavinhoque33/insightboard](https://github.com/lavinhoque33/insightboard) (public). Contact:
+`ihoque33@yahoo.com`.

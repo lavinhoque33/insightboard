@@ -1,5 +1,23 @@
 # Frontend Architecture Guide
 
+> **Non-authoritative guide.** Written 2025-11-01 to 2025-11-05 as an educational walkthrough during the legacy
+> phase protocol and kept for background; it is not maintained. Authoritative:
+> [system overview](../architecture/system-overview.md),
+> [M0–M3 baseline contract](../architecture/m0-m3-baseline-contract.md),
+> [local setup](../development/local-setup.md), [testing](../development/testing.md). Known stale points at
+> `f15c6a3`:
+>
+> - Styles use `@import 'tailwindcss'; @plugin "daisyui"`, not `@tailwind` directives.
+> - Tailwind runs through PostCSS (`@tailwindcss/postcss`); the Tailwind Vite plugin is installed but unused.
+> - daisyUI is 5.0.0-beta.9, not v4.12.10.
+> - The current-user call is `GET /api/me`, not `/auth/me`.
+> - `dashboardApi` maps to `name`, `layout_json`, and `settings_json`; it does not send `{layout, settings}`.
+> - Adding a widget is draft-first: the configuration modal opens and the widget is created only on Save.
+> - Widget components are imported eagerly, not lazy-loaded.
+> - Loading shows a spinner, not a skeleton; the widget header is neutral `bg-base-200`, not a gradient.
+> - The guide never mentions the v1 contract (`contracts/api-contract.v1.json`, `src/contracts/apiContract.ts`)
+>   or the Vitest tests.
+
 InsightBoard Frontend — Vue 3 + TypeScript + Pinia + TailwindCSS + daisyUI
 
 This is a complete, beginner‑friendly, yet production‑ready guide to how the frontend works. It teaches the essentials of Vue 3, the libraries in use, and exactly how they are applied in this codebase. No prior experience required.

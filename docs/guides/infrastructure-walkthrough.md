@@ -1,5 +1,24 @@
 # 🏗️ InsightBoard Infrastructure Setup - Complete Guide
 
+> **Non-authoritative guide.** Written 2025-10-31 as an educational walkthrough during the legacy phase
+> protocol and kept for background; it is not maintained. Authoritative:
+> [system overview](../architecture/system-overview.md),
+> [M0–M3 baseline contract](../architecture/m0-m3-baseline-contract.md),
+> [local setup](../development/local-setup.md), [testing](../development/testing.md). Known stale points at
+> `f15c6a3`:
+>
+> - Widgets are not "skipped" without keys: Weather and News return 400 "not configured".
+> - The crypto cache key is `crypto:<ids>`, not `crypto:<symbols>`.
+> - The frontend uses npm: `npm run dev`, not `pnpm dev`.
+> - `sqlx migrate run` is not required: the backend applies migrations at startup.
+> - The expected log lines differ from the code (`backend/src/main.rs`).
+> - "Rust 1.70+" is not pinned anywhere; the 2026-10-10 baseline built with rustc 1.99.0 (D12).
+> - The footer "Phase 1 complete" is obsolete; see the [roadmap](../product/roadmap.md).
+> - Redis does persist in development: compose runs it with `--appendonly yes`.
+> - `sudo docker` is unnecessary when your user is in the `docker` group.
+> - Compose publishes Postgres and Redis on all interfaces with default credentials (D3); read the warning in
+>   local setup before starting them.
+
 > A comprehensive guide to local development infrastructure for developers starting from scratch
 
 ---

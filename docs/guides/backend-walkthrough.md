@@ -1,5 +1,24 @@
 # 🎓 InsightBoard Backend Architecture - Complete Guide
 
+> **Non-authoritative guide.** Written 2025-10-31 as an educational walkthrough during the legacy phase
+> protocol and kept for background; it is not maintained. Authoritative:
+> [system overview](../architecture/system-overview.md),
+> [M0–M3 baseline contract](../architecture/m0-m3-baseline-contract.md),
+> [local setup](../development/local-setup.md), [testing](../development/testing.md). Known stale points at
+> `f15c6a3`:
+>
+> - SQL is not checked at compile time: queries are runtime `sqlx::query_as` strings.
+> - The Redis connection manager is not used; every cache operation opens a new connection (D19).
+> - Crypto takes `ids` and calls CoinGecko `/coins/markets`, not `symbols` and `/simple/price`.
+> - The status response shape is `{url, status, response_time_ms, error}`, not the older shape shown here.
+> - A missing weather key returns 400 "OpenWeather API key not configured", not 500.
+> - CORS is not configurable: `CorsLayer::permissive()` (D4).
+> - There is no email validation (D17).
+> - Only the status widget has a timeout (5 s per URL); other provider calls have none (D5).
+> - Rate limiting is not "ready": `governor` is declared and unused (D6).
+> - New dashboards do not "start clean": omitted layout and settings are stored as JSON `null` (D8).
+> - `COINMARKETCAP_API_KEY` is read but unused.
+
 > A comprehensive explanation of the Rust backend implementation for developers new to Rust
 
 ---
