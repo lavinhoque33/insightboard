@@ -3,14 +3,11 @@
  */
 
 import apiClient from './client';
-import type {
-	AuthResponse,
-	LoginRequest,
-	RegisterRequest,
-	User,
-} from '../types';
+import type { AuthResponse, User } from '../types';
 import type {
 	ContractAuthResponse,
+	ContractLoginRequest,
+	ContractRegisterRequest,
 	ContractUser,
 } from '../contracts/apiContract';
 
@@ -19,7 +16,7 @@ export const authApi = {
 	 * Register a new user
 	 */
 	async register(email: string, password: string): Promise<AuthResponse> {
-		const request: RegisterRequest = { email, password };
+		const request: ContractRegisterRequest = { email, password };
 		const response = await apiClient.post<ContractAuthResponse>(
 			'/auth/register',
 			request,
@@ -31,7 +28,7 @@ export const authApi = {
 	 * Login user
 	 */
 	async login(email: string, password: string): Promise<AuthResponse> {
-		const request: LoginRequest = { email, password };
+		const request: ContractLoginRequest = { email, password };
 		const response = await apiClient.post<ContractAuthResponse>(
 			'/auth/login',
 			request,

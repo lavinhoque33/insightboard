@@ -1,10 +1,10 @@
 /** * Crypto Widget * Displays cryptocurrency prices with price change
 indicators */
 <script setup lang="ts">
-import { ref, onMounted, onUnmounted, watch } from 'vue';
+import { computed } from 'vue';
 import BaseWidget from '../BaseWidget.vue';
-import { errorMessage } from '../../api/errorMessage';
-import { fetchCryptoData, type CryptoPrice } from '../../api/widgets';
+import { useWidgetData } from '../../composables/useWidgetData';
+import { fetchCryptoData } from '../../api/widgets';
 
 interface Props {
 	config: {
@@ -21,45 +21,14 @@ interface Emits {
 const props = defineProps<Props>();
 const emit = defineEmits<Emits>();
 
-const loading = ref(false);
-const error = ref<string | null>(null);
-const cryptos = ref<CryptoPrice[]>([]);
-const lastUpdated = ref<Date | null>(null);
-
-let refreshTimer: number | null = null;
-
-const loadData = async () => {
-	if (!props.config.cryptoIds) {
-		error.value = 'Cryptocurrency IDs not configured';
-		return;
-	}
-
-	loading.value = true;
-	error.value = null;
-
-	try {
-		cryptos.value = await fetchCryptoData(props.config.cryptoIds);
-		lastUpdated.value = new Date();
-	} catch (err) {
-		error.value = errorMessage(err, 'Failed to load crypto data');
-		cryptos.value = [];
-	} finally {
-		loading.value = false;
-	}
-};
-
-const setupAutoRefresh = () => {
-	if (refreshTimer) {
-		clearInterval(refreshTimer);
-		refreshTimer = null;
-	}
-
-	if (props.refreshInterval && props.refreshInterval > 0) {
-		refreshTimer = window.setInterval(() => {
-			loadData();
-		}, props.refreshInterval * 1000);
-	}
-};
+const { data, loading, error, lastUpdated, reload } = useWidgetData({
+	source: () => props.config.cryptoIds,
+	fetch: fetchCryptoData,
+	refreshInterval: () => props.refreshInterval,
+	notConfigured: 'Cryptocurrency IDs not configured',
+	failure: 'Failed to load crypto data',
+});
+const cryptos = computed(() => data.value ?? []);
 
 const NO_VALUE = '—';
 
@@ -88,31 +57,6 @@ const getPriceChangeIcon = (change: number | null): string => {
 	if (change < 0) return '▼';
 	return '━';
 };
-
-onMounted(() => {
-	loadData();
-	setupAutoRefresh();
-});
-
-watch(
-	() => props.refreshInterval,
-	() => {
-		setupAutoRefresh();
-	},
-);
-
-watch(
-	() => props.config.cryptoIds,
-	() => {
-		loadData();
-	},
-);
-
-onUnmounted(() => {
-	if (refreshTimer) {
-		clearInterval(refreshTimer);
-	}
-});
 </script>
 
 <template>
@@ -121,7 +65,7 @@ onUnmounted(() => {
 		:loading="loading"
 		:error="error"
 		:last-updated="lastUpdated"
-		@refresh="loadData"
+		@refresh="reload"
 		@configure="emit('configure')"
 		@remove="emit('remove')"
 	>
@@ -139,7 +83,7 @@ onUnmounted(() => {
 			<div
 				v-for="crypto in cryptos"
 				:key="crypto.id"
-				class="card card-bordered border-base-300 bg-gradient-to-br from-base-100 to-base-200 hover:shadow-lg transition-all duration-300 group"
+				class="card card-border border-base-300 bg-linear-to-br from-base-100 to-base-200 hover:shadow-lg transition-all duration-300 group"
 			>
 				<div class="card-body p-4">
 					<!-- Header: Symbol and Price -->
@@ -154,7 +98,7 @@ onUnmounted(() => {
 						</div>
 						<div class="text-right">
 							<div
-								class="text-xl font-bold text-transparent bg-gradient-to-r from-primary to-secondary bg-clip-text"
+								class="text-xl font-bold text-transparent bg-linear-to-r from-primary to-secondary bg-clip-text"
 							>
 								{{ formatPrice(crypto.current_price) }}
 							</div>

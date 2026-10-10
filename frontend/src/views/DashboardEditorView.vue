@@ -1,280 +1,370 @@
-/** * Dashboard Editor View * Allows users to add, configure, move, and remove
-widgets on their dashboard */
+<!--
+	Dashboard Editor View
+	Loads one dashboard by id, lets the user add, configure, move, resize, and
+	remove widgets, and auto-saves through a serialised queue. Vue creates and
+	removes the widget DOM nodes; GridStack only positions them (makeWidget and
+	removeWidget without DOM removal).
+-->
 <script setup lang="ts">
-import { ref, computed, onMounted, onBeforeUnmount, nextTick } from 'vue';
-import { useRoute, useRouter } from 'vue-router';
+import { computed, nextTick, onBeforeUnmount, onMounted, ref } from 'vue';
+import type { ComponentPublicInstance } from 'vue';
+import { onBeforeRouteLeave, onBeforeRouteUpdate, useRoute } from 'vue-router';
+import 'gridstack/dist/gridstack.min.css';
+import { GridStack } from 'gridstack';
+import type { GridStackNode } from 'gridstack';
 import { useDashboardStore } from '../stores/dashboard';
 import { useWidgetStore } from '../stores/widgets';
 import type { WidgetInstance } from '../stores/widgets';
-import type { WidgetType as WidgetKind, WidgetConfig } from '../types';
-import 'gridstack/dist/gridstack.min.css';
-import { GridStack } from 'gridstack';
+import { useAuthStore } from '../stores/auth';
+import type {
+	LayoutConfig,
+	WidgetConfig,
+	WidgetType as WidgetKind,
+} from '../types';
 import WidgetConfigModal from '../components/WidgetConfigModal.vue';
+import { useSaveQueue } from '../composables/useSaveQueue';
+import { useDisclosure } from '../composables/useDisclosure';
+
+const AUTO_SAVE_DELAY_MS = 2000;
+const FULL_COLUMNS = 12;
 
 const route = useRoute();
-const router = useRouter();
 const dashboardStore = useDashboardStore();
 const widgetStore = useWidgetStore();
+const authStore = useAuthStore();
 
-const dashboardId = computed(() => route.params.id as string);
-const dashboard = computed(() =>
-	dashboardStore.dashboards.find((d) => d.id === dashboardId.value),
-);
-
+// Working copy of the dashboard being edited; persisted by the save queue
+const name = ref('');
 const widgets = ref<WidgetInstance[]>([]);
-const gridInstance = ref<GridStack | null>(null);
-const gridContainer = ref<HTMLElement | null>(null);
-const saving = ref(false);
-const showWidgetPicker = ref(false);
-const showConfigModal = ref(false);
-const configModalWidget = ref<{
-	instance: WidgetInstance;
-	typeName: string;
-	isNewWidget: boolean;
-} | null>(null);
-const autoSaveTimer = ref<number | null>(null);
+const ready = ref(false);
+// The id the working copy belongs to; saves always target it
+let loadedId = '';
 
-// Load dashboard data
-const loadDashboard = async () => {
-	await dashboardStore.fetchDashboards();
-	if (dashboard.value && dashboard.value.layout?.widgets) {
-		widgets.value = dashboard.value.layout.widgets.map((w) => ({
-			id: w.id,
-			type: w.type,
-			config: w.config || {},
-			layout: { x: w.x, y: w.y, w: w.w, h: w.h },
-		}));
-
-		// Wait for next tick then initialize grid
-		setTimeout(() => {
-			initializeGrid();
-		}, 100);
-	}
-};
-
-// Initialize GridStack
-const initializeGrid = () => {
-	if (!gridContainer.value || gridInstance.value) return;
-
-	gridInstance.value = GridStack.init(
-		{
-			float: false,
-			cellHeight: 80,
-			margin: 10,
-			minRow: 1,
-			column: 12,
-			animate: true,
-			draggable: {
-				// Only drag by header area and ignore controls.
-				handle: '.widget-drag-handle',
-				cancel: '.widget-action,button,a,input,textarea,select',
-			},
-			resizable: {
-				handles: 'se, sw',
-			},
-		},
-		gridContainer.value,
-	);
-
-	// Listen to change events for auto-save
-	gridInstance.value.on('change', () => {
-		scheduleAutoSave();
-	});
-};
-
-// Add widget to dashboard
-const addWidget = (typeId: string, event?: Event) => {
-	if (event) {
-		event.preventDefault();
-		event.stopPropagation();
-	}
-
-	showWidgetPicker.value = false;
-
-	const draftWidget = widgetStore.createWidgetInstance(typeId);
-	if (!draftWidget) return;
-
-	const widgetType = widgetStore.getWidgetType(typeId);
-	if (!widgetType) return;
-
-	// Open config first; only create/persist widget after successful Save.
-	configModalWidget.value = {
-		instance: draftWidget,
-		typeName: widgetType.name,
-		isNewWidget: true,
-	};
-	showConfigModal.value = true;
-};
-
-// Configure widget
-const configureWidget = (widgetId: string) => {
-	const widget = widgets.value.find((w) => w.id === widgetId);
-	if (!widget) return;
-
-	const widgetType = widgetStore.getWidgetType(widget.type);
-	if (!widgetType) return;
-
-	configModalWidget.value = {
-		instance: widget,
-		typeName: widgetType.name,
-		isNewWidget: false,
-	};
-	showConfigModal.value = true;
-};
-
-// Save widget configuration
-const saveWidgetConfig = (config: WidgetConfig) => {
-	if (!configModalWidget.value) return;
-
-	const { instance, isNewWidget } = configModalWidget.value;
-
-	if (isNewWidget) {
-		const newWidget: WidgetInstance = {
-			...instance,
-			config,
-		};
-		widgets.value.push(newWidget);
-
-		// Initialize grid if needed and attach the newly created widget.
-		nextTick(() => {
-			if (!gridInstance.value && gridContainer.value) {
-				initializeGrid();
-			}
-
-			if (gridInstance.value) {
-				const widgetElement = document.getElementById(newWidget.id);
-				if (widgetElement) {
-					widgetElement.removeAttribute('gs-x');
-					widgetElement.removeAttribute('gs-y');
-					gridInstance.value.addWidget(widgetElement);
-				}
-			}
-		});
-	} else {
-		const widget = widgets.value.find((w) => w.id === instance.id);
-		if (widget) {
-			widget.config = config;
-		}
-	}
-
-	scheduleAutoSave();
-};
-
-// Close widget configuration modal without mutating dashboard state.
-const closeConfigModal = () => {
-	showConfigModal.value = false;
-	configModalWidget.value = null;
-};
-
-// Remove widget
-const removeWidget = (widgetId: string) => {
-	widgets.value = widgets.value.filter((w) => w.id !== widgetId);
-
-	if (gridInstance.value) {
-		const element = document.getElementById(widgetId);
-		if (element) {
-			gridInstance.value.removeWidget(element);
-		}
-	}
-
-	scheduleAutoSave();
-};
-
-// Schedule auto-save (debounced)
-const scheduleAutoSave = () => {
-	if (autoSaveTimer.value) {
-		clearTimeout(autoSaveTimer.value);
-	}
-
-	autoSaveTimer.value = window.setTimeout(() => {
-		saveDashboard();
-	}, 2000);
-};
-
-// Save dashboard
-const saveDashboard = async () => {
-	if (!dashboard.value) return;
-
-	saving.value = true;
-
-	try {
-		// Update widget positions from GridStack
-		if (gridInstance.value) {
-			const gridWidgets = gridInstance.value.getGridItems();
-			gridWidgets.forEach((el) => {
-				const widget = widgets.value.find(
-					(w) => w.id === el.getAttribute('id'),
-				);
-				if (widget) {
-					const node = el.gridstackNode;
-					if (node) {
-						widget.layout.x = node.x || 0;
-						widget.layout.y = node.y || 0;
-						widget.layout.w = node.w || 4;
-						widget.layout.h = node.h || 3;
-					}
-				}
-			});
-		}
-
-		await dashboardStore.updateDashboard(dashboard.value.id, {
+const saver = useSaveQueue({
+	snapshot: (): { name: string; layout: LayoutConfig } => ({
+		name: name.value,
+		layout: {
 			widgets: widgets.value.map((w) => ({
 				id: w.id,
-				type: w.type as WidgetKind,
+				type: w.type,
 				x: w.layout.x,
 				y: w.layout.y,
 				w: w.layout.w,
 				h: w.layout.h,
 				config: w.config,
 			})),
-		});
-	} catch (error) {
-		console.error('Failed to save dashboard:', error);
-	} finally {
-		saving.value = false;
-	}
-};
-
-// Get widget component
-const getWidgetComponent = (typeId: string) => {
-	const widgetType = widgetStore.getWidgetType(typeId);
-	return widgetType?.component || null;
-};
-
-// Get widget refresh interval
-const getRefreshInterval = (typeId: string): number => {
-	const widgetType = widgetStore.getWidgetType(typeId);
-	return widgetType?.refreshInterval || 0;
-};
-
-onMounted(() => {
-	loadDashboard();
+		},
+	}),
+	save: (changes) => dashboardStore.updateDashboard(loadedId, changes),
+	delay: AUTO_SAVE_DELAY_MS,
 });
 
-onBeforeUnmount(() => {
-	if (gridInstance.value) {
-		gridInstance.value.destroy(false);
+// --- GridStack -------------------------------------------------------------
+
+let grid: GridStack | null = null;
+const gridContainer = ref<HTMLElement | null>(null);
+const itemElements = new Map<string, HTMLElement>();
+// Below the breakpoint the grid shows one column; positions are then not
+// editable and not saved, so the 12-column layout is never overwritten.
+const compact = ref(false);
+
+const setItemElement = (
+	id: string,
+	el: Element | ComponentPublicInstance | null,
+) => {
+	if (el instanceof HTMLElement) itemElements.set(id, el);
+	else itemElements.delete(id);
+};
+
+const syncColumnMode = () => {
+	if (!grid) return;
+	compact.value = grid.getColumn() < FULL_COLUMNS;
+	grid.setStatic(compact.value);
+};
+
+const onGridChange = (_event: Event, nodes: GridStackNode[]) => {
+	if (!grid || grid.getColumn() !== FULL_COLUMNS) return;
+	for (const node of nodes) {
+		const widget = widgets.value.find((w) => w.id === node.id);
+		if (!widget) continue;
+		widget.layout = {
+			x: node.x ?? 0,
+			y: node.y ?? 0,
+			w: node.w ?? widget.layout.w,
+			h: node.h ?? widget.layout.h,
+		};
 	}
-	if (autoSaveTimer.value) {
-		clearTimeout(autoSaveTimer.value);
-		saveDashboard(); // Final save on unmount
+	saver.schedule();
+};
+
+const initGrid = () => {
+	if (grid || !gridContainer.value) return;
+	// Picks up the items Vue already rendered (gs-* attributes)
+	grid = GridStack.init(
+		{
+			column: FULL_COLUMNS,
+			columnOpts: { breakpoints: [{ w: 768, c: 1 }] },
+			float: false,
+			cellHeight: 80,
+			margin: 8,
+			minRow: 1,
+			animate: true,
+			draggable: {
+				handle: '.widget-drag-handle',
+				cancel: '.widget-action,button,a,input,textarea,select',
+			},
+			resizable: { handles: 'se, sw' },
+		},
+		gridContainer.value,
+	);
+	grid.on('change', onGridChange);
+	grid.on('resizecontent', syncColumnMode);
+	syncColumnMode();
+};
+
+const destroyGrid = () => {
+	// Keep the DOM: Vue owns the nodes and removes them itself
+	grid?.destroy(false);
+	grid = null;
+};
+
+// --- Loading -----------------------------------------------------------------
+
+const load = async (id: string) => {
+	destroyGrid();
+	ready.value = false;
+	loadedId = '';
+	await dashboardStore.fetchDashboard(id);
+	const dashboard = dashboardStore.current;
+	if (!dashboard || dashboard.id !== id) return;
+
+	loadedId = id;
+	name.value = dashboard.name;
+	widgets.value = dashboard.layout.widgets.map((w) => ({
+		id: w.id,
+		type: w.type,
+		config: {
+			...widgetStore.getWidgetType(w.type)?.defaultConfig,
+			...w.config,
+		},
+		layout: { x: w.x, y: w.y, w: w.w, h: w.h },
+	}));
+	saver.markSaved();
+	ready.value = true;
+	await nextTick();
+	initGrid();
+};
+
+onMounted(() => load(String(route.params.id)));
+
+// --- Leaving -----------------------------------------------------------------
+
+/**
+ * Persist pending edits before the route changes. If the save fails the user
+ * stays (with the error and Retry visible) unless they choose to discard.
+ */
+const settleBeforeLeaving = async (): Promise<boolean> => {
+	if (!ready.value || !authStore.isAuthenticated || !saver.hasPendingWork()) {
+		return true;
+	}
+	if (await saver.flush()) return true;
+	return window.confirm(
+		'Your latest changes could not be saved. Leave this page and discard them?',
+	);
+};
+
+onBeforeRouteLeave(settleBeforeLeaving);
+// Another dashboard in the same view instance (for example through history)
+onBeforeRouteUpdate(async (to, from) => {
+	if (to.params.id === from.params.id) return true;
+	if (!(await settleBeforeLeaving())) return false;
+	void load(String(to.params.id));
+	return true;
+});
+
+const onBeforeUnload = (event: BeforeUnloadEvent) => {
+	if (ready.value && saver.hasPendingWork()) event.preventDefault();
+};
+window.addEventListener('beforeunload', onBeforeUnload);
+
+onBeforeUnmount(() => {
+	// Nothing is sent once the editor is gone
+	saver.dispose();
+	window.removeEventListener('beforeunload', onBeforeUnload);
+	destroyGrid();
+});
+
+// --- Widgets -----------------------------------------------------------------
+
+const picker = useDisclosure();
+const { root: pickerRoot, trigger: pickerTrigger } = picker;
+
+const configTarget = ref<{ instance: WidgetInstance; isNew: boolean } | null>(
+	null,
+);
+
+const openPicker = async () => {
+	picker.open.value = true;
+	await nextTick();
+	pickerTrigger.value?.scrollIntoView({ block: 'nearest' });
+};
+
+// Opens the configuration for a draft; the widget is only added on Save
+const addWidget = (typeId: WidgetKind) => {
+	picker.close({ returnFocus: true });
+	const bottom = Math.max(
+		0,
+		...widgets.value.map((w) => w.layout.y + w.layout.h),
+	);
+	const draft = widgetStore.createWidgetInstance(typeId, { x: 0, y: bottom });
+	if (draft) configTarget.value = { instance: draft, isNew: true };
+};
+
+const configureWidget = (widget: WidgetInstance) => {
+	configTarget.value = { instance: widget, isNew: false };
+};
+
+const saveWidgetConfig = async (config: WidgetConfig) => {
+	const target = configTarget.value;
+	if (!target) return;
+
+	if (!target.isNew) {
+		target.instance.config = config;
+		saver.schedule();
+		return;
+	}
+
+	const widget: WidgetInstance = { ...target.instance, config };
+	widgets.value.push(widget);
+	saver.schedule();
+	await nextTick();
+	const el = itemElements.get(widget.id);
+	if (grid && el) grid.makeWidget(el);
+};
+
+const removeWidget = (widget: WidgetInstance) => {
+	const el = itemElements.get(widget.id);
+	// GridStack lets go of the node; Vue removes it from the DOM
+	if (grid && el) grid.removeWidget(el, false);
+	widgets.value = widgets.value.filter((w) => w.id !== widget.id);
+	saver.schedule();
+	pickerTrigger.value?.focus();
+};
+
+const widgetType = (typeId: WidgetKind) => widgetStore.getWidgetType(typeId);
+
+// --- Rename ------------------------------------------------------------------
+
+const renaming = ref(false);
+const nameDraft = ref('');
+const nameError = ref<string | null>(null);
+const renameButton = ref<HTMLButtonElement | null>(null);
+const nameInput = ref<HTMLInputElement | null>(null);
+
+const startRename = async () => {
+	nameDraft.value = name.value;
+	nameError.value = null;
+	renaming.value = true;
+	await nextTick();
+	nameInput.value?.select();
+};
+
+const endRename = async () => {
+	renaming.value = false;
+	await nextTick();
+	renameButton.value?.focus();
+};
+
+const submitRename = () => {
+	const trimmed = nameDraft.value.trim();
+	if (!trimmed) {
+		nameError.value = 'Enter a name for the dashboard.';
+		nameInput.value?.focus();
+		return;
+	}
+	name.value = trimmed;
+	void saver.flush();
+	void endRename();
+};
+
+const saveStatusText = computed(() => {
+	switch (saver.status.value) {
+		case 'saving':
+			return 'Saving…';
+		case 'pending':
+			return 'Unsaved changes';
+		case 'saved':
+			return 'All changes saved';
+		default:
+			return '';
 	}
 });
 </script>
 
 <template>
-	<div class="h-screen flex flex-col bg-base-100">
-		<!-- Toolbar -->
+	<div class="flex flex-1 flex-col">
+		<!-- Loading -->
 		<div
-			class="navbar bg-base-200 shadow-lg border-b border-base-300 sticky top-[70px] z-40"
+			v-if="dashboardStore.currentLoading"
+			class="flex flex-1 flex-col items-center justify-center gap-3 py-24"
+			role="status"
 		>
-			<div class="flex-1">
+			<span
+				class="loading loading-spinner loading-lg text-primary"
+				aria-hidden="true"
+			></span>
+			<p class="text-base-content/70">Loading dashboard…</p>
+		</div>
+
+		<!-- Unknown or foreign id -->
+		<div
+			v-else-if="dashboardStore.currentNotFound"
+			class="mx-auto flex max-w-md flex-col items-center gap-4 px-4 py-24 text-center"
+		>
+			<h1 class="text-2xl font-bold">Dashboard not found</h1>
+			<p class="text-base-content/70">
+				This dashboard does not exist or belongs to another account.
+			</p>
+			<router-link to="/dashboards" class="btn btn-primary"
+				>Back to dashboards</router-link
+			>
+		</div>
+
+		<!-- Load failure -->
+		<div
+			v-else-if="dashboardStore.currentError"
+			class="mx-auto flex w-full max-w-md flex-col gap-4 px-4 py-24"
+		>
+			<div class="alert alert-error" role="alert">
+				<div>
+					<h1 class="font-bold">Could not load the dashboard</h1>
+					<p class="text-sm">{{ dashboardStore.currentError }}</p>
+				</div>
 				<button
-					class="btn btn-ghost gap-2"
-					title="Back to Dashboards"
-					@click="router.push('/dashboards')"
+					type="button"
+					class="btn btn-sm"
+					@click="load(String(route.params.id))"
+				>
+					Retry
+				</button>
+			</div>
+			<router-link to="/dashboards" class="link"
+				>Back to dashboards</router-link
+			>
+		</div>
+
+		<template v-else-if="ready">
+			<!-- Toolbar -->
+			<div
+				class="flex flex-wrap items-center gap-2 border-b border-base-300 bg-base-200 px-3 py-2 sm:px-6"
+			>
+				<router-link
+					to="/dashboards"
+					class="btn btn-ghost btn-sm btn-square"
+					aria-label="Back to dashboards"
 				>
 					<svg
+						aria-hidden="true"
 						xmlns="http://www.w3.org/2000/svg"
 						class="h-5 w-5"
 						fill="none"
@@ -288,94 +378,52 @@ onBeforeUnmount(() => {
 							d="M10 19l-7-7m0 0l7-7m-7 7h18"
 						/>
 					</svg>
-					<h1
-						class="text-2xl font-bold text-transparent bg-gradient-to-r from-primary to-secondary bg-clip-text"
-					>
-						{{ dashboard?.settings?.title || 'Dashboard Editor' }}
-					</h1>
-				</button>
-			</div>
+				</router-link>
 
-			<!-- Saving Status -->
-			<div
-				v-if="saving"
-				class="flex items-center gap-2 text-primary font-medium mx-4"
-			>
-				<span class="loading loading-spinner loading-sm"></span>
-				<span>Saving...</span>
-			</div>
-
-			<!-- Add Widget Dropdown -->
-			<div
-				class="dropdown dropdown-end"
-				:class="{ 'dropdown-open': showWidgetPicker }"
-			>
-				<button
-					class="btn btn-primary gap-2 shadow-lg"
-					type="button"
-					@click="showWidgetPicker = !showWidgetPicker"
+				<form
+					v-if="renaming"
+					class="flex min-w-0 flex-1 flex-wrap items-center gap-2"
+					novalidate
+					@submit.prevent="submitRename"
 				>
-					<svg
-						xmlns="http://www.w3.org/2000/svg"
-						class="h-5 w-5"
-						fill="none"
-						viewBox="0 0 24 24"
-						stroke="currentColor"
+					<label for="dashboard-name" class="sr-only">Dashboard name</label>
+					<input
+						id="dashboard-name"
+						ref="nameInput"
+						v-model="nameDraft"
+						type="text"
+						class="input input-sm min-w-0 flex-1"
+						:class="{ 'input-error': nameError }"
+						:aria-invalid="!!nameError"
+						:aria-describedby="nameError ? 'dashboard-name-error' : undefined"
+						@keydown.esc.prevent="endRename"
+					/>
+					<button type="submit" class="btn btn-primary btn-sm">Save</button>
+					<button type="button" class="btn btn-ghost btn-sm" @click="endRename">
+						Cancel
+					</button>
+					<p
+						v-if="nameError"
+						id="dashboard-name-error"
+						class="w-full text-sm text-error"
+						role="alert"
 					>
-						<path
-							stroke-linecap="round"
-							stroke-linejoin="round"
-							stroke-width="2"
-							d="M12 4v16m8-8H4"
-						/>
-					</svg>
-					<span>Add Widget</span>
-				</button>
-				<ul
-					class="dropdown-content z-50 menu p-2 shadow-xl bg-base-100 rounded-lg w-80 border border-base-300 max-h-96 overflow-y-auto"
-				>
-					<li
-						v-for="widgetType in widgetStore.availableWidgets"
-						:key="widgetType.id"
-					>
-						<button
-							type="button"
-							class="p-3 text-left w-full hover:bg-base-200 rounded transition-colors"
-							@click="addWidget(widgetType.id, $event)"
-						>
-							<div class="flex items-start gap-3 w-full">
-								<span class="text-2xl">{{ widgetType.icon }}</span>
-								<div class="flex-1">
-									<div class="font-bold text-base-content">
-										{{ widgetType.name }}
-									</div>
-									<div class="text-sm text-base-content/60 mt-1">
-										{{ widgetType.description }}
-									</div>
-								</div>
-							</div>
-						</button>
-					</li>
-				</ul>
-			</div>
-		</div>
-
-		<!-- GridStack Container -->
-		<div
-			class="flex-1 overflow-auto p-6 bg-gradient-to-br from-base-100 via-base-100 to-base-200"
-		>
-			<!-- Empty State -->
-			<div
-				v-if="widgets.length === 0"
-				class="flex flex-col items-center justify-center h-full"
-			>
-				<div class="text-center max-w-md">
-					<div
-						class="inline-flex items-center justify-center w-24 h-24 rounded-full bg-base-200 mb-6"
+						{{ nameError }}
+					</p>
+				</form>
+				<div v-else class="flex min-w-0 flex-1 items-center gap-1">
+					<h1 class="truncate text-lg font-bold sm:text-2xl">{{ name }}</h1>
+					<button
+						ref="renameButton"
+						type="button"
+						class="btn btn-ghost btn-xs btn-square shrink-0"
+						aria-label="Rename dashboard"
+						@click="startRename"
 					>
 						<svg
+							aria-hidden="true"
 							xmlns="http://www.w3.org/2000/svg"
-							class="h-12 w-12 text-base-content/40"
+							class="h-4 w-4"
 							fill="none"
 							viewBox="0 0 24 24"
 							stroke="currentColor"
@@ -384,24 +432,33 @@ onBeforeUnmount(() => {
 								stroke-linecap="round"
 								stroke-linejoin="round"
 								stroke-width="2"
-								d="M9 17V7m0 10a2 2 0 01-2 2H5a2 2 0 01-2-2V7a2 2 0 012-2h2a2 2 0 012 2m0 10a2 2 0 002 2h2a2 2 0 002-2M9 7a2 2 0 012-2h2a2 2 0 012 2m0 10V7m0 10a2 2 0 002 2h2a2 2 0 002-2V7a2 2 0 00-2-2h-2a2 2 0 00-2 2"
+								d="M15.232 5.232l3.536 3.536M9 13l6.232-6.232a2.5 2.5 0 113.536 3.536L12.536 16.536 9 17l.464-3.536z"
 							/>
 						</svg>
-					</div>
-					<h2 class="text-2xl font-bold text-base-content mb-2">
-						Build Your Dashboard
-					</h2>
-					<p class="text-base-content/60 mb-8">
-						Add widgets to visualize your data and create a personalized
-						dashboard experience.
-					</p>
+					</button>
+				</div>
+
+				<p
+					class="text-sm text-base-content/70"
+					role="status"
+					data-testid="save-status"
+				>
+					{{ saveStatusText }}
+				</p>
+
+				<div ref="pickerRoot" class="relative">
 					<button
-						class="btn btn-primary btn-lg gap-2 shadow-lg"
-						@click="showWidgetPicker = true"
+						ref="pickerTrigger"
+						type="button"
+						class="btn btn-primary btn-sm"
+						aria-controls="widget-picker"
+						:aria-expanded="picker.open.value"
+						@click="picker.toggle"
 					>
 						<svg
+							aria-hidden="true"
 							xmlns="http://www.w3.org/2000/svg"
-							class="h-6 w-6"
+							class="h-4 w-4"
 							fill="none"
 							viewBox="0 0 24 24"
 							stroke="currentColor"
@@ -413,76 +470,105 @@ onBeforeUnmount(() => {
 								d="M12 4v16m8-8H4"
 							/>
 						</svg>
-						Add Your First Widget
+						Add Widget
 					</button>
+					<ul
+						v-if="picker.open.value"
+						id="widget-picker"
+						data-menu-panel
+						class="menu absolute right-0 top-full z-50 mt-1 w-72 max-w-[calc(100vw-1.5rem)] rounded-box border border-base-300 bg-base-100 p-1 shadow-lg"
+					>
+						<li v-for="type in widgetStore.availableWidgets" :key="type.id">
+							<button
+								type="button"
+								class="flex items-start gap-3"
+								@click="addWidget(type.id)"
+							>
+								<span class="text-xl" aria-hidden="true">{{ type.icon }}</span>
+								<span class="flex flex-col items-start">
+									<span class="font-semibold">{{ type.name }}</span>
+									<span class="text-xs text-base-content/70">{{
+										type.description
+									}}</span>
+								</span>
+							</button>
+						</li>
+					</ul>
 				</div>
 			</div>
 
-			<!-- Widgets Grid (always rendered so ref is available) -->
+			<!-- Save failure: edits stay in memory until a save succeeds -->
 			<div
-				ref="gridContainer"
-				class="grid-stack rounded-lg"
-				:style="{ display: widgets.length === 0 ? 'none' : 'block' }"
+				v-if="saver.status.value === 'error'"
+				class="alert alert-error mx-3 mt-3 sm:mx-6"
+				role="alert"
 			>
+				<div>
+					<h2 class="font-bold">Your changes are not saved</h2>
+					<p class="text-sm">{{ saver.error.value }}</p>
+				</div>
+				<button type="button" class="btn btn-sm" @click="saver.flush">
+					Retry
+				</button>
+			</div>
+
+			<p v-if="compact" class="px-3 pt-3 text-sm text-base-content/70 sm:px-6">
+				Moving and resizing widgets is available on wider screens.
+			</p>
+
+			<div class="flex-1 p-3 sm:p-6">
 				<div
-					v-for="widget in widgets"
-					:id="widget.id"
-					:key="widget.id"
-					class="grid-stack-item"
-					:gs-id="widget.id"
-					:gs-x="widget.layout.x"
-					:gs-y="widget.layout.y"
-					:gs-w="widget.layout.w"
-					:gs-h="widget.layout.h"
+					v-if="widgets.length === 0"
+					class="mx-auto flex max-w-md flex-col items-center gap-4 py-16 text-center"
 				>
+					<h2 class="text-2xl font-bold">Build your dashboard</h2>
+					<p class="text-base-content/70">
+						Add widgets to bring your data together in one place.
+					</p>
+					<button type="button" class="btn btn-primary" @click="openPicker">
+						Add your first widget
+					</button>
+				</div>
+
+				<div v-show="widgets.length > 0" ref="gridContainer" class="grid-stack">
 					<div
-						class="grid-stack-item-content rounded-lg shadow-md hover:shadow-lg transition-all"
+						v-for="widget in widgets"
+						:key="widget.id"
+						:ref="(el) => setItemElement(widget.id, el)"
+						class="grid-stack-item"
+						:gs-id="widget.id"
+						:gs-x="widget.layout.x"
+						:gs-y="widget.layout.y"
+						:gs-w="widget.layout.w"
+						:gs-h="widget.layout.h"
+						:gs-min-w="widgetType(widget.type)?.minSize.w"
+						:gs-min-h="widgetType(widget.type)?.minSize.h"
 					>
-						<component
-							:is="getWidgetComponent(widget.type)"
-							:config="widget.config"
-							:refresh-interval="getRefreshInterval(widget.type)"
-							@configure="configureWidget(widget.id)"
-							@remove="removeWidget(widget.id)"
-						/>
+						<div class="grid-stack-item-content">
+							<component
+								:is="widgetType(widget.type)?.component"
+								v-if="widgetType(widget.type)"
+								:config="widget.config"
+								:refresh-interval="widgetType(widget.type)?.refreshInterval"
+								@configure="configureWidget(widget)"
+								@remove="removeWidget(widget)"
+							/>
+						</div>
 					</div>
 				</div>
 			</div>
-		</div>
+		</template>
 
-		<!-- Widget Configuration Modal -->
 		<WidgetConfigModal
-			v-if="configModalWidget"
-			:show="showConfigModal"
-			:widget-type-name="configModalWidget.typeName"
+			v-if="configTarget"
+			:key="configTarget.instance.id"
+			:widget-type-name="widgetType(configTarget.instance.type)?.name ?? ''"
 			:config-schema="
-				widgetStore.getWidgetType(configModalWidget.instance.type)
-					?.configSchema || []
+				widgetType(configTarget.instance.type)?.configSchema ?? []
 			"
-			:initial-config="configModalWidget.instance.config"
-			@close="closeConfigModal"
+			:initial-config="configTarget.instance.config"
+			@close="configTarget = null"
 			@save="saveWidgetConfig"
 		/>
 	</div>
 </template>
-
-<style>
-/* GridStack styles */
-.grid-stack {
-	background: transparent;
-}
-
-.grid-stack-item {
-	overflow: visible !important;
-}
-
-.grid-stack-item-content {
-	overflow: visible !important;
-	inset: 0 !important;
-}
-
-/* Ensure widgets display properly */
-.grid-stack-item .widget-base {
-	height: 100%;
-}
-</style>

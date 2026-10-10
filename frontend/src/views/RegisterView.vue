@@ -1,36 +1,28 @@
 <template>
-	<div
-		class="hero min-h-[calc(100vh-70px)] bg-gradient-to-br from-base-100 to-base-200"
-	>
-		<div class="hero-content flex-col w-full max-w-md">
-			<!-- Card Container -->
-			<div class="card bg-base-100 shadow-2xl border border-base-300">
-				<!-- Header -->
+	<div class="hero flex-1 bg-linear-to-br from-base-100 to-base-200 px-4 py-8">
+		<div class="hero-content w-full max-w-md flex-col p-0">
+			<div class="card card-border w-full bg-base-100 shadow-xl">
 				<div class="card-body">
-					<div class="text-center mb-4">
+					<div class="mb-2 text-center">
 						<h1
-							class="text-4xl font-bold text-transparent bg-gradient-to-r from-primary to-secondary bg-clip-text mb-2"
+							class="mb-2 bg-linear-to-r from-primary to-secondary bg-clip-text text-4xl font-bold text-transparent"
 						>
 							Join InsightBoard
 						</h1>
-						<p class="text-base-content/70 text-sm">
+						<p class="text-sm text-base-content/70">
 							Create your free account to start building dashboards
 						</p>
 					</div>
 
-					<!-- Divider -->
-					<div class="divider my-4"></div>
+					<div class="divider my-2"></div>
 
-					<!-- Register Form -->
-					<form class="space-y-5" @submit.prevent="handleSubmit">
-						<!-- Email Field -->
-						<div class="form-control w-full">
-							<label class="label">
-								<span class="label-text font-semibold text-base-content"
-									>Email Address</span
-								>
-								<span class="label-text-alt text-error">*</span>
+					<form class="flex flex-col gap-4" @submit.prevent="handleSubmit">
+						<div class="flex flex-col gap-1">
+							<label for="email" class="text-sm font-semibold">
+								Email Address
+								<span class="text-error" aria-hidden="true">*</span>
 							</label>
+							<!-- Read-only (not disabled) while submitting, so focus stays put -->
 							<input
 								id="email"
 								v-model="email"
@@ -39,271 +31,120 @@
 									fieldError('email') ? 'email-error' : undefined
 								"
 								type="email"
+								autocomplete="email"
 								placeholder="you@example.com"
-								class="input input-bordered input-primary w-full focus:outline-none transition-all"
+								class="input w-full"
 								required
-								:disabled="authStore.loading"
+								:readonly="authStore.loading"
 							/>
 							<p
 								v-if="fieldError('email')"
 								id="email-error"
-								class="text-error text-sm mt-1"
+								class="text-sm text-error"
 								role="alert"
 							>
 								{{ fieldError('email') }}
 							</p>
-							<label class="label">
-								<span class="label-text-alt text-base-content/60"
-									>This will be your unique login</span
-								>
-							</label>
 						</div>
 
-						<!-- Password Field -->
-						<div class="form-control w-full">
-							<label class="label">
-								<span class="label-text font-semibold text-base-content"
-									>Password</span
-								>
-								<span class="label-text-alt text-error">*</span>
+						<div class="flex flex-col gap-1">
+							<label for="password" class="text-sm font-semibold">
+								Password
+								<span class="text-error" aria-hidden="true">*</span>
 							</label>
 							<input
 								id="password"
 								v-model="password"
 								:aria-invalid="!!fieldError('password')"
 								:aria-describedby="
-									fieldError('password') ? 'password-error' : undefined
+									fieldError('password')
+										? 'password-error password-hint'
+										: 'password-hint'
 								"
 								type="password"
-								placeholder="Enter a strong password"
-								class="input input-bordered input-primary w-full focus:outline-none transition-all"
+								autocomplete="new-password"
+								placeholder="Create a strong password"
+								class="input w-full"
 								required
-								minlength="8"
-								:disabled="authStore.loading"
+								:readonly="authStore.loading"
 							/>
 							<p
 								v-if="fieldError('password')"
 								id="password-error"
-								class="text-error text-sm mt-1"
+								class="text-sm text-error"
 								role="alert"
 							>
 								{{ fieldError('password') }}
 							</p>
-							<label class="label">
-								<span class="label-text-alt text-base-content/60"
-									>Minimum 8 characters</span
-								>
-								<span
-									class="label-text-alt flex items-center gap-1"
-									:class="
-										password.length >= 8 ? 'text-success' : 'text-warning'
-									"
-								>
-									<span
-										v-if="password.length >= 8"
-										class="badge badge-success badge-xs"
-									></span>
-									<span v-else class="badge badge-warning badge-xs"></span>
-									{{ password.length }}/8
-								</span>
-							</label>
+							<p id="password-hint" class="text-xs text-base-content/70">
+								Minimum 8 characters ({{ password.length }}/8)
+							</p>
 						</div>
 
-						<!-- Confirm Password Field -->
-						<div class="form-control w-full">
-							<label class="label">
-								<span class="label-text font-semibold text-base-content"
-									>Confirm Password</span
-								>
-								<span class="label-text-alt text-error">*</span>
+						<div class="flex flex-col gap-1">
+							<label for="confirm-password" class="text-sm font-semibold">
+								Confirm Password
+								<span class="text-error" aria-hidden="true">*</span>
 							</label>
 							<input
 								id="confirm-password"
 								v-model="confirmPassword"
 								type="password"
+								autocomplete="new-password"
 								placeholder="Re-enter your password"
-								class="input input-bordered input-primary w-full focus:outline-none transition-all"
+								class="input w-full"
 								required
-								:disabled="authStore.loading"
+								:readonly="authStore.loading"
 							/>
-							<label class="label">
-								<span
-									class="label-text-alt flex items-center gap-1"
-									:class="
-										confirmPassword && password === confirmPassword
-											? 'text-success'
-											: confirmPassword && password !== confirmPassword
-												? 'text-error'
-												: ''
-									"
-								>
-									<template
-										v-if="confirmPassword && password === confirmPassword"
-									>
-										<svg
-											xmlns="http://www.w3.org/2000/svg"
-											class="h-4 w-4 text-success"
-											fill="none"
-											viewBox="0 0 24 24"
-											stroke="currentColor"
-										>
-											<path
-												stroke-linecap="round"
-												stroke-linejoin="round"
-												stroke-width="2"
-												d="M5 13l4 4L19 7"
-											/>
-										</svg>
-										Passwords match
-									</template>
-									<template
-										v-else-if="confirmPassword && password !== confirmPassword"
-									>
-										<svg
-											xmlns="http://www.w3.org/2000/svg"
-											class="h-4 w-4 text-error"
-											fill="none"
-											viewBox="0 0 24 24"
-											stroke="currentColor"
-										>
-											<path
-												stroke-linecap="round"
-												stroke-linejoin="round"
-												stroke-width="2"
-												d="M6 18L18 6M6 6l12 12"
-											/>
-										</svg>
-										Passwords don't match
-									</template>
-									<span v-else></span>
-								</span>
-							</label>
+							<p
+								v-if="confirmPassword && password === confirmPassword"
+								class="text-xs text-success"
+							>
+								✓ Passwords match
+							</p>
 						</div>
 
-						<!-- Validation Error -->
-						<transition
-							enter-active-class="transition ease-out duration-200"
-							enter-from-class="opacity-0 -translate-y-2"
-							enter-to-class="opacity-100 translate-y-0"
-							leave-active-class="transition ease-in duration-150"
-							leave-from-class="opacity-100 translate-y-0"
-							leave-to-class="opacity-0 -translate-y-2"
+						<div
+							v-if="validationError"
+							class="alert alert-warning alert-soft"
+							role="alert"
 						>
-							<div
-								v-if="validationError"
-								class="alert alert-warning shadow-lg"
-								role="alert"
-							>
-								<svg
-									xmlns="http://www.w3.org/2000/svg"
-									class="stroke-current shrink-0 h-6 w-6"
-									fill="none"
-									viewBox="0 0 24 24"
-								>
-									<path
-										stroke-linecap="round"
-										stroke-linejoin="round"
-										stroke-width="2"
-										d="M12 8v4m0 4v.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
-									/>
-								</svg>
-								<span class="text-sm">{{ validationError }}</span>
-							</div>
-						</transition>
+							<span class="text-sm">{{ validationError }}</span>
+						</div>
 
-						<!-- API Error Alert -->
-						<transition
-							enter-active-class="transition ease-out duration-200"
-							enter-from-class="opacity-0 -translate-y-2"
-							enter-to-class="opacity-100 translate-y-0"
-							leave-active-class="transition ease-in duration-150"
-							leave-from-class="opacity-100 translate-y-0"
-							leave-to-class="opacity-0 -translate-y-2"
+						<div
+							v-if="authStore.error"
+							class="alert alert-error alert-soft"
+							role="alert"
 						>
-							<div
-								v-if="authStore.error"
-								class="alert alert-error shadow-lg"
-								role="alert"
-							>
-								<svg
-									xmlns="http://www.w3.org/2000/svg"
-									class="stroke-current shrink-0 h-6 w-6"
-									fill="none"
-									viewBox="0 0 24 24"
-								>
-									<path
-										stroke-linecap="round"
-										stroke-linejoin="round"
-										stroke-width="2"
-										d="M10 14l-2-2m0 0l-2-2m2 2l2-2m-2 2l-2 2m2-2l2 2m7-2a9 9 0 11-18 0 9 9 0 0118 0z"
-									/>
-								</svg>
-								<span class="text-sm">{{ authStore.error }}</span>
-							</div>
-						</transition>
+							<span class="text-sm">{{ authStore.error }}</span>
+						</div>
 
-						<!-- Submit Button -->
 						<button
 							type="submit"
-							:disabled="authStore.loading || !!validationError"
-							class="btn btn-primary w-full gap-2 font-semibold text-base"
+							:aria-disabled="authStore.loading || !!validationError"
+							class="btn btn-primary w-full"
 						>
-							<template v-if="!authStore.loading">
-								<svg
-									xmlns="http://www.w3.org/2000/svg"
-									class="h-5 w-5"
-									fill="none"
-									viewBox="0 0 24 24"
-									stroke="currentColor"
-								>
-									<path
-										stroke-linecap="round"
-										stroke-linejoin="round"
-										stroke-width="2"
-										d="M18 9v3m0 0v3m0-3h3m-3 0h-3m-2-5a4 4 0 11-8 0 4 4 0 018 0zM9 19c-4.35 0-8 1.343-8 3v2h16v-2c0-1.657-3.65-3-8-3z"
-									/>
-								</svg>
-								Create Account
-							</template>
-							<template v-else>
-								<span class="loading loading-spinner loading-sm"></span>
-								Creating Account...
-							</template>
+							<span
+								v-if="authStore.loading"
+								class="loading loading-spinner loading-sm"
+								aria-hidden="true"
+							></span>
+							{{ authStore.loading ? 'Creating account…' : 'Create Account' }}
 						</button>
 					</form>
 
-					<!-- Divider -->
-					<div class="divider my-4"></div>
+					<div class="divider my-2"></div>
 
-					<!-- Sign In Link -->
-					<div class="text-center">
-						<p class="text-sm text-base-content/70">
-							Already have an account?
-							<router-link to="/login" class="link link-primary font-semibold">
-								Sign in here
-							</router-link>
-						</p>
-					</div>
-
-					<!-- Info Box -->
-					<div class="alert alert-info shadow-md">
-						<svg
-							xmlns="http://www.w3.org/2000/svg"
-							fill="none"
-							viewBox="0 0 24 24"
-							class="stroke-current shrink-0 w-6 h-6"
+					<p class="text-center text-sm text-base-content/70">
+						Already have an account?
+						<router-link
+							:to="{ name: 'login', query: route.query }"
+							class="link link-primary font-semibold"
 						>
-							<path
-								stroke-linecap="round"
-								stroke-linejoin="round"
-								stroke-width="2"
-								d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
-							></path>
-						</svg>
-						<span class="text-sm"
-							>Your account is free and instant. No credit card required.</span
-						>
-					</div>
+							Sign in here
+						</router-link>
+					</p>
 				</div>
 			</div>
 		</div>
@@ -312,10 +153,12 @@
 
 <script setup lang="ts">
 import { ref, computed, watch } from 'vue';
-import { useRouter } from 'vue-router';
+import { useRoute, useRouter } from 'vue-router';
 import { useAuthStore } from '../stores/auth';
+import { safeRedirect } from '../router';
 
 const router = useRouter();
+const route = useRoute();
 const authStore = useAuthStore();
 
 const fieldError = (field: string): string | undefined =>
@@ -343,22 +186,17 @@ const validationError = computed(() => {
 });
 
 const handleSubmit = async () => {
-	// Clear previous errors
+	if (authStore.loading || validationError.value) return;
 	authStore.clearError();
-
-	// Validate passwords match
-	if (password.value !== confirmPassword.value) {
-		return;
-	}
+	if (password.value !== confirmPassword.value) return;
 
 	try {
 		await authStore.register(email.value, password.value);
-
-		// Register endpoint returns a token; continue as authenticated user.
-		router.push('/dashboards');
-	} catch (error) {
-		// Error is handled by the store
-		console.error('Registration failed:', error);
+	} catch {
+		// The store keeps the message the form shows
+		return;
 	}
+	// Register returns a token: continue where the user was headed
+	await router.push(safeRedirect(route.query.redirect));
 };
 </script>

@@ -6,14 +6,14 @@
 import { defineStore } from 'pinia';
 import { ref, computed } from 'vue';
 import type { Component } from 'vue';
-import type { WidgetConfig } from '../types';
+import type { WidgetConfig, WidgetType as WidgetKind } from '../types';
 
 /**
  * Widget Type Definition
  * Describes a widget's metadata, configuration schema, and component
  */
 export interface WidgetType {
-	id: string;
+	id: WidgetKind;
 	name: string;
 	description: string;
 	icon: string; // Icon class or emoji
@@ -24,28 +24,37 @@ export interface WidgetType {
 		w: number; // Width in grid units
 		h: number; // Height in grid units
 	};
-	minSize?: {
+	minSize: {
 		w: number;
 		h: number;
 	};
-	refreshInterval?: number; // Auto-refresh interval in seconds (0 = manual only)
+	refreshInterval: number; // Auto-refresh interval in seconds (0 = manual only)
 }
 
 /**
  * Widget Configuration Field Schema
- * Defines how to render configuration UI for widget settings
+ * Defines how to render configuration UI for widget settings. Every field holds
+ * a string, so validators receive the (trimmed) string the user entered.
  */
-export interface WidgetConfigField {
+interface ConfigFieldBase {
 	key: string;
 	label: string;
-	type: 'text' | 'number' | 'select' | 'textarea' | 'checkbox' | 'url';
 	required?: boolean;
-	placeholder?: string;
-	options?: { label: string; value: string | number }[];
-	// Validators receive the raw form value of a text-like field (always a string)
-	validation?: (value: string) => string | null; // Returns error message or null
 	helpText?: string;
 }
+
+export interface TextConfigField extends ConfigFieldBase {
+	type: 'text' | 'textarea';
+	placeholder?: string;
+	validation?: (value: string) => string | null; // Error message or null
+}
+
+export interface SelectConfigField extends ConfigFieldBase {
+	type: 'select';
+	options: { label: string; value: string }[];
+}
+
+export type WidgetConfigField = TextConfigField | SelectConfigField;
 
 /**
  * Widget Instance
@@ -53,7 +62,7 @@ export interface WidgetConfigField {
  */
 export interface WidgetInstance {
 	id: string; // Unique instance ID
-	type: string; // Widget type ID
+	type: WidgetKind;
 	config: WidgetConfig; // User configuration
 	layout: {
 		x: number;
@@ -65,7 +74,7 @@ export interface WidgetInstance {
 
 export const useWidgetStore = defineStore('widgets', () => {
 	// Widget type registry
-	const widgetTypes = ref<Map<string, WidgetType>>(new Map());
+	const widgetTypes = ref<Map<WidgetKind, WidgetType>>(new Map());
 
 	/**
 	 * Register a widget type
@@ -77,7 +86,7 @@ export const useWidgetStore = defineStore('widgets', () => {
 	/**
 	 * Get widget type by ID
 	 */
-	const getWidgetType = (id: string): WidgetType | undefined => {
+	const getWidgetType = (id: WidgetKind): WidgetType | undefined => {
 		return widgetTypes.value.get(id);
 	};
 
@@ -92,14 +101,14 @@ export const useWidgetStore = defineStore('widgets', () => {
 	 * Create a new widget instance with default configuration
 	 */
 	const createWidgetInstance = (
-		typeId: string,
+		typeId: WidgetKind,
 		position?: { x: number; y: number },
 	): WidgetInstance | null => {
 		const widgetType = getWidgetType(typeId);
 		if (!widgetType) return null;
 
 		return {
-			id: `widget-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
+			id: `widget-${crypto.randomUUID()}`,
 			type: typeId,
 			config: { ...widgetType.defaultConfig },
 			layout: {

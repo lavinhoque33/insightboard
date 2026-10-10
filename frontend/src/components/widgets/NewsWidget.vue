@@ -1,9 +1,9 @@
 /** * News Widget * Displays news articles filtered by topic */
 <script setup lang="ts">
-import { ref, onMounted, onUnmounted, watch } from 'vue';
+import { computed } from 'vue';
 import BaseWidget from '../BaseWidget.vue';
-import { errorMessage } from '../../api/errorMessage';
-import { fetchNewsData, type NewsArticle } from '../../api/widgets';
+import { useWidgetData } from '../../composables/useWidgetData';
+import { fetchNewsData } from '../../api/widgets';
 
 interface Props {
 	config: {
@@ -20,45 +20,14 @@ interface Emits {
 const props = defineProps<Props>();
 const emit = defineEmits<Emits>();
 
-const loading = ref(false);
-const error = ref<string | null>(null);
-const articles = ref<NewsArticle[]>([]);
-const lastUpdated = ref<Date | null>(null);
-
-let refreshTimer: number | null = null;
-
-const loadData = async () => {
-	if (!props.config.topic) {
-		error.value = 'News topic not configured';
-		return;
-	}
-
-	loading.value = true;
-	error.value = null;
-
-	try {
-		articles.value = await fetchNewsData(props.config.topic);
-		lastUpdated.value = new Date();
-	} catch (err) {
-		error.value = errorMessage(err, 'Failed to load news');
-		articles.value = [];
-	} finally {
-		loading.value = false;
-	}
-};
-
-const setupAutoRefresh = () => {
-	if (refreshTimer) {
-		clearInterval(refreshTimer);
-		refreshTimer = null;
-	}
-
-	if (props.refreshInterval && props.refreshInterval > 0) {
-		refreshTimer = window.setInterval(() => {
-			loadData();
-		}, props.refreshInterval * 1000);
-	}
-};
+const { data, loading, error, lastUpdated, reload } = useWidgetData({
+	source: () => props.config.topic,
+	fetch: fetchNewsData,
+	refreshInterval: () => props.refreshInterval,
+	notConfigured: 'News topic not configured',
+	failure: 'Failed to load news',
+});
+const articles = computed(() => data.value ?? []);
 
 const formatTime = (dateString: string): string => {
 	const date = new Date(dateString);
@@ -71,31 +40,6 @@ const formatTime = (dateString: string): string => {
 };
 
 // Removed unused truncateText helper to satisfy noUnusedLocals
-
-onMounted(() => {
-	loadData();
-	setupAutoRefresh();
-});
-
-watch(
-	() => props.refreshInterval,
-	() => {
-		setupAutoRefresh();
-	},
-);
-
-watch(
-	() => props.config.topic,
-	() => {
-		loadData();
-	},
-);
-
-onUnmounted(() => {
-	if (refreshTimer) {
-		clearInterval(refreshTimer);
-	}
-});
 </script>
 
 <template>
@@ -104,7 +48,7 @@ onUnmounted(() => {
 		:loading="loading"
 		:error="error"
 		:last-updated="lastUpdated"
-		@refresh="loadData"
+		@refresh="reload"
 		@configure="emit('configure')"
 		@remove="emit('remove')"
 	>
@@ -125,7 +69,7 @@ onUnmounted(() => {
 				:href="article.url"
 				target="_blank"
 				rel="noopener noreferrer"
-				class="card card-bordered card-compact border-base-300 hover:border-primary hover:shadow-lg transition-all duration-300 cursor-pointer group bg-base-100"
+				class="card card-border card-sm border-base-300 hover:border-primary hover:shadow-lg transition-all duration-300 cursor-pointer group bg-base-100"
 			>
 				<div class="card-body p-3">
 					<!-- Title and Image -->
@@ -133,7 +77,7 @@ onUnmounted(() => {
 						<!-- Article Image -->
 						<div
 							v-if="article.urlToImage"
-							class="flex-shrink-0 w-20 h-20 rounded-lg overflow-hidden bg-base-300"
+							class="shrink-0 w-20 h-20 rounded-lg overflow-hidden bg-base-300"
 						>
 							<img
 								:src="article.urlToImage"

@@ -1,12 +1,16 @@
 import { AxiosError, type AxiosResponse } from 'axios';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import apiClient from '../client';
+import apiClient, { onUnauthorized } from '../client';
 import { errorMessage } from '../errorMessage';
 import type { ApiError } from '../../types';
+import { tokenExpiringIn } from '../../test/session';
+
+const sent: { url?: string; authorization?: unknown }[] = [];
 
 // Replace the network adapter so the real interceptors run against canned responses
 function respondWith(status: number, data: unknown, url = '/dashboards'): void {
 	apiClient.defaults.adapter = async (config) => {
+		sent.push({ url: config.url, authorization: config.headers.Authorization });
 		const response: AxiosResponse = {
 			data,
 			status,
@@ -34,18 +38,52 @@ async function failure(url?: string): Promise<ApiError> {
 	throw new Error('expected request to fail');
 }
 
-describe('api client error normalisation', () => {
+describe('api client', () => {
 	const originalAdapter = apiClient.defaults.adapter;
+	const unauthorized = vi.fn();
 
 	beforeEach(() => {
-		localStorage.setItem('auth_token', 'token');
-		localStorage.setItem('user', '{}');
+		sent.length = 0;
+		localStorage.setItem('auth_token', tokenExpiringIn(3600));
+		onUnauthorized(unauthorized);
 	});
 
 	afterEach(() => {
 		apiClient.defaults.adapter = originalAdapter;
-		vi.unstubAllGlobals();
+		onUnauthorized(null);
+		unauthorized.mockReset();
 		localStorage.clear();
+	});
+
+	it('sends the stored token as a Bearer header', async () => {
+		respondWith(200, []);
+		const token = localStorage.getItem('auth_token');
+
+		await apiClient.get('/dashboards');
+
+		expect(sent).toEqual([
+			{ url: '/dashboards', authorization: `Bearer ${token}` },
+		]);
+	});
+
+	it('sends no token to login and register', async () => {
+		respondWith(200, {});
+
+		await apiClient.post('/auth/login', {});
+		await apiClient.post('/auth/register', {});
+
+		expect(sent.map((r) => r.authorization)).toEqual([undefined, undefined]);
+	});
+
+	it('does not send an expired token and ends the session instead', async () => {
+		localStorage.setItem('auth_token', tokenExpiringIn(-60));
+		respondWith(200, []);
+
+		const err = await failure();
+
+		expect(sent).toHaveLength(0);
+		expect(err.status).toBe(401);
+		expect(unauthorized).toHaveBeenCalledOnce();
 	});
 
 	it('renders 422 details as field: message items and exposes fieldErrors', async () => {
@@ -92,43 +130,37 @@ describe('api client error normalisation', () => {
 		expect((await failure()).message).toBe('An error occurred');
 	});
 
-	it('clears the session and redirects to /login on 401', async () => {
-		const location = { pathname: '/dashboards', href: '/dashboards' };
-		vi.stubGlobal('location', location);
+	it('reports an unreachable server with status 0', async () => {
+		apiClient.defaults.adapter = async (config) => {
+			throw new AxiosError('Network Error', AxiosError.ERR_NETWORK, config, {});
+		};
+
+		const err = await failure();
+
+		expect(err.status).toBe(0);
+		expect(err.message).toContain('No response from server');
+	});
+
+	it('ends the session on a 401 from a protected endpoint', async () => {
 		respondWith(401, { error: 'Unauthorized' });
 
 		const err = await failure();
 
 		expect(err.status).toBe(401);
-		expect(localStorage.getItem('auth_token')).toBeNull();
-		expect(localStorage.getItem('user')).toBeNull();
-		expect(location.href).toBe('/login');
+		expect(unauthorized).toHaveBeenCalledOnce();
 	});
 
 	it.each(['/auth/login', '/auth/register'])(
-		'keeps the session and does not redirect on 401 from %s',
+		'keeps the session on a 401 from %s and shows the server text',
 		async (url) => {
-			const location = { pathname: '/register', href: '/register' };
-			vi.stubGlobal('location', location);
-			respondWith(401, { error: 'Unauthorized' }, url);
+			respondWith(401, { error: 'Invalid email or password' }, url);
 
 			const err = await failure(url);
 
-			expect(err.message).toBe('Unauthorized');
-			expect(localStorage.getItem('auth_token')).toBe('token');
-			expect(location.href).toBe('/register');
+			expect(err.message).toBe('Invalid email or password');
+			expect(unauthorized).not.toHaveBeenCalled();
 		},
 	);
-
-	it('does not redirect when already on /login', async () => {
-		const location = { pathname: '/login', href: '/login' };
-		vi.stubGlobal('location', location);
-		respondWith(401, { error: 'Unauthorized' });
-
-		await failure();
-
-		expect(location.href).toBe('/login');
-	});
 });
 
 describe('errorMessage', () => {

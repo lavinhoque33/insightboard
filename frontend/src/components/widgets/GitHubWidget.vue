@@ -1,8 +1,8 @@
 /** * GitHub Widget * Displays recent GitHub activity for a user */
 <script setup lang="ts">
-import { ref, onMounted, onUnmounted, watch } from 'vue';
+import { computed } from 'vue';
 import BaseWidget from '../BaseWidget.vue';
-import { errorMessage } from '../../api/errorMessage';
+import { useWidgetData } from '../../composables/useWidgetData';
 import { fetchGitHubData, type GitHubEvent } from '../../api/widgets';
 
 interface Props {
@@ -20,45 +20,14 @@ interface Emits {
 const props = defineProps<Props>();
 const emit = defineEmits<Emits>();
 
-const loading = ref(false);
-const error = ref<string | null>(null);
-const events = ref<GitHubEvent[]>([]);
-const lastUpdated = ref<Date | null>(null);
-
-let refreshTimer: number | null = null;
-
-const loadData = async () => {
-	if (!props.config.username) {
-		error.value = 'GitHub username not configured';
-		return;
-	}
-
-	loading.value = true;
-	error.value = null;
-
-	try {
-		events.value = await fetchGitHubData(props.config.username);
-		lastUpdated.value = new Date();
-	} catch (err) {
-		error.value = errorMessage(err, 'Failed to load GitHub data');
-		events.value = [];
-	} finally {
-		loading.value = false;
-	}
-};
-
-const setupAutoRefresh = () => {
-	if (refreshTimer) {
-		clearInterval(refreshTimer);
-		refreshTimer = null;
-	}
-
-	if (props.refreshInterval && props.refreshInterval > 0) {
-		refreshTimer = window.setInterval(() => {
-			loadData();
-		}, props.refreshInterval * 1000);
-	}
-};
+const { data, loading, error, lastUpdated, reload } = useWidgetData({
+	source: () => props.config.username,
+	fetch: fetchGitHubData,
+	refreshInterval: () => props.refreshInterval,
+	notConfigured: 'GitHub username not configured',
+	failure: 'Failed to load GitHub data',
+});
+const events = computed(() => data.value ?? []);
 
 const getEventIcon = (eventType: string): string => {
 	const icons: Record<string, string> = {
@@ -118,31 +87,6 @@ const formatTime = (dateString: string): string => {
 	if (diff < 86400) return `${Math.floor(diff / 3600)}h ago`;
 	return `${Math.floor(diff / 86400)}d ago`;
 };
-
-onMounted(() => {
-	loadData();
-	setupAutoRefresh();
-});
-
-watch(
-	() => props.refreshInterval,
-	() => {
-		setupAutoRefresh();
-	},
-);
-
-watch(
-	() => props.config.username,
-	() => {
-		loadData();
-	},
-);
-
-onUnmounted(() => {
-	if (refreshTimer) {
-		clearInterval(refreshTimer);
-	}
-});
 </script>
 
 <template>
@@ -151,7 +95,7 @@ onUnmounted(() => {
 		:loading="loading"
 		:error="error"
 		:last-updated="lastUpdated"
-		@refresh="loadData"
+		@refresh="reload"
 		@configure="emit('configure')"
 		@remove="emit('remove')"
 	>
@@ -172,7 +116,7 @@ onUnmounted(() => {
 				class="flex items-start gap-3 p-3 rounded-lg border border-base-300 hover:border-primary hover:shadow-md transition-all duration-300 group"
 			>
 				<!-- Event Icon Badge -->
-				<div class="flex-shrink-0">
+				<div class="shrink-0">
 					<div class="badge badge-lg badge-primary gap-2 text-lg">
 						{{ getEventIcon(event.type) }}
 					</div>
@@ -191,7 +135,7 @@ onUnmounted(() => {
 				</div>
 
 				<!-- Event Type Badge -->
-				<div class="flex-shrink-0">
+				<div class="shrink-0">
 					<span class="badge badge-ghost text-xs">
 						{{ event.type.replace('Event', '') }}
 					</span>

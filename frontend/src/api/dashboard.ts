@@ -3,20 +3,29 @@
  */
 
 import apiClient from './client';
-import type { Dashboard, LayoutConfig, DashboardSettings } from '../types';
-import type { ContractDashboard } from '../contracts/apiContract';
+import type { Dashboard, LayoutConfig } from '../types';
+import type {
+	ContractCreateDashboardRequest,
+	ContractDashboard,
+	ContractUpdateDashboardRequest,
+} from '../contracts/apiContract';
 
-// Helper to convert server dashboard shape to frontend `Dashboard`
+// The client does not use `settings_json`; it is left untouched on the server
 function mapServerToClient(server: ContractDashboard): Dashboard {
 	return {
 		id: server.id,
 		user_id: server.user_id,
-		// backend stores layout as `layout_json` and settings as `settings_json`
-		layout: server.layout_json ?? { widgets: [] },
-		settings: server.settings_json ?? {},
+		name: server.name,
+		layout: server.layout_json,
 		created_at: server.created_at,
 		updated_at: server.updated_at,
 	};
+}
+
+/** Fields an update may change; omitted fields keep their stored value. */
+export interface DashboardChanges {
+	name?: string;
+	layout?: LayoutConfig;
 }
 
 export const dashboardApi = {
@@ -33,24 +42,16 @@ export const dashboardApi = {
 	 */
 	async get(id: string): Promise<Dashboard> {
 		const response = await apiClient.get<ContractDashboard>(
-			`/dashboards/${id}`,
+			`/dashboards/${encodeURIComponent(id)}`,
 		);
 		return mapServerToClient(response.data);
 	},
 
 	/**
-	 * Create a new dashboard
+	 * Create a new dashboard; the server stores an empty layout and settings
 	 */
-	async create(
-		layout: LayoutConfig,
-		settings: DashboardSettings,
-	): Promise<Dashboard> {
-		// Backend expects: { name, layout_json, settings_json }
-		const request = {
-			name: settings.title || 'New Dashboard',
-			layout_json: layout,
-			settings_json: settings,
-		};
+	async create(name: string): Promise<Dashboard> {
+		const request: ContractCreateDashboardRequest = { name };
 		const response = await apiClient.post<ContractDashboard>(
 			'/dashboards',
 			request,
@@ -61,19 +62,13 @@ export const dashboardApi = {
 	/**
 	 * Update an existing dashboard
 	 */
-	async update(
-		id: string,
-		layout?: LayoutConfig,
-		settings?: DashboardSettings,
-	): Promise<Dashboard> {
-		// Backend update endpoint expects partial fields mapped to name/layout_json/settings_json
-		const request: Record<string, unknown> = {};
-		if (settings?.title) request.name = settings.title;
-		if (layout) request.layout_json = layout;
-		if (settings) request.settings_json = settings;
+	async update(id: string, changes: DashboardChanges): Promise<Dashboard> {
+		const request: ContractUpdateDashboardRequest = {};
+		if (changes.name !== undefined) request.name = changes.name;
+		if (changes.layout) request.layout_json = changes.layout;
 
 		const response = await apiClient.put<ContractDashboard>(
-			`/dashboards/${id}`,
+			`/dashboards/${encodeURIComponent(id)}`,
 			request,
 		);
 		return mapServerToClient(response.data);
@@ -83,6 +78,6 @@ export const dashboardApi = {
 	 * Delete a dashboard
 	 */
 	async delete(id: string): Promise<void> {
-		await apiClient.delete(`/dashboards/${id}`);
+		await apiClient.delete(`/dashboards/${encodeURIComponent(id)}`);
 	},
 };

@@ -1,180 +1,148 @@
 /**
  * Dashboard store using Pinia
- * Manages dashboard state and operations
+ * Holds the dashboard list and the dashboard open in the editor, each with
+ * explicit loading and error state.
  */
 
 import { defineStore } from 'pinia';
-import { ref, computed } from 'vue';
+import { ref } from 'vue';
 import { dashboardApi } from '../api';
-import type {
-	Dashboard,
-	LayoutConfig,
-	DashboardSettings,
-	ApiError,
-} from '../types';
+import type { DashboardChanges } from '../api/dashboard';
+import type { Dashboard } from '../types';
+import { apiErrorMessage, apiErrorStatus } from '../api/errorMessage';
+
+const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
 export const useDashboardStore = defineStore('dashboard', () => {
-	// State
+	// List page
 	const dashboards = ref<Dashboard[]>([]);
-	const currentDashboard = ref<Dashboard | null>(null);
-	const loading = ref(false);
-	const error = ref<string | null>(null);
+	const listLoading = ref(false);
+	const listError = ref<string | null>(null);
+	// Create and delete failures on the list page
+	const actionError = ref<string | null>(null);
 
-	// Getters
-	const hasDashboards = computed(() => dashboards.value.length > 0);
+	// Editor: the dashboard loaded by id
+	const current = ref<Dashboard | null>(null);
+	const currentLoading = ref(false);
+	const currentError = ref<string | null>(null);
+	// Unknown id, foreign id (the server answers 404 for both), or not an id at all
+	const currentNotFound = ref(false);
+	let currentRequest = 0;
 
-	/**
-	 * Fetch all dashboards
-	 */
 	async function fetchDashboards(): Promise<void> {
-		loading.value = true;
-		error.value = null;
-
+		listLoading.value = true;
+		listError.value = null;
 		try {
-			const data = await dashboardApi.list();
-			dashboards.value = data;
+			dashboards.value = await dashboardApi.list();
 		} catch (err) {
-			const apiError = err as ApiError;
-			error.value = apiError.message;
-			throw err;
+			listError.value = apiErrorMessage(err, 'Could not load dashboards');
 		} finally {
-			loading.value = false;
+			listLoading.value = false;
 		}
 	}
 
-	/**
-	 * Fetch a specific dashboard
-	 */
 	async function fetchDashboard(id: string): Promise<void> {
-		loading.value = true;
-		error.value = null;
+		const request = ++currentRequest;
+		current.value = null;
+		currentError.value = null;
+		currentNotFound.value = false;
 
+		if (!UUID.test(id)) {
+			currentNotFound.value = true;
+			return;
+		}
+
+		currentLoading.value = true;
 		try {
 			const data = await dashboardApi.get(id);
-			currentDashboard.value = data;
-
-			// Update in dashboards array if exists
-			const index = dashboards.value.findIndex((d) => d.id === id);
-			if (index !== -1) {
-				dashboards.value[index] = data;
-			} else {
-				dashboards.value.push(data);
-			}
+			if (request === currentRequest) current.value = data;
 		} catch (err) {
-			const apiError = err as ApiError;
-			error.value = apiError.message;
-			throw err;
+			if (request !== currentRequest) return;
+			if (apiErrorStatus(err) === 404) {
+				currentNotFound.value = true;
+			} else {
+				currentError.value = apiErrorMessage(
+					err,
+					'Could not load the dashboard',
+				);
+			}
 		} finally {
-			loading.value = false;
+			if (request === currentRequest) currentLoading.value = false;
 		}
 	}
 
-	/**
-	 * Create a new dashboard
-	 */
-	async function createDashboard(
-		layout: LayoutConfig,
-		settings: DashboardSettings,
-	): Promise<Dashboard> {
-		loading.value = true;
-		error.value = null;
-
+	async function createDashboard(name: string): Promise<Dashboard> {
+		actionError.value = null;
 		try {
-			const data = await dashboardApi.create(layout, settings);
+			const data = await dashboardApi.create(name);
 			dashboards.value.push(data);
-			currentDashboard.value = data;
 			return data;
 		} catch (err) {
-			const apiError = err as ApiError;
-			error.value = apiError.message;
+			actionError.value = apiErrorMessage(
+				err,
+				'Could not create the dashboard',
+			);
 			throw err;
-		} finally {
-			loading.value = false;
 		}
 	}
 
 	/**
-	 * Update an existing dashboard
+	 * Persist changes. Failures are rethrown for the caller (the editor's save
+	 * queue) to show; the store copies only change on success.
 	 */
 	async function updateDashboard(
 		id: string,
-		layout?: LayoutConfig,
-		settings?: DashboardSettings,
+		changes: DashboardChanges,
 	): Promise<Dashboard> {
-		loading.value = true;
-		error.value = null;
-
-		try {
-			const data = await dashboardApi.update(id, layout, settings);
-
-			// Update in dashboards array
-			const index = dashboards.value.findIndex((d) => d.id === id);
-			if (index !== -1) {
-				dashboards.value[index] = data;
-			}
-
-			// Update current dashboard if it's the same
-			if (currentDashboard.value?.id === id) {
-				currentDashboard.value = data;
-			}
-
-			return data;
-		} catch (err) {
-			const apiError = err as ApiError;
-			error.value = apiError.message;
-			throw err;
-		} finally {
-			loading.value = false;
-		}
+		const data = await dashboardApi.update(id, changes);
+		const index = dashboards.value.findIndex((d) => d.id === id);
+		if (index !== -1) dashboards.value[index] = data;
+		if (current.value?.id === id) current.value = data;
+		return data;
 	}
 
-	/**
-	 * Delete a dashboard
-	 */
 	async function deleteDashboard(id: string): Promise<void> {
-		loading.value = true;
-		error.value = null;
-
+		actionError.value = null;
 		try {
 			await dashboardApi.delete(id);
-
-			// Remove from dashboards array
 			dashboards.value = dashboards.value.filter((d) => d.id !== id);
-
-			// Clear current dashboard if it's the deleted one
-			if (currentDashboard.value?.id === id) {
-				currentDashboard.value = null;
-			}
+			if (current.value?.id === id) current.value = null;
 		} catch (err) {
-			const apiError = err as ApiError;
-			error.value = apiError.message;
+			actionError.value = apiErrorMessage(
+				err,
+				'Could not delete the dashboard',
+			);
 			throw err;
-		} finally {
-			loading.value = false;
 		}
 	}
 
-	/**
-	 * Clear error
-	 */
-	function clearError() {
-		error.value = null;
+	/** Forget everything (logout). In-flight loads finish without effect. */
+	function reset() {
+		currentRequest++;
+		dashboards.value = [];
+		listLoading.value = false;
+		listError.value = null;
+		actionError.value = null;
+		current.value = null;
+		currentLoading.value = false;
+		currentError.value = null;
+		currentNotFound.value = false;
 	}
 
 	return {
-		// State
 		dashboards,
-		currentDashboard,
-		loading,
-		error,
-		// Getters
-		hasDashboards,
-		// Actions
+		listLoading,
+		listError,
+		actionError,
+		current,
+		currentLoading,
+		currentError,
+		currentNotFound,
 		fetchDashboards,
 		fetchDashboard,
 		createDashboard,
 		updateDashboard,
 		deleteDashboard,
-		clearError,
+		reset,
 	};
 });

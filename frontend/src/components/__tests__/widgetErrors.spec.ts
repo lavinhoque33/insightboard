@@ -64,4 +64,46 @@ describe('widget error and null rendering', () => {
 		expect(wrapper.text()).toContain('Blocked');
 		expect(wrapper.text()).not.toContain('blocked_address');
 	});
+
+	it('counts failed checks (status 0) and 4xx/5xx as errors in the summary', async () => {
+		vi.mocked(fetchStatusData).mockResolvedValue([
+			{ url: 'https://example.com', status: 200, response_time_ms: 80 },
+			{ url: 'https://example.com/old', status: 301, response_time_ms: 90 },
+			{ url: 'https://example.com/missing', status: 404, response_time_ms: 70 },
+			{
+				url: 'http://10.0.0.1',
+				status: 0,
+				response_time_ms: 0,
+				error: 'blocked_address',
+			},
+		]);
+		const wrapper = mount(StatusWidget, {
+			props: { config: { urls: 'x' } },
+		});
+		await flushPromises();
+
+		const summary = wrapper.get('[data-testid="status-summary"]').text();
+		expect(summary).toContain('1 healthy');
+		expect(summary).toContain('1 redirects');
+		expect(summary).toContain('2 errors');
+	});
+
+	it('ignores a response that arrives after the source changed', async () => {
+		let resolveOld: (v: never[]) => void = () => {};
+		vi.mocked(fetchStatusData)
+			.mockReturnValueOnce(new Promise((r) => (resolveOld = r)))
+			.mockResolvedValueOnce([
+				{ url: 'https://example.com', status: 200, response_time_ms: 5 },
+			]);
+		const wrapper = mount(StatusWidget, {
+			props: { config: { urls: 'https://old.example' } },
+		});
+		await wrapper.setProps({ config: { urls: 'https://example.com' } });
+		await flushPromises();
+		resolveOld([]);
+		await flushPromises();
+
+		expect(wrapper.text()).toContain('example.com');
+		expect(wrapper.text()).toContain('1 healthy');
+	});
 });

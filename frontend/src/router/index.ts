@@ -4,7 +4,7 @@
  */
 
 import { createRouter, createWebHistory } from 'vue-router';
-import type { RouteRecordRaw } from 'vue-router';
+import type { RouteRecordRaw, RouterHistory } from 'vue-router';
 import { useAuthStore } from '../stores/auth';
 import LoginView from '../views/LoginView.vue';
 import RegisterView from '../views/RegisterView.vue';
@@ -14,10 +14,7 @@ const routes: RouteRecordRaw[] = [
 	{
 		path: '/',
 		name: 'home',
-		redirect: () => {
-			const authStore = useAuthStore();
-			return authStore.isAuthenticated ? '/dashboards' : '/login';
-		},
+		redirect: () => (useAuthStore().isAuthenticated ? '/dashboards' : '/login'),
 	},
 	{
 		path: '/login',
@@ -30,6 +27,18 @@ const routes: RouteRecordRaw[] = [
 		name: 'register',
 		component: RegisterView,
 		meta: { requiresGuest: true },
+	},
+	{
+		// A route rather than a click handler: route-leave guards run before
+		// `beforeEnter`, so the editor saves pending changes before the session
+		// ends. The component is never rendered.
+		path: '/logout',
+		name: 'logout',
+		component: LoginView,
+		beforeEnter: () => {
+			useAuthStore().logout();
+			return { name: 'login' };
+		},
 	},
 	{
 		path: '/dashboards',
@@ -50,36 +59,37 @@ const routes: RouteRecordRaw[] = [
 	},
 ];
 
-const router = createRouter({
-	history: createWebHistory(import.meta.env.BASE_URL),
-	routes,
-});
+/**
+ * The post-login destination from a `redirect` query value: only same-origin
+ * paths are accepted, so the login page cannot send users elsewhere.
+ */
+export function safeRedirect(value: unknown): string {
+	return typeof value === 'string' &&
+		value.startsWith('/') &&
+		!value.startsWith('//') &&
+		!value.startsWith('/\\')
+		? value
+		: '/dashboards';
+}
 
-// Navigation guard for authentication
-router.beforeEach((to, from, next) => {
-	const authStore = useAuthStore();
+export function createAppRouter(history: RouterHistory) {
+	const router = createRouter({ history, routes });
 
-	// Mark 'from' as intentionally unused to satisfy noUnusedParameters
-	void from;
+	router.beforeEach((to) => {
+		const authStore = useAuthStore();
+		// Expired tokens end the session here, before any request is made
+		const signedIn = authStore.checkSession();
 
-	// Check if route requires authentication
-	if (to.meta.requiresAuth && !authStore.isAuthenticated) {
-		// Redirect to login, save intended destination
-		next({
-			name: 'login',
-			query: { redirect: to.fullPath },
-		});
-		return;
-	}
+		if (to.meta.requiresAuth && !signedIn) {
+			return { name: 'login', query: { redirect: to.fullPath } };
+		}
+		if (to.meta.requiresGuest && signedIn) {
+			return { name: 'dashboards' };
+		}
+		return true;
+	});
 
-	// Check if route requires guest (not authenticated)
-	if (to.meta.requiresGuest && authStore.isAuthenticated) {
-		// Redirect to dashboards if already logged in
-		next({ name: 'dashboards' });
-		return;
-	}
+	return router;
+}
 
-	next();
-});
-
-export default router;
+export default createAppRouter(createWebHistory(import.meta.env.BASE_URL));

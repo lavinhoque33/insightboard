@@ -135,7 +135,7 @@ export const initializeWidgets = () => {
 		],
 		defaultSize: { w: 3, h: 4 },
 		minSize: { w: 3, h: 3 },
-		refreshInterval: 60, // 1 minute
+		refreshInterval: 300, // 5 minutes, matching the backend's 300 s cache
 	});
 
 	// Status Monitor Widget

@@ -1,9 +1,8 @@
 /** * Weather Widget * Displays current weather for a city */
 <script setup lang="ts">
-import { ref, onMounted, onUnmounted, watch } from 'vue';
 import BaseWidget from '../BaseWidget.vue';
-import { errorMessage } from '../../api/errorMessage';
-import { fetchWeatherData, type WeatherData } from '../../api/widgets';
+import { useWidgetData } from '../../composables/useWidgetData';
+import { fetchWeatherData } from '../../api/widgets';
 
 interface Props {
 	config: {
@@ -20,45 +19,19 @@ interface Emits {
 const props = defineProps<Props>();
 const emit = defineEmits<Emits>();
 
-const loading = ref(false);
-const error = ref<string | null>(null);
-const weather = ref<WeatherData | null>(null);
-const lastUpdated = ref<Date | null>(null);
-
-let refreshTimer: number | null = null;
-
-const loadData = async () => {
-	if (!props.config.city) {
-		error.value = 'City not configured';
-		return;
-	}
-
-	loading.value = true;
-	error.value = null;
-
-	try {
-		weather.value = await fetchWeatherData(props.config.city);
-		lastUpdated.value = new Date();
-	} catch (err) {
-		error.value = errorMessage(err, 'Failed to load weather data');
-		weather.value = null;
-	} finally {
-		loading.value = false;
-	}
-};
-
-const setupAutoRefresh = () => {
-	if (refreshTimer) {
-		clearInterval(refreshTimer);
-		refreshTimer = null;
-	}
-
-	if (props.refreshInterval && props.refreshInterval > 0) {
-		refreshTimer = window.setInterval(() => {
-			loadData();
-		}, props.refreshInterval * 1000);
-	}
-};
+const {
+	data: weather,
+	loading,
+	error,
+	lastUpdated,
+	reload,
+} = useWidgetData({
+	source: () => props.config.city,
+	fetch: fetchWeatherData,
+	refreshInterval: () => props.refreshInterval,
+	notConfigured: 'City not configured',
+	failure: 'Failed to load weather data',
+});
 
 const getWeatherIcon = (iconCode: string): string => {
 	const icons: Record<string, string> = {
@@ -83,31 +56,6 @@ const getWeatherIcon = (iconCode: string): string => {
 	};
 	return icons[iconCode] || '🌤️';
 };
-
-onMounted(() => {
-	loadData();
-	setupAutoRefresh();
-});
-
-watch(
-	() => props.refreshInterval,
-	() => {
-		setupAutoRefresh();
-	},
-);
-
-watch(
-	() => props.config.city,
-	() => {
-		loadData();
-	},
-);
-
-onUnmounted(() => {
-	if (refreshTimer) {
-		clearInterval(refreshTimer);
-	}
-});
 </script>
 
 <template>
@@ -116,7 +64,7 @@ onUnmounted(() => {
 		:loading="loading"
 		:error="error"
 		:last-updated="lastUpdated"
-		@refresh="loadData"
+		@refresh="reload"
 		@configure="emit('configure')"
 		@remove="emit('remove')"
 	>
@@ -126,7 +74,7 @@ onUnmounted(() => {
 		>
 			<!-- Main Temperature Card -->
 			<div
-				class="bg-gradient-to-br from-primary/10 to-secondary/10 rounded-2xl p-8 w-full text-center border border-base-300"
+				class="bg-linear-to-br from-primary/10 to-secondary/10 rounded-2xl p-8 w-full text-center border border-base-300"
 			>
 				<!-- Weather Icon -->
 				<div class="text-7xl mb-4">
@@ -135,7 +83,7 @@ onUnmounted(() => {
 
 				<!-- Temperature -->
 				<div
-					class="text-5xl font-bold text-transparent bg-gradient-to-r from-primary to-secondary bg-clip-text mb-2"
+					class="text-5xl font-bold text-transparent bg-linear-to-r from-primary to-secondary bg-clip-text mb-2"
 				>
 					{{ Math.round(weather.temperature) }}°C
 				</div>

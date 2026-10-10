@@ -1,12 +1,17 @@
-/** * Widget Configuration Modal * Dynamic form for editing widget settings
-based on widget schema */
+<!--
+	Widget Configuration Modal
+	Dynamic form for editing widget settings based on the registry schema. The
+	parent mounts it with v-if, so the form is filled from `initialConfig` when it
+	opens: the current configuration for an existing widget, registry defaults for
+	a new one.
+-->
 <script setup lang="ts">
-import { ref, watch } from 'vue';
+import { ref } from 'vue';
 import type { WidgetConfigField } from '../stores/widgets';
 import type { WidgetConfig } from '../types';
+import { useDialogFocus } from '../composables/useDialogFocus';
 
 interface Props {
-	show: boolean;
 	widgetTypeName: string;
 	configSchema: WidgetConfigField[];
 	initialConfig: WidgetConfig;
@@ -20,320 +25,187 @@ interface Emits {
 const props = defineProps<Props>();
 const emit = defineEmits<Emits>();
 
-// Values the form controls can hold; the modal does not render other types
-type FormValue = string | number | null | undefined;
-const formData = ref<Record<string, FormValue>>({});
+// Every schema field holds a string (text, textarea, select)
+const formData = ref<Record<string, string>>(
+	Object.fromEntries(
+		props.configSchema.map((field) => {
+			const value = props.initialConfig[field.key];
+			return [field.key, typeof value === 'string' ? value : ''];
+		}),
+	),
+);
 const errors = ref<Record<string, string>>({});
 
-// Initialize form data when modal opens
-watch(
-	() => props.show,
-	(show) => {
-		if (show) {
-			formData.value = { ...props.initialConfig } as Record<string, FormValue>;
-			errors.value = {};
-		}
-	},
-);
+const panel = ref<HTMLElement | null>(null);
+const { onKeydown } = useDialogFocus(panel, () => emit('close'));
 
-const validateForm = (): boolean => {
-	errors.value = {};
-	let isValid = true;
+const inputId = (key: string) => `widget-config-${key}`;
 
+const describedBy = (field: WidgetConfigField) =>
+	[
+		errors.value[field.key] ? `${inputId(field.key)}-error` : null,
+		field.helpText ? `${inputId(field.key)}-help` : null,
+	]
+		.filter(Boolean)
+		.join(' ') || undefined;
+
+const validate = (values: Record<string, string>): boolean => {
+	const found: Record<string, string> = {};
 	for (const field of props.configSchema) {
-		const value = formData.value[field.key];
-
-		// Check required fields
-		if (
-			field.required &&
-			(value === undefined || value === null || value === '')
-		) {
-			errors.value[field.key] = `${field.label} is required`;
-			isValid = false;
+		const value = values[field.key] ?? '';
+		if (!value) {
+			if (field.required) found[field.key] = `${field.label} is required`;
 			continue;
 		}
-
-		// Run custom validation
-		if (
-			field.validation &&
-			value !== undefined &&
-			value !== null &&
-			value !== ''
-		) {
-			// Fields with a validator are text-like, so the raw value is a string
-			const error = field.validation(value as string);
-			if (error) {
-				errors.value[field.key] = error;
-				isValid = false;
-			}
-		}
+		const message = field.type === 'select' ? null : field.validation?.(value);
+		if (message) found[field.key] = message;
 	}
-
-	return isValid;
+	errors.value = found;
+	return Object.keys(found).length === 0;
 };
 
 const handleSave = () => {
-	if (validateForm()) {
-		emit('save', { ...formData.value });
-		emit('close');
+	const values = Object.fromEntries(
+		Object.entries(formData.value).map(([key, value]) => [key, value.trim()]),
+	);
+	if (!validate(values)) {
+		const firstInvalid = props.configSchema.find((f) => errors.value[f.key]);
+		if (firstInvalid)
+			document.getElementById(inputId(firstInvalid.key))?.focus();
+		return;
 	}
-};
-
-const handleClose = () => {
+	// Keys the schema does not render are kept unchanged
+	emit('save', { ...props.initialConfig, ...values });
 	emit('close');
-};
-
-const handleBackdropClick = (event: MouseEvent) => {
-	if (event.target === event.currentTarget) {
-		handleClose();
-	}
 };
 </script>
 
 <template>
-	<Transition name="modal">
-		<!-- daisyUI Modal Dialog -->
-		<div v-if="show" class="modal modal-open" @click="handleBackdropClick">
-			<div class="modal-box w-full max-w-md bg-base-100 shadow-2xl" @click.stop>
-				<!-- Modal Header with Gradient -->
-				<div class="pb-4 border-b border-base-300">
-					<div class="flex items-center justify-between">
-						<h3
-							class="font-bold text-lg text-transparent bg-gradient-to-r from-primary to-secondary bg-clip-text"
+	<div class="modal modal-open" @click.self="emit('close')">
+		<div
+			ref="panel"
+			class="modal-box w-full max-w-md"
+			role="dialog"
+			aria-modal="true"
+			aria-labelledby="widget-config-title"
+			@keydown="onKeydown"
+		>
+			<div class="flex items-center justify-between gap-2 pb-4">
+				<h2 id="widget-config-title" class="text-lg font-bold">
+					Configure {{ widgetTypeName }}
+				</h2>
+				<button
+					type="button"
+					class="btn btn-ghost btn-sm btn-circle"
+					aria-label="Close"
+					@click="emit('close')"
+				>
+					<svg
+						aria-hidden="true"
+						class="h-5 w-5"
+						fill="none"
+						stroke="currentColor"
+						viewBox="0 0 24 24"
+					>
+						<path
+							stroke-linecap="round"
+							stroke-linejoin="round"
+							stroke-width="2"
+							d="M6 18L18 6M6 6l12 12"
+						/>
+					</svg>
+				</button>
+			</div>
+
+			<form class="flex flex-col gap-4" novalidate @submit.prevent="handleSave">
+				<div
+					v-for="field in configSchema"
+					:key="field.key"
+					class="flex flex-col gap-1"
+				>
+					<label :for="inputId(field.key)" class="text-sm font-medium">
+						{{ field.label }}
+						<span v-if="field.required" class="text-error" aria-hidden="true"
+							>*</span
 						>
-							⚙️ Configure {{ widgetTypeName }}
-						</h3>
-						<button
-							class="btn btn-ghost btn-sm btn-circle"
-							title="Close"
-							@click="handleClose"
+					</label>
+
+					<input
+						v-if="field.type === 'text'"
+						:id="inputId(field.key)"
+						v-model="formData[field.key]"
+						type="text"
+						:placeholder="field.placeholder"
+						:aria-required="field.required"
+						:aria-invalid="!!errors[field.key]"
+						:aria-describedby="describedBy(field)"
+						class="input w-full"
+						:class="{ 'input-error': errors[field.key] }"
+					/>
+
+					<textarea
+						v-else-if="field.type === 'textarea'"
+						:id="inputId(field.key)"
+						v-model="formData[field.key]"
+						:placeholder="field.placeholder"
+						:aria-required="field.required"
+						:aria-invalid="!!errors[field.key]"
+						:aria-describedby="describedBy(field)"
+						rows="3"
+						class="textarea w-full"
+						:class="{ 'textarea-error': errors[field.key] }"
+					></textarea>
+
+					<select
+						v-else-if="field.type === 'select'"
+						:id="inputId(field.key)"
+						v-model="formData[field.key]"
+						:aria-required="field.required"
+						:aria-invalid="!!errors[field.key]"
+						:aria-describedby="describedBy(field)"
+						class="select w-full"
+						:class="{ 'select-error': errors[field.key] }"
+					>
+						<option value="" disabled>Select {{ field.label }}</option>
+						<option
+							v-for="option in field.options"
+							:key="option.value"
+							:value="option.value"
 						>
-							<svg
-								class="w-5 h-5"
-								fill="none"
-								stroke="currentColor"
-								viewBox="0 0 24 24"
-							>
-								<path
-									stroke-linecap="round"
-									stroke-linejoin="round"
-									stroke-width="2"
-									d="M6 18L18 6M6 6l12 12"
-								/>
-							</svg>
-						</button>
-					</div>
+							{{ option.label }}
+						</option>
+					</select>
+
+					<p
+						v-if="field.helpText"
+						:id="`${inputId(field.key)}-help`"
+						class="text-xs text-base-content/70"
+					>
+						{{ field.helpText }}
+					</p>
+					<p
+						v-if="errors[field.key]"
+						:id="`${inputId(field.key)}-error`"
+						class="text-sm text-error"
+						role="alert"
+					>
+						{{ errors[field.key] }}
+					</p>
 				</div>
 
-				<!-- Modal Body with Form -->
-				<form
-					class="py-4 space-y-5 max-h-96 overflow-y-auto"
-					@submit.prevent="handleSave"
-				>
-					<!-- Dynamic Form Fields -->
-					<div
-						v-for="field in configSchema"
-						:key="field.key"
-						class="form-control w-full px-4"
-					>
-						<!-- Label with Required Indicator -->
-						<label :for="field.key" class="label">
-							<span class="label-text font-medium">
-								{{ field.label }}
-								<span v-if="field.required" class="text-error ml-1">*</span>
-							</span>
-						</label>
-
-						<!-- Text Input -->
-						<input
-							v-if="field.type === 'text' || field.type === 'url'"
-							:id="field.key"
-							v-model="formData[field.key]"
-							:type="field.type"
-							:placeholder="field.placeholder"
-							:required="field.required"
-							class="input input-bordered input-primary w-full transition-all duration-300"
-							:class="{ 'input-error': errors[field.key] }"
-						/>
-
-						<!-- Number Input -->
-						<input
-							v-else-if="field.type === 'number'"
-							:id="field.key"
-							v-model.number="formData[field.key]"
-							type="number"
-							:placeholder="field.placeholder"
-							:required="field.required"
-							class="input input-bordered input-primary w-full transition-all duration-300"
-							:class="{ 'input-error': errors[field.key] }"
-						/>
-
-						<!-- Textarea -->
-						<textarea
-							v-else-if="field.type === 'textarea'"
-							:id="field.key"
-							v-model="formData[field.key]"
-							:placeholder="field.placeholder"
-							:required="field.required"
-							rows="3"
-							class="textarea textarea-bordered textarea-primary w-full resize-none transition-all duration-300"
-							:class="{ 'textarea-error': errors[field.key] }"
-						></textarea>
-
-						<!-- Select Dropdown -->
-						<select
-							v-else-if="field.type === 'select'"
-							:id="field.key"
-							v-model="formData[field.key]"
-							:required="field.required"
-							class="select select-bordered select-primary w-full transition-all duration-300"
-							:class="{ 'select-error': errors[field.key] }"
-						>
-							<option value="" disabled selected>
-								Select {{ field.label }}
-							</option>
-							<option
-								v-for="option in field.options"
-								:key="option.value"
-								:value="option.value"
-							>
-								{{ option.label }}
-							</option>
-						</select>
-
-						<!-- Checkbox -->
-						<div
-							v-else-if="field.type === 'checkbox'"
-							class="flex items-center gap-3 mt-2"
-						>
-							<input
-								:id="field.key"
-								v-model="formData[field.key]"
-								type="checkbox"
-								class="checkbox checkbox-primary"
-							/>
-							<label :for="field.key" class="label cursor-pointer flex-1">
-								<span class="label-text">
-									{{ field.helpText || 'Enable' }}
-								</span>
-							</label>
-						</div>
-
-						<!-- Help Text -->
-						<label
-							v-if="field.helpText && field.type !== 'checkbox'"
-							:for="field.key"
-							class="label"
-						>
-							<span class="label-text-alt text-base-content/60 italic">
-								{{ field.helpText }}
-							</span>
-						</label>
-
-						<!-- Error Message Alert -->
-						<div
-							v-if="errors[field.key]"
-							class="alert alert-error shadow-md mt-2 py-2"
-						>
-							<div class="flex gap-2 items-start">
-								<!-- Error Icon -->
-								<svg
-									xmlns="http://www.w3.org/2000/svg"
-									class="stroke-current flex-shrink-0 h-5 w-5 mt-0.5"
-									fill="none"
-									viewBox="0 0 24 24"
-								>
-									<path
-										stroke-linecap="round"
-										stroke-linejoin="round"
-										stroke-width="2"
-										d="M10 14l-2-2m0 0l-2-2m2 2l2-2m-2 2l-2 2m8-8l-2 2m0 0l-2 2m2-2l2 2m-2-2l-2-2"
-									/>
-								</svg>
-								<div class="flex-1">
-									<h3 class="font-semibold text-sm leading-tight">
-										Validation Error
-									</h3>
-									<p class="text-xs mt-0.5">
-										{{ errors[field.key] }}
-									</p>
-								</div>
-							</div>
-						</div>
-					</div>
-				</form>
-
-				<!-- Modal Footer with Action Buttons -->
-				<div class="modal-action pt-6 border-t border-base-300 gap-3 px-4">
+				<div class="modal-action mt-2">
 					<button
 						type="button"
 						class="btn btn-ghost btn-sm"
-						@click="handleClose"
+						@click="emit('close')"
 					>
 						Cancel
 					</button>
-					<button
-						type="button"
-						class="btn btn-primary btn-sm gap-2"
-						@click="handleSave"
-					>
-						<svg
-							xmlns="http://www.w3.org/2000/svg"
-							class="h-4 w-4"
-							fill="none"
-							viewBox="0 0 24 24"
-							stroke="currentColor"
-						>
-							<path
-								stroke-linecap="round"
-								stroke-linejoin="round"
-								stroke-width="2"
-								d="M5 13l4 4L19 7"
-							/>
-						</svg>
+					<button type="submit" class="btn btn-primary btn-sm">
 						Save Changes
 					</button>
 				</div>
-			</div>
+			</form>
 		</div>
-	</Transition>
+	</div>
 </template>
-
-<style scoped>
-@reference "tailwindcss";
-/* Modal transition animations with daisyUI integration */
-.modal-enter-active,
-.modal-leave-active {
-	transition: opacity 0.3s ease;
-}
-
-.modal-enter-from,
-.modal-leave-to {
-	opacity: 0;
-}
-
-.modal-enter-active .modal-box,
-.modal-leave-active .modal-box {
-	transition: transform 0.3s ease;
-}
-
-.modal-enter-from .modal-box,
-.modal-leave-to .modal-box {
-	transform: scale(0.95);
-}
-
-/* Smooth input transitions */
-:deep(.input),
-:deep(.textarea),
-:deep(.select),
-:deep(.checkbox) {
-	@apply transition-all duration-300;
-}
-
-/* Focus states for better UX */
-:deep(.input:focus),
-:deep(.textarea:focus),
-:deep(.select:focus) {
-	@apply shadow-md;
-}
-</style>
