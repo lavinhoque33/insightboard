@@ -11,13 +11,13 @@ entry lives in [`sessions/`](sessions/) so this file stays short as history grow
 | --- | --- |
 | Updated | 2026-10-10 (UTC) |
 | Latest session | [2026-10-10-04-m4b](sessions/2026-10-10-04-m4b.md) |
-| Milestone | M0–M3 **accepted** 2026-10-10 against the [baseline record](baseline-verification.md), defects included. M4 — Quality gate and hardening **in progress**: [contract](../architecture/m4-quality-gate-contract.md) **accepted** with owner decisions 1–17 ([ADR 0002](../decisions/ADR-0002-m4-quality-gate.md)); **M4a locally verified** 2026-10-10 ([M4 verification record](m4-verification.md)); M4b and M4c planned. |
-| Last accepted task | Session 2026-10-10-03: M4a — `d4bdca9` (format only), `2780fc0` (gates, CORS, config, audits, Makefile, LICENSE); drills 1–4 pass; committed locally, not pushed. |
-| Active task | M4b **in progress** (owner start 2026-10-10). ADR 0001 **accepted** (owner confirmation 2026-10-10). |
+| Milestone | M0–M3 **accepted** 2026-10-10, defects included. M4 — Quality gate and hardening **in progress**: [contract](../architecture/m4-quality-gate-contract.md) **accepted** with owner decisions 1–17 ([ADR 0002](../decisions/ADR-0002-m4-quality-gate.md)); **M4a and M4b locally verified** 2026-10-10 ([M4 verification record](m4-verification.md)); M4c planned. ADR 0001 **accepted** 2026-10-10. |
+| Last accepted task | Session 2026-10-10-04: M4b — `b20986e` (outbound safety, rate limits, auth, error model, dashboard JSON, Redis/`/readyz`, contract tests); drills 5–11 pass. Earlier the same session: ADR 0001 accepted and `main` pushed to origin at `42555eb` on the owner's request. M4b commits are local, not pushed. |
+| Active task | None in progress. Next: M4c. |
 | Active delegates / write ownership | None. The main thread owns everything. |
-| Blockers | None. Any push to the public origin needs an explicit request. |
-| Exact next action | M4b: brief `implement-heavy` with contract sections 3–8 and the M4b part of 9, the preparation values, and the M4a carry-forward items in the M4 verification record; then `verify`; record evidence in the same record. |
-| Workspace | This workstation (Fedora 44): clone `/home/axeleratorx/PersProject/InsightBoard`, `origin` public; `main` ahead of `origin/main` with local commits from sessions 02 and 03 (not pushed). `.env` present (gitignored, mode 600; Postgres and Redis passwords rotated 2026-10-10 after a transcript exposure; `POSTGRES_USER=postgres`). Compose project containers `insightboard-postgres-1`, `insightboard-redis-1` on `127.0.0.1`; backend debug build on `127.0.0.1:8080`; Vite on `127.0.0.1:5173`. rustc 1.99.0 (pinned); Node 20.19.0 in `.tools/`. |
+| Blockers | None. Any further push (and enabling CI in M4c) needs a new explicit request. |
+| Exact next action | M4c: brief `implement-heavy` with contract sections 9 (frontend), 10, 11 (daisyUI), 12, the M4c drills, and the carry-forward items in the M4 verification record; then `verify-browser`; record evidence; ask the owner to accept M4. |
+| Workspace | This workstation (Fedora 44): clone `/home/axeleratorx/PersProject/InsightBoard`, `origin` public at `42555eb`; local commits after it not pushed. `.env` present (gitignored, mode 600; Postgres and Redis passwords rotated 2026-10-10). Compose project containers `insightboard-postgres-1`, `insightboard-redis-1` on `127.0.0.1`; backend `b20986e` debug build on `127.0.0.1:8080`; Vite on `127.0.0.1:5173`. Backend tests need `make db-up`. rustc 1.99.0 (pinned); Node 20.19.0 in `.tools/`. |
 
 ## Protocol
 
@@ -80,7 +80,7 @@ Create `sessions/YYYY-MM-DD-NN-short-topic.md`:
 
 | Session | Outcome |
 | --- | --- |
-| [2026-10-10-04-m4b](sessions/2026-10-10-04-m4b.md) | ADR 0001 accepted; push requested by the owner; M4b in progress. |
+| [2026-10-10-04-m4b](sessions/2026-10-10-04-m4b.md) | ADR 0001 accepted; `main` pushed (`42555eb`). M4b locally verified: `b20986e` (`implement-heavy` backend and contract, `implement-medium` frontend; `ajv-formats` rejected), `verify` and `verify-browser` reviews, drills 5–11 by the main thread. Not pushed. |
 | [2026-10-10-03-m4a](sessions/2026-10-10-03-m4a.md) | M4a locally verified: format-only commit `d4bdca9` (`implement-light`), M4a commit `2780fc0` (`implement-medium`, main-thread fixes), `verify` review; drills 1–4 pass; local Postgres and Redis passwords rotated after a transcript exposure. Committed locally, not pushed. |
 | [2026-10-10-02-b0-loopback-and-drills](sessions/2026-10-10-02-b0-loopback-and-drills.md) | Owner approved decision 4, rustup, free-tier keys. Decision 4 landed (`implement-medium`, one main-thread fix) as `354e06c`; rustup and `openssl-devel` installed; drills B0–B12 run by the main thread; new D30 (crypto and news: no `User-Agent`) and D31. Owner accepted M0–M3 and settled M4 decisions 1–17; M4 contract accepted with ADR 0002. Committed locally, not pushed. |
 | [2026-10-10-01-workflow-onboarding](sessions/2026-10-10-01-workflow-onboarding.md) | Pulled `2e1c4ac` → `f15c6a3`. Three read-only audits (`research-heavy` ×2, `research-medium`); automated baseline run on this workstation; StatusForge workflow adopted: `.omp/AGENTS.md`, plan, roadmap (M0–M7), contracts, ADR-0001, verification record, setup and testing docs, README rewrite (`implement-customHeavy` ×2); legacy docs condensed, moved, or removed. Committed and pushed at the owner's request. |

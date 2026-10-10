@@ -3,7 +3,7 @@
 InsightBoard is a personal dashboard builder: accounts, owner-scoped dashboards, and five provider widgets on a
 GridStack grid, served by a Rust/Axum API with Postgres and Redis and a Vue 3 client. M0–M3 are **accepted**
 (2026-10-10, defects included, after baseline drills B0–B12 on this workstation). M4 — Quality gate and hardening
-is **in progress**: contract **accepted** (2026-10-10), slice M4a **locally verified** (2026-10-10).
+is **in progress**: contract **accepted** (2026-10-10), slices M4a and M4b **locally verified** (2026-10-10).
 
 ## Start here
 
@@ -46,11 +46,12 @@ The root [README](../README.md) summarises status, limits, and layout.
 | [Local setup](development/local-setup.md) | Prerequisites, network exposure (D3, fixed), first run, configuration, stop and restart, troubleshooting |
 | [Testing](development/testing.md) | Evidence vocabulary, `make` gates and the container fallback, current suites, drill conventions, M4 test targets |
 | [Baseline verification](development/baseline-verification.md) | M0–M3 evidence: 2026-10-10 automated baseline, drill results B0–B12 |
-| [M4 verification](development/m4-verification.md) | M4 drill evidence by slice; M4a locally verified 2026-10-10 |
+| [M4 verification](development/m4-verification.md) | M4 drill evidence by slice; M4a and M4b locally verified 2026-10-10 |
 | [Session handoff](development/session-handoff.md) | Current checkpoint, protocol, template, session index; entries under `development/sessions/` |
 | [2026-10-10-01 workflow onboarding](development/sessions/2026-10-10-01-workflow-onboarding.md) | The session that moved InsightBoard onto this workflow |
 | [2026-10-10-02 B0 loopback and drills](development/sessions/2026-10-10-02-b0-loopback-and-drills.md) | Decision 4 (D3 fix), host toolchain, and baseline drills B0–B12 |
 | [2026-10-10-03 M4a](development/sessions/2026-10-10-03-m4a.md) | M4a: reformat, gates, CORS, config, audit fixes, Makefile, LICENSE; drills 1–4 |
+| [2026-10-10-04 M4b](development/sessions/2026-10-10-04-m4b.md) | ADR 0001 accepted, push; M4b: outbound safety, rate limits, auth, error model, contract tests; drills 5–11 |
 
 ## Guides (non-authoritative)
 

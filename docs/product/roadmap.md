@@ -17,7 +17,7 @@ they matter.
 | M1 — Accounts and dashboards | Register and login with JWT sessions; owner-scoped dashboard CRUD; frontend auth flow and dashboard list | **Accepted** 2026-10-10 (owner), defects included; see the qualification below and the [baseline verification record](../development/baseline-verification.md) |
 | M2 — Widgets and editor | Five provider widgets through a cached backend proxy; GridStack editor with persisted layout | **Accepted** 2026-10-10 (owner), defects included; see the qualification below and the [baseline verification record](../development/baseline-verification.md) |
 | M3 — UI polish and contract alignment | daisyUI styling, auth and editor fixes, v1 payload contract, draft-on-add editor | **Accepted** 2026-10-10 (owner), defects included; see the qualification below and the [baseline verification record](../development/baseline-verification.md) |
-| M4 — Quality gate and hardening | Reproducible builds, passing gates, loopback defaults, safe outbound calls, real test suites, CI | **In progress**; [contract](../architecture/m4-quality-gate-contract.md) **accepted** 2026-10-10 ([ADR 0002](../decisions/ADR-0002-m4-quality-gate.md)); M4a **locally verified** 2026-10-10 ([record](../development/m4-verification.md)); M4b next |
+| M4 — Quality gate and hardening | Reproducible builds, passing gates, loopback defaults, safe outbound calls, real test suites, CI | **In progress**; [contract](../architecture/m4-quality-gate-contract.md) **accepted** 2026-10-10 ([ADR 0002](../decisions/ADR-0002-m4-quality-gate.md)); M4a and M4b **locally verified** 2026-10-10 ([record](../development/m4-verification.md)); M4c next |
 | M5 — Local release | A reproducible, documented, independently runnable local product | **Planned** |
 | M6 — AWS readiness | Cloud adapters and an inspectable, synth-only experiment proposal, without deployment | **Planned** |
 | M7 — AWS experiment | A validated and cleaned-up cloud execution path | **Deferred**; owner approval and a $0 path required |
@@ -150,7 +150,8 @@ and [ADR 0002](../decisions/ADR-0002-m4-quality-gate.md).
   D18, D26, D29 (compose). Decisions 1, 2, 3, 4, 7, 14, 16, 17. **Locally verified** 2026-10-10 (`d4bdca9`,
   `2780fc0`; drills 1–4 in the [M4 verification record](../development/m4-verification.md)).
 - **M4b — Outbound safety, API correctness, and contract:** D1, D2, D5, D6, D7, D8, D15, D16, D17, D19, D20,
-  D29 (cache keys), D30. Decisions 5, 6, 8, 9, 10, 11.
+  D29 (cache keys), D30. Decisions 5, 6, 8, 9, 10, 11. **Locally verified** 2026-10-10 (`b20986e`; drills 5–11 in
+  the [M4 verification record](../development/m4-verification.md)).
 - **M4c — Frontend correctness, test suites, and CI:** D9, D10, D11, D22, D23, D24, D25, D27, D28, D31. Decisions
   12, 13, 15 (and the daisyUI part of 14).
 
@@ -187,8 +188,8 @@ rate limits, dashboard cap, 422 shape, `/readyz`) in the contract's "Preparation
 
 Research as needed: `research-medium` by default, `research-heavy` for cross-layer audits.
 
-**Next slice:** M4b — outbound safety, API correctness, and contract (D1, D2, D5, D6, D7, D8, D15, D16, D17, D19, D20,
-D29 cache keys and list bounds, D30; decisions 5, 6, 8, 9, 10, 11). M4a is locally verified.
+**Next slice:** M4c — frontend correctness, test suites, and CI (D9, D10, D11, D22, D23, D24, D25, D27, D28, D31;
+decisions 12, 13, 15 and the daisyUI part of 14). M4a and M4b are locally verified.
 
 **Keep out:** cloud work, app container images (M5), OpenAPI generation, new widgets, dark theme, public dashboards,
 keyboard layout editing (backlog).
@@ -227,7 +228,8 @@ before any other external request.
 
 ## Next action
 
-1. M4b: brief `implement-heavy` with contract sections 3–8 and the M4b part of 9, the preparation values, and the
-   M4a carry-forward items in the [M4 verification record](../development/m4-verification.md); one writer for the
-   contract pair, `backend/Cargo.toml`, `Cargo.lock`, and `backend/migrations/**`; then `verify`.
-2. Record M4b evidence in the M4 verification record; then M4c.
+1. M4c: brief `implement-heavy` with contract sections 9 (frontend part), 10, 11 (daisyUI), and 12, the M4c drills,
+   and the M4a/M4b carry-forward items in the [M4 verification record](../development/m4-verification.md); one
+   writer for `frontend/package.json` and `frontend/package-lock.json`; then `verify-browser` (desktop, 390 px,
+   keyboard). Enabling CI needs an explicit push request.
+2. Record M4c evidence; then ask the owner to accept M4.

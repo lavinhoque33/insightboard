@@ -14,9 +14,9 @@ beyond prose. On this workstation, the 2026-10-10 baseline drills B0–B12 **obs
 user journeys, failing `cargo fmt --check`, `cargo clippy -D warnings`, and `npm audit`, and defects including
 D9, D23, D25, D30 (crypto and news widgets always fail), and D31 (small-width layout); see the
 [baseline verification record](docs/development/baseline-verification.md). M4 — Quality gate and hardening is
-next: **planned**, with its [contract](docs/architecture/m4-quality-gate-contract.md) **accepted** on 2026-10-10
-([ADR 0002](docs/decisions/ADR-0002-m4-quality-gate.md)) and decision 4 already landed. See the
-[roadmap](docs/product/roadmap.md).
+**in progress** under its [accepted contract](docs/architecture/m4-quality-gate-contract.md)
+([ADR 0002](docs/decisions/ADR-0002-m4-quality-gate.md)): slices M4a and M4b are **locally verified** (2026-10-10;
+[M4 verification record](docs/development/m4-verification.md)); M4c is next. See the [roadmap](docs/product/roadmap.md).
 
 ## What works (as built at `f15c6a3`)
 
@@ -57,11 +57,12 @@ that fixes each. The ones to know first:
   [baseline verification record](docs/development/baseline-verification.md)). The host firewall on this
   workstation opens ports 1025–65535; the services listen on `127.0.0.1` only.
   Read [local setup](docs/development/local-setup.md) before starting anything.
-- **D1 — status widget SSRF.** Any signed-in user can make the backend request any URL, including loopback,
-  private, and cloud-metadata addresses, and read back status and error text.
+- **D1 — status widget SSRF (fixed in M4b).** The status widget now accepts only `http`/`https` URLs that resolve
+  to public addresses, follows no redirects, and checks at most 10 URLs with short timeouts.
 - **D9 — widget configuration never pre-fills.** Editing an existing widget opens an empty form; saving replaces
-  its configuration.
-- **D11 — thin automated tests.** Provider base URLs are hard-coded, so nothing can be mocked yet.
+  its configuration (M4c).
+- **D11 — automated tests (partly fixed).** Backend tests use local mocks, Postgres, and Redis; frontend journeys,
+  Playwright, and CI come in M4c.
 - **D14 — vulnerable npm dependencies (fixed in M4a).** `npm audit` **observed** 8 production findings on
   2026-10-10; after the M4a bumps both `npm audit --omit=dev` and the full audit report 0.
 
@@ -78,13 +79,13 @@ make backend-dev  # terminal 1: applies migrations, serves 127.0.0.1:8080
 make web-dev      # terminal 2: http://127.0.0.1:5173
 ```
 
-Provider keys are optional; without them Weather and News show their "not configured" errors.
+Provider keys are optional; without them Weather and News return 503 "not configured" errors.
 
 ## Checks
 
-`make verify` runs every gate (fmt, clippy, cargo test, ESLint, Prettier, Vitest, type-check and build) and needs
-no database. Commands and current results are in [testing](docs/development/testing.md). Automated tests never
-call live providers.
+`make verify` runs every gate (fmt, clippy, cargo test, ESLint, Prettier, Vitest, type-check and build). Backend
+tests use the compose Postgres and Redis, so run `make db-up` first. Commands and current results are in
+[testing](docs/development/testing.md). Automated tests never call live providers.
 
 ## Where to start
 
