@@ -36,7 +36,7 @@ The root [README](../README.md) summarises status, limits, and layout.
 
 | Document | Purpose |
 | --- | --- |
-| [ADR 0001: foundation stack](decisions/ADR-0001-foundation-stack.md) | **Proposed** retroactive record of the stack chosen 2025-10-28 to 2026-03-03: Rust/Axum, SQLx, Postgres, Redis, Vue 3, Pinia, GridStack, Tailwind and daisyUI |
+| [ADR 0001: foundation stack](decisions/ADR-0001-foundation-stack.md) | **Accepted** 2026-10-10 retroactive record of the stack chosen 2025-10-28 to 2026-03-03: Rust/Axum, SQLx, Postgres, Redis, Vue 3, Pinia, GridStack, Tailwind and daisyUI |
 | [ADR 0002: M4 quality gate](decisions/ADR-0002-m4-quality-gate.md) | **Accepted** owner choices on M4 decisions 1–17, dependencies they approve, and M4 preparation values |
 
 ## Development

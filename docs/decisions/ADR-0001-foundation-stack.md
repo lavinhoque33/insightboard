@@ -1,7 +1,7 @@
 # ADR 0001: Foundation stack
 
-- Status: **proposed** — retroactive record, written 2026-10-10, of decisions made 2025-10-28 to 2026-03-03 under
-  the legacy spec; owner confirmation pending with the baseline review.
+- Status: **accepted** 2026-10-10 (owner confirmation) — retroactive record, written 2026-10-10, of decisions made
+  2025-10-28 to 2026-03-03 under the legacy spec. Amended by [ADR 0002](ADR-0002-m4-quality-gate.md).
 - Milestone: M0–M3
 - Sources: the legacy
   [condensed spec](https://github.com/lavinhoque33/insightboard/blob/f15c6a3/.github/instructions/Insightboard_Condensed_spec.instructions.md)
