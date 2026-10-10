@@ -8,26 +8,29 @@ Commands are run from the repository root unless a `cd` is shown. Steps below ma
 `frontend/.env.example`, `docker-compose.yml`, `backend/src/config.rs`, `backend/src/main.rs`, and
 `frontend/vite.config.ts` at `f15c6a3`.
 
-## Warning: network exposure (D3) — read before starting anything
+## Network exposure (D3, mitigated by M4 decision 4)
 
-As built, InsightBoard does not stay on loopback:
+Every listener binds to loopback and the data services need credentials from `.env` (M4 decision 4, approved
+by the owner 2026-10-10; **locally verified** on this workstation 2026-10-10 as precondition B0 in the
+[baseline verification record](baseline-verification.md)):
 
-| Listener | Binding at `f15c6a3` | Credentials |
+| Listener | Binding | Credentials |
 | --- | --- | --- |
-| Backend `:8080` | `0.0.0.0` (`backend/src/main.rs:90`), not configurable | API; anyone can self-register |
-| Postgres `:5432` | all interfaces (`docker-compose.yml`, `'5432:5432'`) | `postgres` / `postgres` |
-| Redis `:6379` | all interfaces (`'6379:6379'`) | none |
-| Vite `:5173` | Vite default `localhost` | n/a |
+| Backend `:8080` | `APP_HOST`, default `127.0.0.1` (`backend/src/config.rs`, `backend/src/main.rs`) | API; anyone who can reach it can self-register |
+| Postgres `:5432` | `127.0.0.1` (`docker-compose.yml`, `'127.0.0.1:5432:5432'`) | `POSTGRES_USER` / `POSTGRES_PASSWORD` from `.env`, required by compose |
+| Redis `:6379` | `127.0.0.1` (`'127.0.0.1:6379:6379'`) | `REDIS_PASSWORD` from `.env`, required by compose |
+| Vite `:5173` | `127.0.0.1` (`frontend/vite.config.ts`) | n/a |
 
 **Observed** on this workstation on 2026-10-10: firewalld zone `FedoraWorkstation` on `wlp1s0` opens
-`1025-65535/tcp` and `1025-65535/udp`. The three listeners above are therefore reachable from the local network
-while they run `[INFERENCE: not probed]`. Through the backend, D1 (status-widget SSRF) is reachable too.
+`1025-65535/tcp` and `1025-65535/udp`. Before decision 4 the services listened on all interfaces and were
+therefore reachable from the local network `[INFERENCE: not probed]`. With the loopback binds they listen on
+`127.0.0.1` only, and connections to the workstation's LAN address on 5173, 8080, 5432, and 6379 are refused
+(observed 2026-10-10 from the workstation itself; not probed from another host). Do not
+change firewall rules. Setting `APP_HOST` to a non-loopback address is a deliberate owner-approved change; the
+backend does not warn about it. Through the backend, D1 (status-widget SSRF) is still open.
 
-**Precondition B0** for every baseline drill, and the rule for any run on this workstation: do not start
-`docker compose up` or the backend until the exposure is resolved by owner-approved loopback-only binds for the
-compose ports and the backend (M4 decision 4, requested before the drills) or by another owner-approved
-mitigation. Do not change firewall rules, `docker-compose.yml`, or backend code to work around this without that
-approval. The defect is catalogued in the [M0–M3 baseline contract](../architecture/m0-m3-baseline-contract.md).
+**Precondition B0** (loopback binds and `.env` credentials in place) is met; the defect is catalogued in the
+[M0–M3 baseline contract](../architecture/m0-m3-baseline-contract.md).
 
 ## Prerequisites
 
@@ -35,25 +38,33 @@ approval. The defect is catalogued in the [M0–M3 baseline contract](../archite
 | --- | --- | --- |
 | Docker + Compose v2 | any current (Docker 29.8.2, Compose v5.5.1 on this workstation) | Runs Postgres and Redis only. Add your user to the `docker` group so `sudo` is unnecessary (already the case here); the legacy instructions' `sudo docker` is not needed. |
 | Node.js | 20.19.0 (`.nvmrc`) | Vite 7 needs `^20.19 \|\| >=22.12`. On this workstation the project Node lives in the gitignored `.tools/node-v20.19.0-linux-x64/bin`; put it first on `PATH` (below). Host Node 24.19.0 also satisfies Vite 7. npm comes with Node; the project uses npm, not pnpm. |
-| Rust | stable via [rustup](https://rustup.rs/); no version pinned (D12) | Built with rustc 1.99.0 in the 2026-10-10 baseline. This workstation has no host Rust: backend **checks** can run in a container ([testing](testing.md)), but running the backend needs host Rust. reqwest uses native TLS; the legacy verification **reported** needing OpenSSL development headers (Fedora: `openssl-devel` and `pkg-config` `[INFERENCE]`). |
+| Rust | stable via [rustup](https://rustup.rs/); no version pinned (D12) | This workstation has a user-level rustup install since 2026-10-10 (rustc 1.99.0, rustfmt, clippy; `rustup-init -y --profile minimal --component rustfmt,clippy`). reqwest uses native TLS, so a native build needs OpenSSL development headers and `pkg-config`: **observed** on Fedora 44 that `openssl-sys` fails without `openssl-devel`. Without host Rust, backend **checks** can run in a container ([testing](testing.md)), but running the backend needs host Rust. |
 | git, curl, openssl | any | `openssl` generates the JWT secret. |
 
 `sqlx-cli` is not required: the backend applies migrations at startup.
 
 ## First run
 
-Satisfy precondition B0 (warning above) first.
+Complete "Backend environment" (step 1) before starting anything: compose refuses to start without the secrets.
 
-1. **Backend environment.** Copy the template and replace the placeholder JWT secret with a locally generated
-   one, without printing it:
+1. **Backend and compose environment.** Copy the template and fill the secrets with locally generated values,
+   without printing them. Compose (interpolation) and the backend (`dotenvy`) read the same root `.env`;
+   `DATABASE_URL` and `REDIS_URL` must carry the same user and passwords. Hex values are URL-safe:
 
    ```sh
    cp .env.example .env
-   sed -i "s|^JWT_SECRET=.*|JWT_SECRET=$(openssl rand -hex 32)|" .env
+   PGPASS=$(openssl rand -hex 24); REDISPASS=$(openssl rand -hex 24)
+   sed -i \
+     -e "s|^JWT_SECRET=.*|JWT_SECRET=$(openssl rand -hex 32)|" \
+     -e "s|^POSTGRES_USER=.*|POSTGRES_USER=insightboard_app|" \
+     -e "s|^POSTGRES_PASSWORD=.*|POSTGRES_PASSWORD=$PGPASS|" \
+     -e "s|^REDIS_PASSWORD=.*|REDIS_PASSWORD=$REDISPASS|" \
+     -e "s|<POSTGRES_USER>|insightboard_app|; s|<POSTGRES_PASSWORD>|$PGPASS|; s|<REDIS_PASSWORD>|$REDISPASS|" .env
+   unset PGPASS REDISPASS
    ```
 
    `.env` is gitignored. Never commit, log, or paste it. Leave the provider keys empty unless you have free-tier
-   keys (see "Provider keys").
+   keys (see "Provider keys"). Keep values plain: no quotes and no `${}` references.
 2. **Frontend environment (optional).** `cp frontend/.env.example frontend/.env`. It sets `VITE_API_URL=/api`,
    which is also the default in `frontend/src/api/client.ts`.
 3. **Start Postgres and Redis.**
@@ -72,8 +83,9 @@ Satisfy precondition B0 (warning above) first.
    ```
 
    Startup connects to Postgres, applies the embedded migrations, connects to Redis, and logs
-   `Listening on 0.0.0.0:8080`. A missing `DATABASE_URL`, `REDIS_URL`, or `JWT_SECRET` panics at startup; an
-   unreachable Postgres or Redis exits with an error. Check it with `curl -s http://localhost:8080/healthz`
+   `Listening on 127.0.0.1:8080`. A missing `DATABASE_URL`, `REDIS_URL`, or `JWT_SECRET` panics at startup; an
+   unparsable `APP_HOST` or `APP_PORT` fails startup with an error; an unreachable Postgres or Redis exits with
+   an error. Check it with `curl -s http://127.0.0.1:8080/healthz`
    (`{"status":"ok","service":"insightboard-backend","version":"0.1.0"}`; it checks no dependency).
 5. **Run the frontend** (terminal 2).
 
@@ -84,8 +96,8 @@ Satisfy precondition B0 (warning above) first.
    npm run dev
    ```
 
-6. **Open** `http://localhost:5173`, register an account, create a dashboard, and add a widget. The Vite dev
-   server proxies `/api` to `http://localhost:8080` (`frontend/vite.config.ts`).
+6. **Open** `http://127.0.0.1:5173`, register an account, create a dashboard, and add a widget. The Vite dev
+   server proxies `/api` to `http://127.0.0.1:8080` (`frontend/vite.config.ts`).
 
 ## Configuration
 
@@ -94,9 +106,12 @@ Satisfy precondition B0 (warning above) first.
 
 | Variable | Default | Rule |
 | --- | --- | --- |
-| `APP_PORT` | `8080` | Port only; the host is always `0.0.0.0` (D3). Changing it also needs the Vite proxy target changed. |
-| `DATABASE_URL` | none, required | `postgres://postgres:postgres@localhost:5432/insightboard` matches compose. |
-| `REDIS_URL` | none, required | `redis://127.0.0.1:6379` matches compose. |
+| `APP_HOST` | `127.0.0.1` | IP address the backend binds (`std::net::IpAddr`); unparsable values fail startup. Non-loopback values are a deliberate owner-approved change. |
+| `APP_PORT` | `8080` | Port only. Changing it also needs the Vite proxy target changed. |
+| `POSTGRES_USER`, `POSTGRES_PASSWORD` | none, required by compose | Read by compose only; the container is initialised with them on first start. Database name is `insightboard`. |
+| `REDIS_PASSWORD` | none, required by compose | Read by compose only (`--requirepass`, and `REDISCLI_AUTH` inside the container so `docker exec insightboard-redis redis-cli ...` works without `-a`). |
+| `DATABASE_URL` | none, required | `postgres://<POSTGRES_USER>:<POSTGRES_PASSWORD>@127.0.0.1:5432/insightboard`; same values as above. |
+| `REDIS_URL` | none, required | `redis://:<REDIS_PASSWORD>@127.0.0.1:6379`; same password as above. |
 | `JWT_SECRET` | none, required | No strength check (D17); generate as above. |
 | `GITHUB_API_TOKEN` | empty | Optional; sent to GitHub when set. Blank values count as unset. |
 | `OPENWEATHER_API_KEY` | empty | Weather widget returns 400 "OpenWeather API key not configured" without it. |
@@ -108,16 +123,17 @@ Satisfy precondition B0 (warning above) first.
 The production-style URLs commented in `.env.example` (`sslmode=require`, `rediss://`) would fail: sqlx and redis
 are built without TLS features (D21).
 
-Frontend: `VITE_API_URL` (default `/api`). Vite has no host or port overrides in `vite.config.ts`.
+Frontend: `VITE_API_URL` (default `/api`). Vite binds `127.0.0.1` (`server.host` in `vite.config.ts`); the port is
+the Vite default.
 
 ## Ports
 
-| Port | Service | Binding today | Target (M4a) |
-| --- | --- | --- | --- |
-| 8080 | Backend API | `0.0.0.0` | `127.0.0.1` |
-| 5173 | Vite dev server | `localhost` | `127.0.0.1` |
-| 5432 | Postgres (`insightboard-postgres`) | all interfaces | `127.0.0.1` |
-| 6379 | Redis (`insightboard-redis`) | all interfaces | `127.0.0.1` |
+| Port | Service | Binding |
+| --- | --- | --- |
+| 8080 | Backend API | `127.0.0.1` (`APP_HOST`) |
+| 5173 | Vite dev server | `127.0.0.1` |
+| 5432 | Postgres (`insightboard-postgres`) | `127.0.0.1` |
+| 6379 | Redis (`insightboard-redis`) | `127.0.0.1` |
 
 ## Provider keys
 
@@ -148,10 +164,10 @@ Keys are optional and must be free-tier keys the owner supplies; never buy a pla
 Inspect data without exposing secrets:
 
 ```sh
-docker compose exec -T postgres psql -U postgres -d insightboard \
-  -c "SELECT id, email, created_at FROM users ORDER BY created_at DESC LIMIT 20;"
-docker compose exec -T postgres psql -U postgres -d insightboard \
-  -c "SELECT id, user_id, name, updated_at FROM dashboards ORDER BY updated_at DESC LIMIT 20;"
+docker compose exec -T postgres sh -c 'psql -U "$POSTGRES_USER" -d insightboard \
+  -c "SELECT id, email, created_at FROM users ORDER BY created_at DESC LIMIT 20;"'
+docker compose exec -T postgres sh -c 'psql -U "$POSTGRES_USER" -d insightboard \
+  -c "SELECT id, user_id, name, updated_at FROM dashboards ORDER BY updated_at DESC LIMIT 20;"'
 docker exec insightboard-redis redis-cli --scan --pattern 'weather:*'
 docker exec insightboard-redis redis-cli TTL '<key>'
 ```
@@ -168,8 +184,23 @@ docker exec insightboard-redis redis-cli TTL '<key>'
   membership with `id`.
 - **Port 5432 or 6379 already in use** — another Postgres or Redis is running; stop it. Remapping means editing
   `docker-compose.yml` and `DATABASE_URL`/`REDIS_URL` together, which is an owner-approved change.
-- **`password authentication failed for user "postgres"`** — an existing `postgres_data` volume was initialised
-  with other credentials. Resetting it with `docker compose down -v` deletes all data and needs owner approval.
+- **`password authentication failed for user "..."`** — an existing `postgres_data` volume keeps the
+  credentials it was initialised with; changing `POSTGRES_USER`/`POSTGRES_PASSWORD` in `.env` does not change
+  them. Rotate the password in place without deleting data, using the old user and a prompt so the password is
+  not echoed or placed on the command line (`psql` inside the container connects through the local socket):
+
+  ```sh
+  docker compose exec postgres psql -U <old-user> -d insightboard
+  # inside psql:  \password <old-user>      (prompts for the new password, no echo)
+  ```
+
+  Equivalent: `ALTER ROLE <old-user> PASSWORD '...'` with the password read from stdin, never typed into
+  shell history. Then put the same value in `POSTGRES_PASSWORD` and `DATABASE_URL`. Keep the old user name in
+  `.env` unless you also rename the role (`ALTER ROLE <old-user> RENAME TO <new-user>;`, then reset its
+  password). Resetting the volume with `docker compose down -v` deletes all data and needs owner approval.
+- **`NOAUTH` or `WRONGPASS` from Redis, or compose says `set REDIS_PASSWORD in .env`** — `.env` is missing the
+  value, or `REDIS_URL` carries a different password than `REDIS_PASSWORD`. Recreate the container after
+  changing it: `docker compose up -d redis` (the append-only data is kept).
 - **Weather or News show "not configured"** — expected without keys; after adding keys, restart the backend.
 - **GitHub or Crypto show "External service error" (502)** — the provider failed, rate-limited, or returned an
   unexpected value; the backend hides the cause from the client and logs it.
@@ -185,6 +216,6 @@ docker exec insightboard-redis redis-cli TTL '<key>'
 No `Makefile`, Dockerfile, application containers, CI workflow, or production configuration. The legacy run
 instructions remain readable at
 [`manual run instructions.md` at `f15c6a3`](https://github.com/lavinhoque33/insightboard/blob/f15c6a3/manual%20run%20instructions.md);
-their absolute paths, `sudo docker`, and `httpstat.us` target no longer apply. M4a proposes loopback binds,
+their absolute paths, `sudo docker`, and `httpstat.us` target no longer apply. M4a proposes
 a `Makefile` with `setup`, `doctor`, and `db-*` targets, and pinned toolchains
 ([M4 contract](../architecture/m4-quality-gate-contract.md), **proposed**).

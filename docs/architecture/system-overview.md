@@ -9,10 +9,10 @@ status is in the [roadmap](../product/roadmap.md); exact behaviour, status codes
 
 ```mermaid
 flowchart LR
-    Browser["Browser<br/>Vue 3 SPA"] -->|"pages and /api"| Vite["Vite dev server<br/>localhost:5173"]
-    Vite -->|"proxy /api"| API["Axum backend<br/>0.0.0.0:8080 (D3)"]
-    API --> PG[("Postgres 16<br/>compose, 5432 on all interfaces (D3)")]
-    API --> Redis[("Redis 7, AOF<br/>compose, 6379 on all interfaces, no password (D3)")]
+    Browser["Browser<br/>Vue 3 SPA"] -->|"pages and /api"| Vite["Vite dev server<br/>127.0.0.1:5173"]
+    Vite -->|"proxy /api"| API["Axum backend<br/>127.0.0.1:8080 (APP_HOST)"]
+    API --> PG[("Postgres 16<br/>compose, 127.0.0.1:5432, credentials from .env")]
+    API --> Redis[("Redis 7, AOF<br/>compose, 127.0.0.1:6379, password from .env")]
     API -->|"token optional"| GH["GitHub REST API"]
     API -->|"key required"| OW["OpenWeather"]
     API -->|"key required"| NA["NewsAPI"]
@@ -22,7 +22,7 @@ flowchart LR
 
 - The backend and frontend run natively; Postgres and Redis are the only containers (`docker-compose.yml`). There is
   no Dockerfile, no production build path, and no CI.
-- The browser talks only to the Vite dev server; Vite proxies `/api` to `http://localhost:8080`. The backend also
+- The browser talks only to the Vite dev server; Vite proxies `/api` to `http://127.0.0.1:8080`. The backend also
   answers cross-origin requests from anywhere (`CorsLayer::permissive()`, D4).
 - Every provider call is made by the backend. Keys live in the backend environment and never reach the browser.
 
@@ -116,16 +116,16 @@ Optional provider credentials: `GITHUB_API_TOKEN`, `OPENWEATHER_API_KEY`, `NEWSA
 
 ## Ports and binds
 
-| Service | Port | Bind at `f15c6a3` | Target |
+| Service | Port | Bind | Credentials |
 | --- | --- | --- | --- |
-| Backend (axum) | 8080 (`APP_PORT`) | `0.0.0.0`, hard-coded (`backend/src/main.rs:90`) | `127.0.0.1` by default (M4 decision 4) |
-| Postgres | 5432 | All host interfaces (`'5432:5432'`), `postgres/postgres` | `127.0.0.1:5432`, credentials from `.env` |
-| Redis | 6379 | All host interfaces (`'6379:6379'`), no password | `127.0.0.1:6379`, password from `.env` |
-| Vite dev server | 5173 | Vite default host `localhost` | Loopback (unchanged) |
+| Backend (axum) | 8080 (`APP_PORT`) | `APP_HOST`, default `127.0.0.1` (`backend/src/config.rs`) | API only |
+| Postgres | 5432 | `127.0.0.1:5432` (`docker-compose.yml`) | `POSTGRES_USER` / `POSTGRES_PASSWORD` from `.env` |
+| Redis | 6379 | `127.0.0.1:6379` (`docker-compose.yml`) | `REDIS_PASSWORD` from `.env` |
+| Vite dev server | 5173 | `127.0.0.1` (`frontend/vite.config.ts`) | n/a |
 
-On this workstation the firewalld zone `FedoraWorkstation` opens `1025-65535/tcp`, so the first three are reachable
-from the LAN while running `[INFERENCE: not probed]`. This is **D3**; it gates the baseline drills (B0) and is the
-first change requested in M4a.
+M4 decision 4 (owner-approved 2026-10-10) landed these loopback binds and credentials as the B0 mitigation for
+**D3**: **implemented but unverified**, no drill has run. Setting `APP_HOST` to a non-loopback address is a
+deliberate owner-approved change and is not blocked by code. CORS stays permissive (D4, decision 7).
 
 ## Boundaries
 

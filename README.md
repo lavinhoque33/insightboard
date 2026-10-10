@@ -6,7 +6,7 @@ Rust/Axum API backed by Postgres and Redis, with a Vue 3 and TypeScript client. 
 is deployed.
 
 - **$0 of spending.** Free provider tiers only, with keys you supply; no cloud resources.
-- **Local only.** Intended to bind to loopback; the current code does not yet (D3, below).
+- **Local only.** Binds loopback by default (M4 decision 4, below).
 
 **Status:** M0–M3 are **implemented but unverified**. They were delivered between 2025-10-28 and 2026-03-03
 under a legacy phase protocol and **reported** verified on a previous workstation, with no evidence beyond
@@ -51,10 +51,12 @@ The full as-built reference, including every route and status code, is the
 The [defect catalogue](docs/architecture/m0-m3-baseline-contract.md) lists D1–D29 with references and the slice
 that fixes each. The ones to know first:
 
-- **D3 — network exposure.** The backend binds `0.0.0.0:8080`; compose publishes Postgres (`postgres/postgres`)
-  and Redis (no password) on all interfaces. On this workstation the host firewall opens ports 1025–65535, so
-  these are reachable from the local network while running `[INFERENCE: not probed]`. Read the
-  [local setup warning](docs/development/local-setup.md) before starting anything.
+- **D3 — network exposure (mitigated).** Per M4 decision 4 (owner-approved 2026-10-10) the backend binds
+  `127.0.0.1` by default (`APP_HOST`), compose publishes Postgres and Redis on `127.0.0.1` only, and their
+  credentials come from `.env`; **locally verified** on this workstation 2026-10-10 (precondition B0 in the
+  [baseline verification record](docs/development/baseline-verification.md)). The host firewall on this
+  workstation opens ports 1025–65535; the services listen on `127.0.0.1` only.
+  Read [local setup](docs/development/local-setup.md) before starting anything.
 - **D1 — status widget SSRF.** Any signed-in user can make the backend request any URL, including loopback,
   private, and cloud-metadata addresses, and read back status and error text.
 - **D9 — widget configuration never pre-fills.** Editing an existing widget opens an empty form; saving replaces
@@ -66,14 +68,13 @@ that fixes each. The ones to know first:
 ## Run it locally
 
 Prerequisites: Docker with Compose, Node 20.19.0 (`.nvmrc`), and Rust stable. Steps, configuration, and
-troubleshooting are in [local setup](docs/development/local-setup.md). In short, after resolving D3 exposure as
-described there:
+troubleshooting are in [local setup](docs/development/local-setup.md). In short:
 
 ```sh
-cp .env.example .env                    # then replace JWT_SECRET with a locally generated value
+cp .env.example .env                    # then fill JWT_SECRET and the Postgres/Redis secrets (see local setup)
 docker compose up -d                    # Postgres 16 and Redis 7
 cd backend && cargo run                 # terminal 1: applies migrations, serves port 8080
-cd frontend && npm ci && npm run dev    # terminal 2, from the repo root: http://localhost:5173
+cd frontend && npm ci && npm run dev    # terminal 2, from the repo root: http://127.0.0.1:5173
 ```
 
 Provider keys are optional; without them Weather and News show their "not configured" errors.

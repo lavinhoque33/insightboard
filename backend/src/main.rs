@@ -48,8 +48,8 @@ async fn main() -> anyhow::Result<()> {
     dotenvy::dotenv().ok();
     let config = Config::from_env()?;
 
-    tracing::info!("Starting InsightBoard backend on port {}", config.app_port);
-    let app_port = config.app_port; // Save port before moving config
+    let addr = SocketAddr::new(config.app_host, config.app_port); // Save before moving config
+    tracing::info!("Starting InsightBoard backend on {}", addr);
 
     // Initialize database connection
     let db = Database::new(&config.database_url).await?;
@@ -87,7 +87,6 @@ async fn main() -> anyhow::Result<()> {
         .with_state(state);
 
     // Bind to address
-    let addr = SocketAddr::from(([0, 0, 0, 0], app_port));
     let listener = tokio::net::TcpListener::bind(addr).await?;
     
     tracing::info!("Listening on {}", addr);
