@@ -33,8 +33,7 @@ they matter.
   `cargo clippy -D warnings`, and `npm audit` fail (D13, D14).
 - Drills B0–B12 ran on this workstation on 2026-10-10 at `354e06c` after the decision 4 change (B0); they observed
   D9, D23, D25, and two new defects, D30 (crypto and news always 502: no `User-Agent`) and D31 (small-width
-  layout). B5's keyed weather request is pending: OpenWeather rejected the owner's new key. Owner acceptance of
-  M0–M3 follows that rerun and a review of the
+  layout). Owner acceptance of M0–M3 follows a review of the
   [baseline verification record](../development/baseline-verification.md).
 
 The binding as-built behaviour, the defect catalogue D1–D31, and drills B0–B12 are in the
@@ -216,9 +215,6 @@ before any other external request.
 
 ## Next action
 
-1. Owner checks the OpenWeather key (OpenWeather answered 401 "Invalid API key" on 2026-10-10; new keys may need
-   time to activate `[INFERENCE]`); then the main thread restarts the backend if the key changed and reruns one
-   weather request (B5).
-2. Owner acceptance of M0–M3 against the [baseline verification record](../development/baseline-verification.md),
+1. Owner acceptance of M0–M3 against the [baseline verification record](../development/baseline-verification.md),
    defects included.
-3. M4 preparation: decisions 1–3 and 5–17, ADR 0002, contract acceptance; then M4a.
+2. M4 preparation: decisions 1–3 and 5–17, ADR 0002, contract acceptance; then M4a.

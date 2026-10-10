@@ -45,9 +45,10 @@ The root [README](../README.md) summarises status, limits, and layout.
 | --- | --- |
 | [Local setup](development/local-setup.md) | Prerequisites, network exposure (D3, fixed), first run, configuration, stop and restart, troubleshooting |
 | [Testing](development/testing.md) | Evidence vocabulary, commands (native and container), current suites, failing gates, drill conventions, M4 test targets |
-| [Baseline verification](development/baseline-verification.md) | M0–M3 evidence: 2026-10-10 automated baseline, drill results B1–B12 |
+| [Baseline verification](development/baseline-verification.md) | M0–M3 evidence: 2026-10-10 automated baseline, drill results B0–B12 |
 | [Session handoff](development/session-handoff.md) | Current checkpoint, protocol, template, session index; entries under `development/sessions/` |
 | [2026-10-10-01 workflow onboarding](development/sessions/2026-10-10-01-workflow-onboarding.md) | The session that moved InsightBoard onto this workflow |
+| [2026-10-10-02 B0 loopback and drills](development/sessions/2026-10-10-02-b0-loopback-and-drills.md) | Decision 4 (D3 fix), host toolchain, and baseline drills B0–B12 |
 
 ## Guides (non-authoritative)
 

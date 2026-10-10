@@ -89,7 +89,11 @@
 - Recheck at the owner's request, about 06:01 UTC: `.env` had been edited at 06:00 UTC; backend restarted; the
   weather request and one manual request still got 401 "Invalid API key" (key format: 32 hex characters, as
   expected). OpenWeather's FAQ: keys activate up to 2 hours after registration.
-- Upstream totals for the session: GitHub 2, CoinGecko 4, NewsAPI 3, OpenWeather 4, example.com 2.
+- Second recheck at the owner's request, about 16:22 UTC: `.env` unchanged since 06:00 UTC (same key), no
+  restart. Weather `London` 200 with the contract shape (`London`, `GB`, `light rain`); the repeat was a cache hit
+  in 3 ms; `weather:London` TTL 595 of 600 s. The key had activated. The backend's `reqwest::get` sends no
+  `User-Agent`, so OpenWeather is not affected by D30; the D30 entry was corrected.
+- Upstream totals for the session: GitHub 2, CoinGecko 4, NewsAPI 3, OpenWeather 5, example.com 2.
 
 ## Close
 
@@ -97,14 +101,12 @@
 - What changed: `354e06c` (decision 4 code and feature docs); tracking and governance docs (roadmap, baseline
   record, baseline contract D3 status and D30/D31, M4 contract slices, plan, `CODING_PRACTICES.md`,
   `.omp/AGENTS.md`, testing, index, terminology, system overview gaps) in the session commit.
-- What was verified, and in which environment: on this workstation, 2026-10-10 about 05:00–05:20 UTC, at
-  `354e06c`: B0–B4, B6–B12 and the keyless half of B5; about 05:57 UTC the keyed news and github requests, as
-  recorded.
-- What remains unverified or blocked: B5 keyed weather; OpenWeather rejected the key in `.env`. Not pushed.
-- Decisions and permissions still needed: a working OpenWeather key; owner acceptance of M0–M3; M4 decisions 1–3
-  and 5–17; any push.
+- What was verified, and in which environment: on this workstation, 2026-10-10 at `354e06c`: B0–B4, B6–B12 and the
+  keyless half of B5 about 05:00–05:20 UTC; the keyed news and github requests about 05:57 UTC; keyed weather
+  about 16:22 UTC. All drills B0–B12 are recorded.
+- What remains unverified or blocked: nothing in the drills. Not pushed.
+- Decisions and permissions still needed: owner acceptance of M0–M3; M4 decisions 1–3 and 5–17; any push.
 - Runtime state left: compose running (loopback); backend running from `backend/target/debug` on
   `127.0.0.1:8080` with the keys loaded; Vite stopped.
-- Next recommended action: once the owner confirms the OpenWeather key is active or replaced, restart the backend
-  if `.env` changed, run one weather request, record B5, then present M0–M3 for acceptance and start M4
-  preparation.
+- Next recommended action: present M0–M3 to the owner for acceptance against the baseline record, defects
+  included; then M4 preparation.
