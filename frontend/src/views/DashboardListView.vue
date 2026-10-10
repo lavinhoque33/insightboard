@@ -17,9 +17,9 @@
 						</p>
 					</div>
 					<button
-						@click="handleCreateDashboard"
 						:disabled="dashboardStore.loading"
 						class="btn btn-primary btn-lg gap-2 shadow-lg"
+						@click="handleCreateDashboard"
 					>
 						<svg
 							xmlns="http://www.w3.org/2000/svg"
@@ -85,7 +85,7 @@
 						<h3 class="font-bold">Error loading dashboards</h3>
 						<div class="text-sm">{{ dashboardStore.error }}</div>
 					</div>
-					<button @click="loadDashboards" class="btn btn-sm btn-ghost gap-2">
+					<button class="btn btn-sm btn-ghost gap-2" @click="loadDashboards">
 						<svg
 							xmlns="http://www.w3.org/2000/svg"
 							class="h-4 w-4"
@@ -137,8 +137,8 @@
 						insights.
 					</p>
 					<button
-						@click="handleCreateDashboard"
 						class="btn btn-primary btn-lg gap-2"
+						@click="handleCreateDashboard"
 					>
 						<svg
 							xmlns="http://www.w3.org/2000/svg"
@@ -246,9 +246,9 @@
 								Open
 							</router-link>
 							<button
-								@click="handleDeleteDashboard(dashboard.id)"
 								:disabled="deleting"
 								class="btn btn-ghost btn-sm text-error gap-1"
+								@click="handleDeleteDashboard(dashboard.id)"
 							>
 								<svg
 									xmlns="http://www.w3.org/2000/svg"

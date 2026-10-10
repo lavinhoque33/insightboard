@@ -7,7 +7,6 @@ interface Props {
 	title: string;
 	loading?: boolean;
 	error?: string | null;
-	refreshInterval?: number;
 	lastUpdated?: Date | null;
 }
 
@@ -20,7 +19,6 @@ interface Emits {
 const props = withDefaults(defineProps<Props>(), {
 	loading: false,
 	error: null,
-	refreshInterval: 0,
 	lastUpdated: null,
 });
 
@@ -98,12 +96,12 @@ onUnmounted(() => {
 			<div class="flex items-center gap-1 flex-shrink-0 relative">
 				<!-- Refresh Button -->
 				<button
-					@click.stop="handleRefresh"
-					@mousedown.stop
 					:disabled="loading"
 					class="btn btn-ghost btn-xs gap-1 widget-action text-base-content"
 					:class="{ loading: loading }"
 					title="Refresh data"
+					@click.stop="handleRefresh"
+					@mousedown.stop
 				>
 					<svg
 						xmlns="http://www.w3.org/2000/svg"
@@ -126,10 +124,10 @@ onUnmounted(() => {
 				<div ref="menuRoot" class="relative widget-action">
 					<button
 						data-testid="widget-options-btn"
-						@click.stop="toggleMenu"
-						@mousedown.stop
 						class="btn btn-ghost btn-xs gap-1 widget-action text-base-content"
 						title="Widget options"
+						@click.stop="toggleMenu"
+						@mousedown.stop
 					>
 						<svg
 							xmlns="http://www.w3.org/2000/svg"
@@ -158,8 +156,8 @@ onUnmounted(() => {
 							<button
 								data-testid="widget-configure-btn"
 								type="button"
-								@click.stop="handleConfigure"
 								class="gap-2 text-left text-base-content hover:bg-base-200 active:bg-base-300 cursor-pointer font-medium"
+								@click.stop="handleConfigure"
 							>
 								<svg
 									xmlns="http://www.w3.org/2000/svg"
@@ -188,8 +186,8 @@ onUnmounted(() => {
 							<button
 								data-testid="widget-remove-btn"
 								type="button"
-								@click.stop="handleRemove"
 								class="text-error gap-2 text-left hover:bg-error/10 active:bg-error/20 cursor-pointer font-medium"
+								@click.stop="handleRemove"
 							>
 								<svg
 									xmlns="http://www.w3.org/2000/svg"
@@ -249,8 +247,8 @@ onUnmounted(() => {
 					</div>
 				</div>
 				<button
-					@click="handleRefresh"
 					class="btn btn-primary btn-sm mt-4 gap-2"
+					@click="handleRefresh"
 				>
 					<svg
 						xmlns="http://www.w3.org/2000/svg"

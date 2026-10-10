@@ -45,7 +45,7 @@ export const dashboardApi = {
 		layout: LayoutConfig,
 		settings: DashboardSettings,
 	): Promise<Dashboard> {
-		// Backend expects: { name: string, layout_json: any, settings_json: any }
+		// Backend expects: { name, layout_json, settings_json }
 		const request = {
 			name: settings.title || 'New Dashboard',
 			layout_json: layout,

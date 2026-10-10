@@ -3,23 +3,26 @@ based on widget schema */
 <script setup lang="ts">
 import { ref, watch } from 'vue';
 import type { WidgetConfigField } from '../stores/widgets';
+import type { WidgetConfig } from '../types';
 
 interface Props {
 	show: boolean;
 	widgetTypeName: string;
 	configSchema: WidgetConfigField[];
-	initialConfig: Record<string, any>;
+	initialConfig: WidgetConfig;
 }
 
 interface Emits {
 	(e: 'close'): void;
-	(e: 'save', config: Record<string, any>): void;
+	(e: 'save', config: WidgetConfig): void;
 }
 
 const props = defineProps<Props>();
 const emit = defineEmits<Emits>();
 
-const formData = ref<Record<string, any>>({});
+// Values the form controls can hold; the modal does not render other types
+type FormValue = string | number | null | undefined;
+const formData = ref<Record<string, FormValue>>({});
 const errors = ref<Record<string, string>>({});
 
 // Initialize form data when modal opens
@@ -27,7 +30,7 @@ watch(
 	() => props.show,
 	(show) => {
 		if (show) {
-			formData.value = { ...props.initialConfig };
+			formData.value = { ...props.initialConfig } as Record<string, FormValue>;
 			errors.value = {};
 		}
 	},
@@ -57,7 +60,8 @@ const validateForm = (): boolean => {
 			value !== null &&
 			value !== ''
 		) {
-			const error = field.validation(value);
+			// Fields with a validator are text-like, so the raw value is a string
+			const error = field.validation(value as string);
 			if (error) {
 				errors.value[field.key] = error;
 				isValid = false;
@@ -100,9 +104,9 @@ const handleBackdropClick = (event: MouseEvent) => {
 							⚙️ Configure {{ widgetTypeName }}
 						</h3>
 						<button
-							@click="handleClose"
 							class="btn btn-ghost btn-sm btn-circle"
 							title="Close"
+							@click="handleClose"
 						>
 							<svg
 								class="w-5 h-5"
@@ -123,8 +127,8 @@ const handleBackdropClick = (event: MouseEvent) => {
 
 				<!-- Modal Body with Form -->
 				<form
-					@submit.prevent="handleSave"
 					class="py-4 space-y-5 max-h-96 overflow-y-auto"
+					@submit.prevent="handleSave"
 				>
 					<!-- Dynamic Form Fields -->
 					<div
@@ -262,16 +266,16 @@ const handleBackdropClick = (event: MouseEvent) => {
 				<!-- Modal Footer with Action Buttons -->
 				<div class="modal-action pt-6 border-t border-base-300 gap-3 px-4">
 					<button
-						@click="handleClose"
 						type="button"
 						class="btn btn-ghost btn-sm"
+						@click="handleClose"
 					>
 						Cancel
 					</button>
 					<button
-						@click="handleSave"
 						type="button"
 						class="btn btn-primary btn-sm gap-2"
+						@click="handleSave"
 					>
 						<svg
 							xmlns="http://www.w3.org/2000/svg"

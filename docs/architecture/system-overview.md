@@ -21,9 +21,12 @@ flowchart LR
 ```
 
 - The backend and frontend run natively; Postgres and Redis are the only containers (`docker-compose.yml`). There is
-  no Dockerfile, no production build path, and no CI.
+  no Dockerfile and no production build path. The root `Makefile` runs setup, the database, and the gates
+  (`make verify`); there is no CI yet (M4c).
 - The browser talks only to the Vite dev server; Vite proxies `/api` to `http://127.0.0.1:8080`. The backend also
-  answers cross-origin requests from anywhere (`CorsLayer::permissive()`, D4).
+  grants CORS only to the origins in `CORS_ORIGINS` (default the Vite dev origins `http://127.0.0.1:5173` and
+  `http://localhost:5173`; methods GET, POST, PUT, DELETE; headers `Authorization` and `Content-Type`; no
+  credentials). A request from any other origin gets no `access-control-allow-origin` header (D4, fixed in M4a).
 - Every provider call is made by the backend. Keys live in the backend environment and never reach the browser.
 
 ## Request flows
@@ -112,7 +115,10 @@ Keys are shared across users and unbounded (D29). Redis is required at startup a
 Backend variables, defaults, and the variables documented but unread are listed in the
 [baseline contract](m0-m3-baseline-contract.md) section 4. Required: `DATABASE_URL`, `REDIS_URL`, `JWT_SECRET`.
 Optional provider credentials: `GITHUB_API_TOKEN`, `OPENWEATHER_API_KEY`, `NEWSAPI_API_KEY`. Frontend:
-`VITE_API_URL` (default `/api`). Setup steps are in [local setup](../development/local-setup.md).
+`VITE_API_URL` (default `/api`). `CORS_ORIGINS` (optional, comma-separated exact origins) sets the CORS allowlist; an
+unparsable entry fails startup. The backend loads `.env` before tracing starts, so `RUST_LOG` in `.env` applies, and
+a missing or empty required variable stops startup with an error naming it (D18, fixed in M4a; the variables nothing
+read were removed from `.env.example`). Setup steps are in [local setup](../development/local-setup.md).
 
 ## Ports and binds
 
@@ -125,8 +131,10 @@ Optional provider credentials: `GITHUB_API_TOKEN`, `OPENWEATHER_API_KEY`, `NEWSA
 
 M4 decision 4 (owner-approved 2026-10-10) landed these loopback binds and credentials as the B0 mitigation for
 **D3** in `354e06c`; drill B0 observed loopback-only listeners on this workstation the same day. Setting `APP_HOST`
-to a non-loopback address is a deliberate owner-approved change and is not blocked by code. CORS stays permissive
-(D4, decision 7).
+to a non-loopback address is a deliberate owner-approved change and is not blocked by code. CORS is an allowlist
+(D4, decision 7, M4a). The compose containers have no fixed names and the network is project-scoped, so a second
+checkout can run its own stack (the published ports are still `127.0.0.1:5432` and `:6379`, so two stacks cannot run
+at once without changing them).
 
 ## Boundaries
 
@@ -139,7 +147,6 @@ As built, enforced by code:
 
 Required by the [plan](../../INSIGHTBOARD_PROJECT_PLAN.md) section 4 and not yet enforced by code (M4):
 
-- Loopback-only listeners for the backend, Postgres, Redis, Vite, and fixtures (D3).
 - Outbound requests limited by scheme, address class, count, and time; user input encoded (D1, D2, D5, D7).
 - No live providers in automated paths; tests use local mocks with configurable base URLs (D11).
 - Secrets never logged (D7).
@@ -150,12 +157,12 @@ By area; each ID is defined in the [baseline contract](m0-m3-baseline-contract.m
 
 | Area | Defect IDs |
 | --- | --- |
-| Exposure and CORS | D3 (fixed 2026-10-10), D4 |
+| Exposure and CORS | D3 (fixed 2026-10-10), D4 (fixed in M4a) |
 | Outbound calls | D1, D2, D5, D7, D20, D30 |
 | Abuse and load | D6 |
 | API correctness and contract | D8, D15, D16, D17 |
-| Configuration, cache, health | D18, D19, D29 |
-| Build, gates, dependencies | D12, D13, D14, D26 |
+| Configuration, cache, health | D18 (fixed in M4a), D19, D29 (compose part fixed in M4a; cache keys open, M4b) |
+| Build, gates, dependencies | D12, D13, D14, D26 (fixed in M4a; daisyUI beta remains, M4c) |
 | Tests | D11 |
 | Frontend editor and session | D9, D10, D22, D23, D28 |
 | Styling, accessibility, copy | D24, D25, D27, D31 |

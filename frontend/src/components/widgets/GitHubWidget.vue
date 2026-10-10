@@ -2,6 +2,7 @@
 <script setup lang="ts">
 import { ref, onMounted, onUnmounted, watch } from 'vue';
 import BaseWidget from '../BaseWidget.vue';
+import { errorMessage } from '../../api/errorMessage';
 import { fetchGitHubData, type GitHubEvent } from '../../api/widgets';
 
 interface Props {
@@ -38,8 +39,8 @@ const loadData = async () => {
 	try {
 		events.value = await fetchGitHubData(props.config.username);
 		lastUpdated.value = new Date();
-	} catch (err: any) {
-		error.value = err.message || 'Failed to load GitHub data';
+	} catch (err) {
+		error.value = errorMessage(err, 'Failed to load GitHub data');
 		events.value = [];
 	} finally {
 		loading.value = false;
@@ -150,7 +151,6 @@ onUnmounted(() => {
 		:loading="loading"
 		:error="error"
 		:last-updated="lastUpdated"
-		:refresh-interval="refreshInterval"
 		@refresh="loadData"
 		@configure="emit('configure')"
 		@remove="emit('remove')"

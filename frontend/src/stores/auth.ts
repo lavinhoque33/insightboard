@@ -29,7 +29,7 @@ export const useAuthStore = defineStore('auth', () => {
 			token.value = savedToken;
 			try {
 				user.value = JSON.parse(savedUser);
-			} catch (e) {
+			} catch {
 				// Invalid user data, clear everything
 				logout();
 			}

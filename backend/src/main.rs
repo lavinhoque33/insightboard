@@ -8,11 +8,16 @@ mod models;
 mod widgets;
 
 use axum::{
+    http::{header, HeaderValue, Method},
     routing::{delete, get, post, put},
     Router,
 };
 use std::net::SocketAddr;
-use tower_http::{compression::CompressionLayer, cors::CorsLayer, trace::TraceLayer};
+use tower_http::{
+    compression::CompressionLayer,
+    cors::{AllowOrigin, CorsLayer},
+    trace::TraceLayer,
+};
 use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt};
 
 use crate::{cache::Cache, config::Config, db::Database};
@@ -27,6 +32,14 @@ pub struct AppState {
 
 #[tokio::main]
 async fn main() -> anyhow::Result<()> {
+    // Load .env first so RUST_LOG from it reaches the tracing filter. A missing
+    // file is fine (variables may come from the environment); a malformed one is not.
+    match dotenvy::dotenv() {
+        Ok(_) => {}
+        Err(e) if e.not_found() => {}
+        Err(e) => return Err(anyhow::anyhow!("failed to load .env: {e}")),
+    }
+
     // Initialize tracing
     tracing_subscriber::registry()
         .with(
@@ -37,7 +50,6 @@ async fn main() -> anyhow::Result<()> {
         .init();
 
     // Load configuration
-    dotenvy::dotenv().ok();
     let config = Config::from_env()?;
 
     let addr = SocketAddr::new(config.app_host, config.app_port); // Save before moving config
@@ -59,17 +71,17 @@ async fn main() -> anyhow::Result<()> {
     let state = AppState { db, cache, config };
 
     // Build the router
-    let app = Router::new()
-        // Health check endpoint
-        .route("/healthz", get(handlers::health::health_check))
-        // API routes
-        .nest("/api", api_routes())
-        // Middleware
-        .layer(CorsLayer::permissive()) // Configure CORS properly in production
-        .layer(CompressionLayer::new())
-        .layer(TraceLayer::new_for_http())
-        // Share state
-        .with_state(state);
+    let cors_origins = state.config.cors_origins.clone();
+    let app = with_middleware(
+        Router::new()
+            // Health check endpoint
+            .route("/healthz", get(handlers::health::health_check))
+            // API routes
+            .nest("/api", api_routes()),
+        cors_origins,
+    )
+    // Share state
+    .with_state(state);
 
     // Bind to address
     let listener = tokio::net::TcpListener::bind(addr).await?;
@@ -82,6 +94,23 @@ async fn main() -> anyhow::Result<()> {
         .await?;
 
     Ok(())
+}
+
+/// Wrap a router in the HTTP middleware stack (CORS allowlist, compression, tracing).
+fn with_middleware<S>(router: Router<S>, cors_origins: Vec<HeaderValue>) -> Router<S>
+where
+    S: Clone + Send + Sync + 'static,
+{
+    // Only what the API uses; no credentials. Foreign origins get no CORS headers.
+    let cors = CorsLayer::new()
+        .allow_origin(AllowOrigin::list(cors_origins))
+        .allow_methods([Method::GET, Method::POST, Method::PUT, Method::DELETE])
+        .allow_headers([header::AUTHORIZATION, header::CONTENT_TYPE]);
+
+    router
+        .layer(cors)
+        .layer(CompressionLayer::new())
+        .layer(TraceLayer::new_for_http())
 }
 
 /// API routes organization
@@ -138,4 +167,82 @@ async fn shutdown_signal() {
     }
 
     tracing::info!("Shutdown signal received, starting graceful shutdown");
+}
+
+#[cfg(test)]
+mod tests {
+    use super::with_middleware;
+    use axum::{
+        body::Body,
+        http::{header, HeaderValue, Method, Request, StatusCode},
+        routing::get,
+        Router,
+    };
+    use tower::ServiceExt;
+
+    const ALLOWED: &str = "http://127.0.0.1:5173";
+
+    fn app() -> Router {
+        with_middleware(
+            Router::new().route("/api/ping", get(|| async { "pong" })),
+            vec![HeaderValue::from_static(ALLOWED)],
+        )
+    }
+
+    async fn preflight(origin: &str) -> axum::response::Response {
+        app()
+            .oneshot(
+                Request::builder()
+                    .method(Method::OPTIONS)
+                    .uri("/api/ping")
+                    .header(header::ORIGIN, origin)
+                    .header(header::ACCESS_CONTROL_REQUEST_METHOD, "GET")
+                    .header(header::ACCESS_CONTROL_REQUEST_HEADERS, "authorization")
+                    .body(Body::empty())
+                    .unwrap(),
+            )
+            .await
+            .unwrap()
+    }
+
+    #[tokio::test]
+    async fn preflight_from_allowed_origin_is_granted() {
+        let res = preflight(ALLOWED).await;
+        assert_eq!(
+            res.headers().get(header::ACCESS_CONTROL_ALLOW_ORIGIN),
+            Some(&HeaderValue::from_static(ALLOWED))
+        );
+        assert!(res
+            .headers()
+            .contains_key(header::ACCESS_CONTROL_ALLOW_METHODS));
+        assert!(!res
+            .headers()
+            .contains_key(header::ACCESS_CONTROL_ALLOW_CREDENTIALS));
+    }
+
+    #[tokio::test]
+    async fn preflight_from_foreign_origin_gets_no_grant() {
+        let res = preflight("https://evil.example").await;
+        assert!(!res
+            .headers()
+            .contains_key(header::ACCESS_CONTROL_ALLOW_ORIGIN));
+    }
+
+    #[tokio::test]
+    async fn simple_request_from_foreign_origin_gets_no_grant() {
+        let res = app()
+            .oneshot(
+                Request::builder()
+                    .uri("/api/ping")
+                    .header(header::ORIGIN, "https://evil.example")
+                    .body(Body::empty())
+                    .unwrap(),
+            )
+            .await
+            .unwrap();
+        assert_eq!(res.status(), StatusCode::OK);
+        assert!(!res
+            .headers()
+            .contains_key(header::ACCESS_CONTROL_ALLOW_ORIGIN));
+    }
 }

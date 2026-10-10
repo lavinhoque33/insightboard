@@ -6,7 +6,7 @@ import { useRoute, useRouter } from 'vue-router';
 import { useDashboardStore } from '../stores/dashboard';
 import { useWidgetStore } from '../stores/widgets';
 import type { WidgetInstance } from '../stores/widgets';
-import type { WidgetType as WidgetKind } from '../types';
+import type { WidgetType as WidgetKind, WidgetConfig } from '../types';
 import 'gridstack/dist/gridstack.min.css';
 import { GridStack } from 'gridstack';
 import WidgetConfigModal from '../components/WidgetConfigModal.vue';
@@ -123,7 +123,7 @@ const configureWidget = (widgetId: string) => {
 };
 
 // Save widget configuration
-const saveWidgetConfig = (config: Record<string, any>) => {
+const saveWidgetConfig = (config: WidgetConfig) => {
 	if (!configModalWidget.value) return;
 
 	const { instance, isNewWidget } = configModalWidget.value;
@@ -228,7 +228,7 @@ const saveDashboard = async () => {
 				config: w.config,
 			})),
 		});
-	} catch (error: any) {
+	} catch (error) {
 		console.error('Failed to save dashboard:', error);
 	} finally {
 		saving.value = false;
@@ -270,9 +270,9 @@ onBeforeUnmount(() => {
 		>
 			<div class="flex-1">
 				<button
-					@click="router.push('/dashboards')"
 					class="btn btn-ghost gap-2"
 					title="Back to Dashboards"
+					@click="router.push('/dashboards')"
 				>
 					<svg
 						xmlns="http://www.w3.org/2000/svg"
@@ -312,8 +312,8 @@ onBeforeUnmount(() => {
 			>
 				<button
 					class="btn btn-primary gap-2 shadow-lg"
-					@click="showWidgetPicker = !showWidgetPicker"
 					type="button"
+					@click="showWidgetPicker = !showWidgetPicker"
 				>
 					<svg
 						xmlns="http://www.w3.org/2000/svg"
@@ -339,9 +339,9 @@ onBeforeUnmount(() => {
 						:key="widgetType.id"
 					>
 						<button
-							@click="addWidget(widgetType.id, $event)"
 							type="button"
 							class="p-3 text-left w-full hover:bg-base-200 rounded transition-colors"
+							@click="addWidget(widgetType.id, $event)"
 						>
 							<div class="flex items-start gap-3 w-full">
 								<span class="text-2xl">{{ widgetType.icon }}</span>
@@ -396,8 +396,8 @@ onBeforeUnmount(() => {
 						dashboard experience.
 					</p>
 					<button
-						@click="showWidgetPicker = true"
 						class="btn btn-primary btn-lg gap-2 shadow-lg"
+						@click="showWidgetPicker = true"
 					>
 						<svg
 							xmlns="http://www.w3.org/2000/svg"
@@ -426,8 +426,8 @@ onBeforeUnmount(() => {
 			>
 				<div
 					v-for="widget in widgets"
-					:key="widget.id"
 					:id="widget.id"
+					:key="widget.id"
 					class="grid-stack-item"
 					:gs-id="widget.id"
 					:gs-x="widget.layout.x"

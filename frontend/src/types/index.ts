@@ -31,8 +31,11 @@ export interface WidgetLayout {
 	y: number;
 	w: number;
 	h: number;
-	config?: Record<string, any>;
+	config?: WidgetConfig;
 }
+
+// Per-widget user configuration; each widget narrows the keys it reads
+export type WidgetConfig = Record<string, unknown>;
 
 export type WidgetType = 'weather' | 'crypto' | 'github' | 'news' | 'status';
 
@@ -63,22 +66,5 @@ export interface RegisterRequest {
 export interface ApiError {
 	message: string;
 	status: number;
-	details?: Record<string, unknown>;
-}
-
-// API Response wrapper
-export interface ApiResponse<T> {
-	data: T;
-	success: boolean;
-}
-
-// Dashboard create/update requests
-export interface CreateDashboardRequest {
-	layout: LayoutConfig;
-	settings: DashboardSettings;
-}
-
-export interface UpdateDashboardRequest {
-	layout?: LayoutConfig;
-	settings?: DashboardSettings;
+	details?: unknown;
 }

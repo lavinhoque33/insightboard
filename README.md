@@ -62,27 +62,29 @@ that fixes each. The ones to know first:
 - **D9 — widget configuration never pre-fills.** Editing an existing widget opens an empty form; saving replaces
   its configuration.
 - **D11 — thin automated tests.** Provider base URLs are hard-coded, so nothing can be mocked yet.
-- **D14 — vulnerable npm dependencies.** `npm audit --omit=dev` **observed** 8 findings (7 high, 1 moderate) on
-  2026-10-10.
+- **D14 — vulnerable npm dependencies (fixed in M4a).** `npm audit` **observed** 8 production findings on
+  2026-10-10; after the M4a bumps both `npm audit --omit=dev` and the full audit report 0.
 
 ## Run it locally
 
-Prerequisites: Docker with Compose, Node 20.19.0 (`.nvmrc`), and Rust stable. Steps, configuration, and
+Prerequisites: Docker with Compose, Node 20.19.0 (`.nvmrc`), `make`, `openssl`, and Rust (pinned by
+`rust-toolchain.toml`; `make backend-check` falls back to a container without it). Steps, configuration, and
 troubleshooting are in [local setup](docs/development/local-setup.md). In short:
 
 ```sh
-cp .env.example .env                    # then fill JWT_SECRET and the Postgres/Redis secrets (see local setup)
-docker compose up -d                    # Postgres 16 and Redis 7
-cd backend && cargo run                 # terminal 1: applies migrations, serves port 8080
-cd frontend && npm ci && npm run dev    # terminal 2, from the repo root: http://127.0.0.1:5173
+make setup        # npm ci; creates .env with generated secrets if it is absent
+make db-up        # Postgres 16 and Redis 7 on 127.0.0.1
+make backend-dev  # terminal 1: applies migrations, serves 127.0.0.1:8080
+make web-dev      # terminal 2: http://127.0.0.1:5173
 ```
 
 Provider keys are optional; without them Weather and News show their "not configured" errors.
 
 ## Checks
 
-Commands, current results, and known failing gates (D13, D14) are in [testing](docs/development/testing.md).
-Automated tests never call live providers.
+`make verify` runs every gate (fmt, clippy, cargo test, ESLint, Prettier, Vitest, type-check and build) and needs
+no database. Commands and current results are in [testing](docs/development/testing.md). Automated tests never
+call live providers.
 
 ## Where to start
 
@@ -101,11 +103,11 @@ contracts/          api-contract.v1.json (JSON Schema, payload shapes)
 docs/               product, architecture, decisions, development, guides (non-authoritative walkthroughs)
 .omp/AGENTS.md      agent operating guide
 docker-compose.yml  Postgres and Redis only
+Makefile            setup, database, dev servers, checks (make help)
 ```
 
-There is no `Makefile`, Dockerfile, or CI workflow yet. M4 proposes the `Makefile` and CI; container images
-belong to M5.
+There is no Dockerfile or CI workflow yet: CI belongs to M4c and container images to M5.
 
-License: MIT intended; no LICENSE file committed. Repository:
+License: [MIT](LICENSE). Repository:
 [github.com/lavinhoque33/insightboard](https://github.com/lavinhoque33/insightboard) (public). Contact:
 `ihoque33@yahoo.com`.

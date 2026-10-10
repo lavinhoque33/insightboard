@@ -21,10 +21,6 @@ export const useDashboardStore = defineStore('dashboard', () => {
 	const error = ref<string | null>(null);
 
 	// Getters
-	const getDashboardById = computed(() => {
-		return (id: string) => dashboards.value.find((d) => d.id === id);
-	});
-
 	const hasDashboards = computed(() => dashboards.value.length > 0);
 
 	/**
@@ -159,26 +155,9 @@ export const useDashboardStore = defineStore('dashboard', () => {
 	}
 
 	/**
-	 * Set current dashboard
-	 */
-	function setCurrentDashboard(dashboard: Dashboard | null) {
-		currentDashboard.value = dashboard;
-	}
-
-	/**
 	 * Clear error
 	 */
 	function clearError() {
-		error.value = null;
-	}
-
-	/**
-	 * Reset store state
-	 */
-	function reset() {
-		dashboards.value = [];
-		currentDashboard.value = null;
-		loading.value = false;
 		error.value = null;
 	}
 
@@ -189,7 +168,6 @@ export const useDashboardStore = defineStore('dashboard', () => {
 		loading,
 		error,
 		// Getters
-		getDashboardById,
 		hasDashboards,
 		// Actions
 		fetchDashboards,
@@ -197,8 +175,6 @@ export const useDashboardStore = defineStore('dashboard', () => {
 		createDashboard,
 		updateDashboard,
 		deleteDashboard,
-		setCurrentDashboard,
 		clearError,
-		reset,
 	};
 });

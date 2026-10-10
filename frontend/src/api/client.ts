@@ -10,6 +10,15 @@ import type {
 } from 'axios';
 import type { ApiError } from '../types';
 
+// Error bodies the backend (or a proxy) may send; `error` is the backend's key
+interface ErrorBody {
+	message?: string;
+	error?: string;
+	details?: unknown;
+	errors?: unknown;
+	validation?: unknown;
+}
+
 // Create axios instance with base configuration
 const apiClient: AxiosInstance = axios.create({
 	baseURL: import.meta.env.VITE_API_URL || '/api',
@@ -38,11 +47,11 @@ apiClient.interceptors.response.use(
 	(response) => {
 		return response;
 	},
-	(error: AxiosError<ApiError>) => {
+	(error: AxiosError<ErrorBody>) => {
 		// Handle different error scenarios
 		if (error.response) {
 			// Some backends return `error` instead of `message`
-			const data: any = error.response.data || {};
+			const data: ErrorBody = error.response.data || {};
 			// Try to surface validation details for 422 responses so UI can show
 			// helpful messages instead of a generic error.
 			let message = data.message || data.error || 'An error occurred';
@@ -56,11 +65,11 @@ apiClient.interceptors.response.use(
 				} else if (Array.isArray(details)) {
 					formatted = details.join('; ');
 				} else if (typeof details === 'object') {
-					formatted = Object.entries(details)
+					formatted = Object.entries(details as Record<string, unknown>)
 						.map(([k, v]) => {
 							if (Array.isArray(v)) return `${k}: ${v.join(', ')}`;
 							if (typeof v === 'object') return `${k}: ${JSON.stringify(v)}`;
-							return `${k}: ${v}`;
+							return `${k}: ${String(v)}`;
 						})
 						.join('; ');
 				} else {

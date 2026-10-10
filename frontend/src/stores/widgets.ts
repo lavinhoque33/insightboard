@@ -6,6 +6,7 @@
 import { defineStore } from 'pinia';
 import { ref, computed } from 'vue';
 import type { Component } from 'vue';
+import type { WidgetConfig } from '../types';
 
 /**
  * Widget Type Definition
@@ -17,7 +18,7 @@ export interface WidgetType {
 	description: string;
 	icon: string; // Icon class or emoji
 	component: Component;
-	defaultConfig: Record<string, any>;
+	defaultConfig: WidgetConfig;
 	configSchema: WidgetConfigField[];
 	defaultSize: {
 		w: number; // Width in grid units
@@ -41,7 +42,8 @@ export interface WidgetConfigField {
 	required?: boolean;
 	placeholder?: string;
 	options?: { label: string; value: string | number }[];
-	validation?: (value: any) => string | null; // Returns error message or null
+	// Validators receive the raw form value of a text-like field (always a string)
+	validation?: (value: string) => string | null; // Returns error message or null
 	helpText?: string;
 }
 
@@ -52,7 +54,7 @@ export interface WidgetConfigField {
 export interface WidgetInstance {
 	id: string; // Unique instance ID
 	type: string; // Widget type ID
-	config: Record<string, any>; // User configuration
+	config: WidgetConfig; // User configuration
 	layout: {
 		x: number;
 		y: number;
@@ -109,56 +111,11 @@ export const useWidgetStore = defineStore('widgets', () => {
 		};
 	};
 
-	/**
-	 * Validate widget configuration against schema
-	 */
-	const validateWidgetConfig = (
-		typeId: string,
-		config: Record<string, any>,
-	): { valid: boolean; errors: Record<string, string> } => {
-		const widgetType = getWidgetType(typeId);
-		if (!widgetType) {
-			return {
-				valid: false,
-				errors: { _general: 'Widget type not found' },
-			};
-		}
-
-		const errors: Record<string, string> = {};
-
-		for (const field of widgetType.configSchema) {
-			const value = config[field.key];
-
-			// Check required fields
-			if (
-				field.required &&
-				(value === undefined || value === null || value === '')
-			) {
-				errors[field.key] = `${field.label} is required`;
-				continue;
-			}
-
-			// Run custom validation if provided
-			if (field.validation && value !== undefined && value !== null) {
-				const error = field.validation(value);
-				if (error) {
-					errors[field.key] = error;
-				}
-			}
-		}
-
-		return {
-			valid: Object.keys(errors).length === 0,
-			errors,
-		};
-	};
-
 	return {
 		widgetTypes,
 		availableWidgets,
 		registerWidget,
 		getWidgetType,
 		createWidgetInstance,
-		validateWidgetConfig,
 	};
 });

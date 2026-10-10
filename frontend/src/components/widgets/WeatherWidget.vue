@@ -2,6 +2,7 @@
 <script setup lang="ts">
 import { ref, onMounted, onUnmounted, watch } from 'vue';
 import BaseWidget from '../BaseWidget.vue';
+import { errorMessage } from '../../api/errorMessage';
 import { fetchWeatherData, type WeatherData } from '../../api/widgets';
 
 interface Props {
@@ -38,8 +39,8 @@ const loadData = async () => {
 	try {
 		weather.value = await fetchWeatherData(props.config.city);
 		lastUpdated.value = new Date();
-	} catch (err: any) {
-		error.value = err.message || 'Failed to load weather data';
+	} catch (err) {
+		error.value = errorMessage(err, 'Failed to load weather data');
 		weather.value = null;
 	} finally {
 		loading.value = false;
@@ -115,7 +116,6 @@ onUnmounted(() => {
 		:loading="loading"
 		:error="error"
 		:last-updated="lastUpdated"
-		:refresh-interval="refreshInterval"
 		@refresh="loadData"
 		@configure="emit('configure')"
 		@remove="emit('remove')"

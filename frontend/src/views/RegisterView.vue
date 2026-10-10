@@ -22,7 +22,7 @@
 					<div class="divider my-4"></div>
 
 					<!-- Register Form -->
-					<form @submit.prevent="handleSubmit" class="space-y-5">
+					<form class="space-y-5" @submit.prevent="handleSubmit">
 						<!-- Email Field -->
 						<div class="form-control w-full">
 							<label class="label">

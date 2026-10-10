@@ -18,46 +18,48 @@ Milestone status uses **planned**, **in progress**, **implemented but unverified
 
 **Automated tests never call live providers** (GitHub, OpenWeather, NewsAPI, CoinGecko) or arbitrary status
 URLs, locally or in CI. Provider behaviour is tested against local mock servers through configurable base URLs;
-the URLs are hard-coded today (D11), so no provider test exists yet.
+the URLs are hard-coded today (D11, M4b), so no provider test exists yet.
 
 ## Commands
 
-There is no `Makefile` yet (M4 decision 2). Until M4a lands one, these commands are the gate.
+The root `Makefile` is the gate (M4 decision 2). Run from the repository root; `make doctor` shows which tools it
+found. Nothing below needs Postgres or Redis: `cargo test` has no database tests yet and the Vitest suites mock the
+API.
 
-**Frontend** (from `frontend/`, Node 20.19.0; on this workstation
-`export PATH="$PWD/../.tools/node-v20.19.0-linux-x64/bin:$PATH"`):
+| Target | What it runs |
+| --- | --- |
+| `make backend-check` | In `backend/`: `cargo fmt --check`, then `cargo clippy --locked --all-targets -- -D warnings`, `cargo test --locked`, `cargo build --locked` (`--locked` fails instead of silently changing the committed `Cargo.lock`) |
+| `make web-check` | In `frontend/`: `npm run lint` (ESLint with `--max-warnings 0`, then `prettier --check .`), `npm test` (`vitest run`), `npm run build` (`vue-tsc -b && vite build`) |
+| `make verify` | `backend-check` then `web-check`; works from a fresh clone after `make setup` |
+| `make format` | `cargo fmt` and `npm run format` (Prettier write); needs host Rust |
+| `make setup` | `npm ci` (and a generated `.env` if absent); run once per clone before `web-check` |
+
+The chain stops at the first failing step. Frontend commands use the project Node in
+`.tools/node-v20.19.0-linux-x64/bin` when present, else host Node 20.19+ (or 22.12+).
+
+**Single runs and extras** (from `frontend/` with Node on `PATH`, or from `backend/`):
 
 | Command | What it runs |
 | --- | --- |
 | `npm ci` | Clean install from `package-lock.json` |
+| `npm run lint` | ESLint (flat config, `eslint-plugin-vue`, `typescript-eslint`, `eslint-config-prettier`; `@typescript-eslint/no-explicit-any` is an error) and the Prettier check |
 | `npm run test` | `vitest run` (jsdom, setup `src/test/setup.ts`) |
-| `npm run build` | `vue-tsc -b && vite build`: type-checks app and spec files, then bundles |
+| `npm run build` | `vue-tsc -b && vite build`: type-checks app, spec files, and `vite.config.ts`/`vitest.config.ts` (`tsconfig.node.json`), then bundles |
 | `npm audit --omit=dev` | Advisories in production dependencies |
 | `npx vitest run src/components/__tests__/BaseWidget.spec.ts` | One test file |
+| `cargo test jwt_roundtrip` | One backend test by name filter |
 
-There are no `lint`, `format`, `test:watch`, `test:coverage`, or `test:e2e` scripts; ESLint, Prettier, and
-Playwright are not installed.
+There are no `test:watch`, `test:coverage`, or `test:e2e` scripts; Playwright is not installed (M4c).
 
-**Backend, native** (from `backend/`, Rust stable with `rustfmt` and `clippy`):
+**Backend toolchain.** `rust-toolchain.toml` pins Rust 1.99.0 with `rustfmt` and `clippy`; `backend/Cargo.lock` is
+committed, so builds use the locked dependency versions. With host rustup, `cargo` fetches the pinned toolchain on
+first use inside the checkout.
 
-| Command | What it runs |
-| --- | --- |
-| `cargo build` | Debug build; no database needed (runtime queries, embedded migrations) |
-| `cargo test` | Unit tests |
-| `cargo fmt --check` | rustfmt defaults; no `rustfmt.toml` |
-| `cargo clippy --all-targets -- -D warnings` | Lints, warnings as errors |
-| `cargo test jwt_roundtrip` | One test by name filter |
-
-**Backend, container fallback** (from the repository root, when host Rust is absent; this workstation has host Rust since 2026-10-10).
-The mount is read-only and the build runs in a throwaway copy, so nothing is written to the checkout. With no
-committed `Cargo.lock` (D12), every run resolves dependencies afresh from crates.io:
-
-```sh
-docker run --rm -v "$PWD/backend":/src:ro rust:1-bookworm bash -c 'rustup component add rustfmt clippy >/dev/null 2>&1; cp -r /src /work && cd /work && cargo build && cargo test && cargo fmt --check && cargo clippy --all-targets -- -D warnings'
-```
-
-The chain stops at the first failure; today that is `cargo fmt --check` (D13), so clippy runs only if you
-split the chain.
+**Backend, container fallback.** When `cargo` is not on `PATH`, `make backend-check` (and `make verify`) runs the
+same four steps in a throwaway `rust:<version>-bookworm` container, where `<version>` is read from
+`rust-toolchain.toml`. It mounts `backend/` read-only and builds in a copy inside the container, so nothing is
+written to the checkout and no root-owned files appear. It needs Docker and internet access, and downloads the
+locked crates on every run (no cache volume). `make backend-dev` and `make format` need host Rust.
 
 ## What exists
 
@@ -70,35 +72,32 @@ split the chain.
 | `backend/src/config.rs` | `config::tests::normalize_optional_trims_and_keeps_non_empty` | Optional values are trimmed |
 | `backend/src/config.rs` | `config::tests::app_host_defaults_to_loopback` | Unset `APP_HOST` binds `127.0.0.1` (D3) |
 | `backend/src/config.rs` | `config::tests::app_host_parses_ip_and_rejects_garbage` | An IP literal parses; a non-IP value fails naming `APP_HOST` |
+| `backend/src/config.rs` | `config::tests::cors_origins_default_to_vite_dev_origin` | Unset or blank `CORS_ORIGINS` yields the two Vite dev origins (D4) |
+| `backend/src/config.rs` | `config::tests::cors_origins_parse_a_trimmed_list` | A comma-separated list is trimmed; empty entries are skipped |
+| `backend/src/config.rs` | `config::tests::cors_origins_reject_invalid_entries` | `*`, missing scheme, non-http scheme, paths, credentials, and wildcards fail naming `CORS_ORIGINS` |
+| `backend/src/config.rs` | `config::tests::required_variables_name_themselves_when_missing_or_blank` | A missing or blank required variable errors with its name (D18) |
+| `backend/src/main.rs` | `tests::preflight_from_allowed_origin_is_granted` | `tower::ServiceExt::oneshot` against the production middleware stack: an allowed origin gets `access-control-allow-origin`, methods, and no credentials header |
+| `backend/src/main.rs` | `tests::preflight_from_foreign_origin_gets_no_grant` | A preflight from an origin outside the list gets no `access-control-allow-origin` |
+| `backend/src/main.rs` | `tests::simple_request_from_foreign_origin_gets_no_grant` | A simple cross-origin request from a foreign origin is served but gets no CORS grant |
 | `frontend/src/components/__tests__/BaseWidget.spec.ts` | "emits configure when Configure is clicked from options menu" | Options menu opens and Configure emits once |
 | `frontend/src/views/__tests__/DashboardEditorView.spec.ts` | "does not create a widget until configuration is saved" | Draft-on-add: modal opens, Cancel leaves no grid item (stores and GridStack mocked) |
 | `frontend/src/views/__tests__/DashboardEditorView.spec.ts` | "creates the widget only after saving valid configuration" | Save with a valid status URL adds one grid item; the save payload is not asserted |
 
-Totals: 7 backend unit tests and 3 frontend component tests. Nothing covers routes, the database, Redis,
-providers, the API client, stores, router guards, the contract, the configuration-modal prefill (D9), or
-end-to-end journeys; there is no CI (D11).
+Totals: 14 backend unit tests and 3 frontend component tests. The router test uses a stub route behind the real
+middleware function, not the full application (which needs live Postgres and Redis). Nothing covers the real
+routes, the database, Redis, providers, the API client, stores, router guards, the contract, the
+configuration-modal prefill (D9), or end-to-end journeys; there is no CI (D11; M4b and M4c).
 
-## Current results and known failing gates
+## Gate status
 
-**Observed** on 2026-10-10 on this workstation at `354e06c` (drill B11; frontend with Node 20.19.0 from `.tools/`;
-backend native with rustup stable, rustc 1.99.0). The earlier run at `f15c6a3` in the container gave the same
-results with 5 backend tests:
-
-| Check | Result |
-| --- | --- |
-| `npm ci` | Pass; 246 packages |
-| `npm run test` | Pass; 2 files, 3 tests |
-| `npm run build` | Pass; CSS warning `Unknown at rule: @property` (D24) |
-| `npm audit --omit=dev` | **Fail**: 8 findings, 7 high and 1 moderate (D14); full `npm audit`: 17 |
-| `cargo build` | Pass; 2 dead-code warnings |
-| `cargo test` | Pass; 7 tests |
-| `cargo fmt --check` | **Fail**: 67 diff hunks across 16 source files (D13) |
-| `cargo clippy --all-targets -- -D warnings` | **Fail**: the 2 dead-code warnings (D13) |
-
-Details are in the [baseline verification record](baseline-verification.md). Until M4a fixes D13 and D14, a
-change is judged on: builds and tests pass, no clippy warnings beyond the two known ones, new code written in
-rustfmt style (without reformatting the crate), and no new audit findings. The legacy 2026-03-03 audit
-**reported** `npm audit` with 0 findings on a previous workstation.
+Before M4a (**observed** 2026-10-10 on this workstation at `354e06c`; details in the
+[baseline verification record](baseline-verification.md)): `npm audit --omit=dev` found 8 issues (7 high, 1
+moderate; full audit 17), `cargo fmt --check` failed on 67 hunks (D13, reformatted in `d4bdca9`), and clippy failed
+on 2 dead-code errors (D13). M4a removed the dead code, added ESLint, bumped dependencies to clear the audits
+(D14), and committed `Cargo.lock` (D12); the M4a results are recorded in `m4-verification.md` once the main thread
+writes it. Still open in the gates: the daisyUI beta dependency (M4c, D24), CI (M4c), and the test suites in
+"Target test architecture". The legacy 2026-03-03 audit **reported** `npm audit` with 0 findings on a previous
+workstation.
 
 ## Manual drills
 
@@ -128,10 +127,11 @@ From the [M4 contract](../architecture/m4-quality-gate-contract.md), **accepted*
   journeys against a provider fixture.
 - **CI (decision 13):** GitHub Actions backend and web jobs with Postgres and Redis services, no secrets, no live
   providers. Enabling CI is an owner action.
-- **Gates (decision 3):** `cargo fmt --check`, `cargo clippy --all-targets -- -D warnings`, ESLint, Prettier,
-  `vue-tsc`, Vitest, and `cargo test`, run by `make verify`.
+- **Gates (decision 3), in place since M4a:** `cargo fmt --check`, `cargo clippy --all-targets -- -D warnings`,
+  ESLint, Prettier, `vue-tsc`, Vitest, and `cargo test`, run by `make verify`.
 
-None of this exists yet.
+The gates above exist; the contract, provider-mock, `#[sqlx::test]`, Redis, frontend client/store/guard/modal/editor,
+Playwright, and CI items are **pending** (M4b and M4c).
 
 ## What a verification record contains
 

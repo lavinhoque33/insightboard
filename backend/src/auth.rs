@@ -29,7 +29,6 @@ pub struct Claims {
 #[derive(Debug, Clone)]
 pub struct UserCtx {
     pub user_id: Uuid,
-    pub email: String,
 }
 
 /// Hash a password using Argon2
@@ -114,10 +113,7 @@ impl FromRequestParts<AppState> for UserCtx {
         let user_id = Uuid::parse_str(&claims.sub)
             .map_err(|_| AppError::Auth("Invalid user ID in token".to_string()))?;
 
-        Ok(UserCtx {
-            user_id,
-            email: claims.email,
-        })
+        Ok(UserCtx { user_id })
     }
 }
 

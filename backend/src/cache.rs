@@ -51,18 +51,4 @@ impl Cache {
         conn.set_ex::<_, _, ()>(key, serialized, ttl as u64).await?;
         Ok(())
     }
-
-    /// Delete a value from cache
-    pub async fn delete(&self, key: &str) -> anyhow::Result<()> {
-        let mut conn = self.get_connection().await?;
-        conn.del::<_, ()>(key).await?;
-        Ok(())
-    }
-
-    /// Check if a key exists in cache
-    pub async fn exists(&self, key: &str) -> anyhow::Result<bool> {
-        let mut conn = self.get_connection().await?;
-        let exists: bool = conn.exists(key).await?;
-        Ok(exists)
-    }
 }

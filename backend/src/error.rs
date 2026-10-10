@@ -11,9 +11,6 @@ pub enum AppError {
     #[error("Database error: {0}")]
     Database(#[from] sqlx::Error),
 
-    #[error("Redis error: {0}")]
-    Redis(#[from] redis::RedisError),
-
     #[error("Authentication error: {0}")]
     Auth(String),
 
@@ -25,9 +22,6 @@ pub enum AppError {
 
     #[error("Unauthorized")]
     Unauthorized,
-
-    #[error("Forbidden")]
-    Forbidden,
 
     #[error("External API error: {0}")]
     ExternalApi(String),
@@ -43,15 +37,10 @@ impl IntoResponse for AppError {
                 tracing::error!("Database error: {:?}", e);
                 (StatusCode::INTERNAL_SERVER_ERROR, "Database error occurred")
             }
-            AppError::Redis(ref e) => {
-                tracing::error!("Redis error: {:?}", e);
-                (StatusCode::INTERNAL_SERVER_ERROR, "Cache error occurred")
-            }
             AppError::Auth(ref msg) => (StatusCode::UNAUTHORIZED, msg.as_str()),
             AppError::Validation(ref msg) => (StatusCode::BAD_REQUEST, msg.as_str()),
             AppError::NotFound(ref msg) => (StatusCode::NOT_FOUND, msg.as_str()),
             AppError::Unauthorized => (StatusCode::UNAUTHORIZED, "Unauthorized"),
-            AppError::Forbidden => (StatusCode::FORBIDDEN, "Forbidden"),
             AppError::ExternalApi(ref msg) => {
                 tracing::error!("External API error: {}", msg);
                 (StatusCode::BAD_GATEWAY, "External service error")

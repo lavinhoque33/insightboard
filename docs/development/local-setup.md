@@ -6,7 +6,7 @@ widgets call public APIs at request time; see "Provider keys" below.
 
 Commands are run from the repository root unless a `cd` is shown. Steps below match `.env.example`,
 `frontend/.env.example`, `docker-compose.yml`, `backend/src/config.rs`, `backend/src/main.rs`, and
-`frontend/vite.config.ts` at `f15c6a3`.
+`frontend/vite.config.ts`, and the root `Makefile` as of M4a.
 
 ## Network exposure (D3, mitigated by M4 decision 4)
 
@@ -37,15 +37,38 @@ backend does not warn about it. Through the backend, D1 (status-widget SSRF) is 
 | Tool | Version | Notes |
 | --- | --- | --- |
 | Docker + Compose v2 | any current (Docker 29.8.2, Compose v5.5.1 on this workstation) | Runs Postgres and Redis only. Add your user to the `docker` group so `sudo` is unnecessary (already the case here); the legacy instructions' `sudo docker` is not needed. |
-| Node.js | 20.19.0 (`.nvmrc`) | Vite 7 needs `^20.19 \|\| >=22.12`. On this workstation the project Node lives in the gitignored `.tools/node-v20.19.0-linux-x64/bin`; put it first on `PATH` (below). Host Node 24.19.0 also satisfies Vite 7. npm comes with Node; the project uses npm, not pnpm. |
-| Rust | stable via [rustup](https://rustup.rs/); no version pinned (D12) | This workstation has a user-level rustup install since 2026-10-10 (rustc 1.99.0, rustfmt, clippy; `rustup-init -y --profile minimal --component rustfmt,clippy`). reqwest uses native TLS, so a native build needs OpenSSL development headers and `pkg-config`: **observed** on Fedora 44 that `openssl-sys` fails without `openssl-devel`. Without host Rust, backend **checks** can run in a container ([testing](testing.md)), but running the backend needs host Rust. |
+| Node.js | 20.19.0 (`.nvmrc`); `frontend/package.json` `engines.node` is `^20.19.0 \|\| >=22.12.0` | Vite 7 needs `^20.19 \|\| >=22.12`. The Makefile puts the project Node first when `.tools/node-v20.19.0-linux-x64/bin` exists and otherwise uses host Node (`make doctor` checks the version). On this workstation the project Node lives in the gitignored `.tools/node-v20.19.0-linux-x64/bin`; put it first on `PATH` (below). Host Node 24.19.0 also satisfies Vite 7. npm comes with Node; the project uses npm, not pnpm. |
+| Rust | 1.99.0, pinned by `rust-toolchain.toml` (with `rustfmt` and `clippy`); `backend/Cargo.toml` declares `rust-version = "1.89"`, the highest MSRV declared among the locked dependencies | Install [rustup](https://rustup.rs/); inside the checkout it fetches the pinned toolchain on first use. reqwest uses native TLS, so a native build needs OpenSSL development headers and `pkg-config`: **observed** on Fedora 44 that `openssl-sys` fails without `openssl-devel`. Without host Rust, `make backend-check` (and so `make verify`) falls back to a container ([testing](testing.md)), but running the backend (`make backend-dev`) and `make format` need host Rust. |
+| make, awk | any | GNU make drives the targets below; `make setup` uses `awk` and `openssl` to write `.env`. |
 | git, curl, openssl | any | `openssl` generates the JWT secret. |
 
 `sqlx-cli` is not required: the backend applies migrations at startup.
 
 ## First run
 
-Complete "Backend environment" (step 1) before starting anything: compose refuses to start without the secrets.
+Quick path (this is what `make` automates; the manual steps follow):
+
+```sh
+make setup      # npm ci; creates .env with generated secrets if it is absent
+make doctor     # tool versions, .env presence, Docker access
+make db-up      # Postgres and Redis on 127.0.0.1, waits until healthy
+make backend-dev   # terminal 1: API on 127.0.0.1:8080
+make web-dev       # terminal 2: Vite on 127.0.0.1:5173
+```
+
+| Target | What it does |
+| --- | --- |
+| `make help` | Lists the targets |
+| `make setup` | Runs `npm ci` in `frontend/`. Creates `.env` only if it is absent: copies `.env.example`, generates `POSTGRES_PASSWORD`, `REDIS_PASSWORD` (24 random bytes, hex) and `JWT_SECRET` (32 random bytes, hex) with `openssl rand`, fills the matching `DATABASE_URL`/`REDIS_URL`, sets mode 600, and prints no secret. An existing `.env` is never read or changed. |
+| `make doctor` | Reports Node, npm, Docker and Compose, cargo and rustc (or whether the container fallback will be used), openssl, whether `.env` exists (never its contents), and whether `frontend/node_modules` is installed. Exits non-zero if Node is too old or missing. |
+| `make db-up` / `make db-down` | `docker compose up -d --wait postgres redis` / `docker compose stop postgres redis`; data volumes are kept. `db-up` needs `.env`. |
+| `make db-reset CONFIRM=yes` | **Destructive**: `docker compose down --volumes` deletes the Postgres and Redis data. Refuses without `CONFIRM=yes`; the only target that removes volumes, and it needs owner approval to run. |
+| `make backend-dev` | `cargo run` in `backend/` with the root `.env`; needs host Rust. |
+| `make web-dev` | `npm run dev` in `frontend/`. |
+| `make backend-check`, `make web-check`, `make verify`, `make format` | The quality gates; see [testing](testing.md). |
+
+Manual path, when you cannot or do not want to use `make setup`: complete step 1 before starting anything, because
+compose refuses to start without the secrets.
 
 1. **Backend and compose environment.** Copy the template and fill the secrets with locally generated values,
    without printing them. Compose (interpolation) and the backend (`dotenvy`) read the same root `.env`;
@@ -61,6 +84,7 @@ Complete "Backend environment" (step 1) before starting anything: compose refuse
      -e "s|^REDIS_PASSWORD=.*|REDIS_PASSWORD=$REDISPASS|" \
      -e "s|<POSTGRES_USER>|insightboard_app|; s|<POSTGRES_PASSWORD>|$PGPASS|; s|<REDIS_PASSWORD>|$REDISPASS|" .env
    unset PGPASS REDISPASS
+   chmod 600 .env
    ```
 
    `.env` is gitignored. Never commit, log, or paste it. Leave the provider keys empty unless you have free-tier
@@ -70,22 +94,23 @@ Complete "Backend environment" (step 1) before starting anything: compose refuse
 3. **Start Postgres and Redis.**
 
    ```sh
-   docker compose up -d
-   docker compose ps     # insightboard-postgres and insightboard-redis should become healthy
+   docker compose up -d --wait
+   docker compose ps     # the postgres and redis services should be healthy
    ```
 
 4. **Run the backend** (terminal 1). `dotenvy` finds the root `.env` from `backend/` by searching parent
-   directories `[INFERENCE: dotenvy behaviour]`.
+   directories.
 
    ```sh
    cd backend
    cargo run
    ```
 
-   Startup connects to Postgres, applies the embedded migrations, connects to Redis, and logs
-   `Listening on 127.0.0.1:8080`. A missing `DATABASE_URL`, `REDIS_URL`, or `JWT_SECRET` panics at startup; an
-   unparsable `APP_HOST` or `APP_PORT` fails startup with an error; an unreachable Postgres or Redis exits with
-   an error. Check it with `curl -s http://127.0.0.1:8080/healthz`
+   Startup loads `.env` (so `RUST_LOG` in it applies), connects to Postgres, applies the embedded migrations,
+   connects to Redis, and logs `Listening on 127.0.0.1:8080`. A missing or empty `DATABASE_URL`, `REDIS_URL`, or
+   `JWT_SECRET` exits non-zero with an error naming the variable; an unparsable `APP_HOST`, `APP_PORT`, or
+   `CORS_ORIGINS` also fails startup with an error; an unreachable Postgres or Redis exits with an error. Check it
+   with `curl -s http://127.0.0.1:8080/healthz`
    (`{"status":"ok","service":"insightboard-backend","version":"0.1.0"}`; it checks no dependency).
 5. **Run the frontend** (terminal 2).
 
@@ -101,24 +126,25 @@ Complete "Backend environment" (step 1) before starting anything: compose refuse
 
 ## Configuration
 
-`.env` is read by the backend at startup (`dotenvy`, after logging has initialised). Variables at `f15c6a3`
-(`backend/src/config.rs:18-34`, `backend/src/main.rs:38-48`):
+`.env` is read by the backend at startup (`dotenvy`, before logging initialises). Variables
+(`backend/src/config.rs`, `backend/src/main.rs`):
 
 | Variable | Default | Rule |
 | --- | --- | --- |
 | `APP_HOST` | `127.0.0.1` | IP address the backend binds (`std::net::IpAddr`); unparsable values fail startup. Non-loopback values are a deliberate owner-approved change. |
 | `APP_PORT` | `8080` | Port only. Changing it also needs the Vite proxy target changed. |
 | `POSTGRES_USER`, `POSTGRES_PASSWORD` | none, required by compose | Read by compose only; the container is initialised with them on first start. Database name is `insightboard`. |
-| `REDIS_PASSWORD` | none, required by compose | Read by compose only (`--requirepass`, and `REDISCLI_AUTH` inside the container so `docker exec insightboard-redis redis-cli ...` works without `-a`). |
+| `REDIS_PASSWORD` | none, required by compose | Read by compose only (`--requirepass`, and `REDISCLI_AUTH` inside the container so `docker compose exec redis redis-cli ...` works without `-a`). |
 | `DATABASE_URL` | none, required | `postgres://<POSTGRES_USER>:<POSTGRES_PASSWORD>@127.0.0.1:5432/insightboard`; same values as above. |
 | `REDIS_URL` | none, required | `redis://:<REDIS_PASSWORD>@127.0.0.1:6379`; same password as above. |
-| `JWT_SECRET` | none, required | No strength check (D17); generate as above. |
+| `JWT_SECRET` | none, required | Must be non-empty; no strength check yet (D17, M4b enforces 32 bytes); generate with `openssl rand -hex 32` (`make setup` does). |
 | `GITHUB_API_TOKEN` | empty | Optional; sent to GitHub when set. Blank values count as unset. |
 | `OPENWEATHER_API_KEY` | empty | Weather widget returns 400 "OpenWeather API key not configured" without it. |
 | `NEWSAPI_API_KEY` | empty | News widget returns 400 "NewsAPI key not configured" without it. |
-| `COINMARKETCAP_API_KEY` | empty | Read but unused; Crypto uses CoinGecko without a key (D18). |
-| `RUST_LOG` | `insightboard_backend=debug,tower_http=debug` | The `.env` value is ignored because logging starts before `.env` loads (D18). Set it in the shell instead: `RUST_LOG=info cargo run`. |
-| `CORS_ORIGINS`, `SENTRY_DSN`, `AWS_REGION` | commented out | Never read. CORS is permissive (D4). |
+| `RUST_LOG` | `insightboard_backend=debug,tower_http=debug` | Standard `tracing` filter. The value in `.env` is honoured because `.env` loads before logging starts; `.env.example` sets `info,insightboard_backend=debug`. |
+| `CORS_ORIGINS` | `http://127.0.0.1:5173,http://localhost:5173` (the Vite dev origin) | Comma-separated exact origins (`scheme://host[:port]`; no path, trailing slash, wildcard, or credentials). The backend allows only those origins, the methods GET/POST/PUT/DELETE, and the `Authorization` and `Content-Type` headers, without credentials; other origins get no CORS grant. An unparsable entry fails startup. The Vite proxy makes browser calls same-origin in development, so CORS matters only for direct cross-origin calls. |
+
+`COINMARKETCAP_API_KEY`, `SENTRY_DSN`, and `AWS_REGION` were removed from `.env.example` because nothing read them.
 
 The production-style URLs commented in `.env.example` (`sslmode=require`, `rediss://`) would fail: sqlx and redis
 are built without TLS features (D21).
@@ -132,8 +158,8 @@ the Vite default.
 | --- | --- | --- |
 | 8080 | Backend API | `127.0.0.1` (`APP_HOST`) |
 | 5173 | Vite dev server | `127.0.0.1` |
-| 5432 | Postgres (`insightboard-postgres`) | `127.0.0.1` |
-| 6379 | Redis (`insightboard-redis`) | `127.0.0.1` |
+| 5432 | Postgres (compose service `postgres`) | `127.0.0.1` |
+| 6379 | Redis (compose service `redis`) | `127.0.0.1` |
 
 ## Provider keys
 
@@ -153,11 +179,14 @@ Keys are optional and must be free-tier keys the owner supplies; never buy a pla
 - Stop the backend and Vite with Ctrl-C.
 - `docker compose stop` stops the containers; `docker compose down` removes them. Both keep the named volumes
   `postgres_data` (users and dashboards) and `redis_data` (cache, append-only file enabled), so data survives
-  restarts. `docker compose up -d` starts them again.
+  restarts. Compose scopes them to the project, so they appear as `<project>_postgres_data` and
+  `<project>_redis_data` (`insightboard_postgres_data` in a checkout directory named `insightboard`). `docker compose up -d` starts them again.
 - Both services use `restart: unless-stopped`, so they start again with the Docker daemon unless you stopped
   them.
-- Container names are fixed (`insightboard-postgres`, `insightboard-redis`), so a second checkout cannot run
-  its own stack alongside this one.
+- Containers and the network are named by Compose from the checkout directory (no `container_name`, no fixed
+  network name), so a second checkout gets its own stack and volumes. Both checkouts publish the same loopback
+  ports (5432, 6379), so only one stack can run at a time unless the ports are remapped (an owner-approved
+  change). Use `docker compose exec postgres|redis ...` rather than `docker exec <name>`.
 - **Destructive operations need owner approval:** `docker compose down -v`, removing either volume, or dropping
   the database deletes every user and dashboard.
 
@@ -168,16 +197,17 @@ docker compose exec -T postgres sh -c 'psql -U "$POSTGRES_USER" -d insightboard 
   -c "SELECT id, email, created_at FROM users ORDER BY created_at DESC LIMIT 20;"'
 docker compose exec -T postgres sh -c 'psql -U "$POSTGRES_USER" -d insightboard \
   -c "SELECT id, user_id, name, updated_at FROM dashboards ORDER BY updated_at DESC LIMIT 20;"'
-docker exec insightboard-redis redis-cli --scan --pattern 'weather:*'
-docker exec insightboard-redis redis-cli TTL '<key>'
+docker compose exec -T redis redis-cli --scan --pattern 'weather:*'
+docker compose exec -T redis redis-cli TTL '<key>'
 ```
 
 ## Troubleshooting
 
-- **`cargo: command not found`** — install Rust with rustup and open a new shell; for checks only, use the
-  container command in [testing](testing.md).
-- **Backend panics with `DATABASE_URL must be set`** (or `REDIS_URL`, `JWT_SECRET`) — `.env` is missing or not
-  found; create it at the repository root as above.
+- **`cargo: command not found`** — install Rust with rustup and open a new shell; for checks only, `make
+  backend-check` uses the container fallback ([testing](testing.md)).
+- **Backend exits with `DATABASE_URL must be set to a non-empty value`** (or `REDIS_URL`, `JWT_SECRET`) — `.env` is
+  missing, empty for that variable, or not found; run `make setup` or create it at the repository root as above.
+- **Backend exits with `CORS_ORIGINS has an invalid origin`** — fix the entry to `scheme://host[:port]` or unset it.
 - **Backend exits connecting to Postgres or Redis** — `docker compose ps`; wait for `healthy`, then restart the
   backend. The backend does not reconnect at startup.
 - **Cannot connect to the Docker daemon** — `systemctl status docker`; start it, and check `docker` group
@@ -207,15 +237,13 @@ docker exec insightboard-redis redis-cli TTL '<key>'
 - **Status widget shows "No response from server"** — the backend checks URLs one at a time with 5 s each, and
   the client gives up after 10 s (D20); use fewer URLs.
 - **Signed out unexpectedly** — a 401 on any request other than login or register clears the stored session
-  and reloads `/login`; tokens last 7 days.
+  and reloads `/login`; tokens last 7 days (24 hours after M4b).
 - **`npm run dev` or `npm ci` fails on engine or syntax errors** — Node is older than 20.19; put the `.tools/`
   Node first on `PATH` or use `nvm use`.
 
 ## What is not set up
 
-No `Makefile`, Dockerfile, application containers, CI workflow, or production configuration. The legacy run
+No Dockerfile, application containers, CI workflow (M4c), or production configuration. The legacy run
 instructions remain readable at
 [`manual run instructions.md` at `f15c6a3`](https://github.com/lavinhoque33/insightboard/blob/f15c6a3/manual%20run%20instructions.md);
-their absolute paths, `sudo docker`, and `httpstat.us` target no longer apply. M4a proposes
-a `Makefile` with `setup`, `doctor`, and `db-*` targets, and pinned toolchains
-([M4 contract](../architecture/m4-quality-gate-contract.md), **proposed**).
+their absolute paths, `sudo docker`, and `httpstat.us` target no longer apply.
