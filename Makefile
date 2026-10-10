@@ -19,13 +19,27 @@ RUST_VERSION := $(shell sed -n 's/^channel *= *"\(.*\)"/\1/p' rust-toolchain.tom
 RUST_IMAGE := rust:$(RUST_VERSION)-bookworm
 HAVE_CARGO := $(shell command -v cargo 2>/dev/null)
 
-.PHONY: help setup setup-env doctor db-up db-down db-reset backend-dev web-dev backend-check web-check e2e verify format require-env require-db require-cargo require-web-deps
+# Release image (M5): insightboard:local plus a tag with the backend version.
+APP_VERSION := $(shell sed -n 's/^version *= *"\(.*\)"/\1/p' $(BACKEND)/Cargo.toml)
+APP_IMAGE := insightboard
+# Every compose call that may touch the release app includes its profile.
+COMPOSE_APP := docker compose --profile app
+
+.PHONY: help setup setup-env doctor db-up db-down db-reset backend-dev web-dev backend-check web-check e2e verify format require-env require-db require-cargo require-web-deps release up down logs backup
 
 help:
 	@printf '%s\n' \
-	  'InsightBoard development (run from the repository root; local-only, loopback)' \
+	  'InsightBoard (run from the repository root; local-only, loopback)' \
+	  'Release (Docker only; needs .env):' \
+	  '  setup-env      Create .env from .env.example with generated secrets if it is absent (needs openssl, awk)' \
+	  '  release        Build the application image insightboard:local (and :$(APP_VERSION)); nothing is pushed' \
+	  '  up             Start Postgres, Redis, and the app on 127.0.0.1:8088 (APP_PUBLISH_PORT); wait until healthy' \
+	  '  down           Stop and remove the stack containers (app, Postgres, Redis); data volumes are kept' \
+	  '  logs           Follow the app logs' \
+	  '  backup         pg_dump the database to backups/ (gitignored, mode 600)' \
+	  'Development:' \
 	  '  setup          npm ci; create .env from .env.example with generated secrets if it is absent' \
-	  '  doctor         Report tool versions, .env presence, and Docker access' \
+	  '  doctor         Report tool versions, .env presence, Docker access, and whether Docker alone suffices for the release' \
 	  '  db-up          Start Postgres and Redis on 127.0.0.1 and wait until healthy' \
 	  '  db-down        Stop Postgres and Redis; data volumes are kept' \
 	  '  db-reset       DESTRUCTIVE: remove containers and data volumes (needs CONFIRM=yes)' \
@@ -75,9 +89,11 @@ doctor:
 	printf 'npm:     '; \
 	if command -v npm >/dev/null 2>&1; then npm --version; else printf '%s\n' 'MISSING'; status=1; fi; \
 	printf 'docker:  '; \
+	have_docker=0; have_compose=0; \
 	if command -v docker >/dev/null 2>&1 && docker info >/dev/null 2>&1; then \
-	  printf '%s; ' "$$(docker --version)"; docker compose version --short 2>/dev/null | sed 's/^/compose /' || printf '%s\n' 'compose MISSING'; have_docker=1; \
-	else printf '%s\n' 'not available (needed for db-up and the container fallback)'; have_docker=0; fi; \
+	  have_docker=1; printf '%s; ' "$$(docker --version)"; \
+	  if cv="$$(docker compose version --short 2>/dev/null)"; then have_compose=1; printf 'compose %s\n' "$$cv"; else printf '%s\n' 'compose MISSING'; fi; \
+	else printf '%s\n' 'not available (needed for db-up, the container fallback, and the release)'; fi; \
 	printf 'cargo:   '; \
 	if command -v cargo >/dev/null 2>&1; then \
 	  printf '%s (rustc %s; pinned by rust-toolchain.toml: $(RUST_VERSION))\n' "$$(cargo --version)" "$$(rustc --version | cut -d' ' -f2)"; \
@@ -86,9 +102,14 @@ doctor:
 	printf 'openssl: '; \
 	if command -v openssl >/dev/null 2>&1; then printf '%s\n' "$$(openssl version | cut -d' ' -f1-2)"; else printf '%s\n' 'MISSING (setup needs it to generate secrets)'; fi; \
 	printf '.env:    '; \
-	if [ -f .env ]; then printf '%s\n' 'present (contents not read)'; else printf '%s\n' 'absent; run make setup'; fi; \
+	if [ -f .env ]; then printf '%s\n' 'present (contents not read)'; else printf '%s\n' 'absent; run make setup (or make setup-env for the release only)'; fi; \
 	printf 'deps:    '; \
 	if [ -d $(FRONTEND)/node_modules ]; then printf '%s\n' 'frontend/node_modules present'; else printf '%s\n' 'frontend/node_modules absent; run make setup'; fi; \
+	printf 'release: '; \
+	if [ "$$have_compose" = 1 ] && command -v openssl >/dev/null 2>&1 && command -v awk >/dev/null 2>&1; then \
+	  printf '%s\n' 'Docker alone is enough: make setup-env, make release, make up (no host Rust or Node needed)'; \
+	elif [ "$$have_compose" = 1 ]; then printf '%s\n' 'Docker is ready; make setup-env also needs openssl and awk (or an existing .env)'; \
+	else printf '%s\n' 'NOT READY: needs Docker with the Compose plugin'; fi; \
 	exit $$status
 
 # --- database ---------------------------------------------------------------
@@ -125,11 +146,47 @@ db-up: require-env
 db-down:
 	docker compose stop postgres redis
 
-# The only target allowed to remove volumes.
+# The only target allowed to remove volumes. The profile makes it remove the app container too.
 db-reset:
 	@if [ "$(CONFIRM)" != "yes" ]; then \
 	  printf '%s\n' 'Refusing: this deletes every local user, dashboard, and cache entry. Re-run as: make db-reset CONFIRM=yes'; exit 1; fi
-	docker compose down --volumes
+	$(COMPOSE_APP) down --volumes
+
+# --- release (M5) -----------------------------------------------------------
+
+# Docker only: no host Rust or Node. compose reads .env to interpolate docker-compose.yml;
+# nothing from .env enters the image (.dockerignore excludes it). Nothing is pushed.
+release: require-env
+	$(COMPOSE_APP) build app
+	docker image tag $(APP_IMAGE):local $(APP_IMAGE):$(APP_VERSION)
+	@docker image ls $(APP_IMAGE) --format '{{.Repository}}:{{.Tag}}  {{.Size}}'
+
+# Starts Postgres, Redis, and the app (building the image first if it is missing) and waits
+# until all three are healthy. Recreates the app when the image changed (upgrade path).
+up: require-env
+	$(COMPOSE_APP) up -d --wait --wait-timeout 180
+	@printf 'App: http://%s\n' "$$($(COMPOSE_APP) port app 8080)"
+
+# Never --volumes: users, dashboards, and the cache survive.
+down: require-env
+	$(COMPOSE_APP) down
+
+logs: require-env
+	$(COMPOSE_APP) logs -f app
+
+# Custom-format pg_dump (restore with pg_restore) run inside the postgres container with its
+# own credentials; written to the gitignored backups/ directory, mode 600, never printed.
+backup: require-env
+	@mkdir -p backups && chmod 700 backups
+	@umask 077; \
+	file="backups/insightboard-$$(date -u +%Y%m%dT%H%M%SZ).dump"; \
+	if docker compose exec -T postgres sh -c 'pg_dump -U "$$POSTGRES_USER" -d insightboard --format=custom' > "$$file.partial" \
+	  && [ -s "$$file.partial" ]; then \
+	  mv "$$file.partial" "$$file" && chmod 600 "$$file" \
+	  && printf 'Wrote %s (%s bytes, mode 600)\n' "$$file" "$$(wc -c < "$$file" | tr -d ' ')"; \
+	else \
+	  rm -f "$$file.partial"; printf '%s\n' 'backup failed: is Postgres running? (make db-up or make up)'; exit 1; \
+	fi
 
 # --- run --------------------------------------------------------------------
 

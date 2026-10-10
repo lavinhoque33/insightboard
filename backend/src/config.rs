@@ -3,6 +3,7 @@ use reqwest::Url;
 use std::env;
 use std::net::{IpAddr, SocketAddr};
 use std::num::NonZeroU32;
+use std::path::{Path, PathBuf};
 use std::time::Duration;
 
 /// Dev-server origins allowed when `CORS_ORIGINS` is unset: the Vite dev server.
@@ -50,6 +51,8 @@ pub struct Config {
     pub request_timeout: Duration,
     pub auth_rate_limit: RateLimit,
     pub data_rate_limit: RateLimit,
+    /// Built frontend (`STATIC_DIR`) served for non-API paths; `None` leaves it to Vite.
+    pub static_dir: Option<PathBuf>,
 }
 
 impl Config {
@@ -93,6 +96,7 @@ impl Config {
                 per_minute: nonzero_env("DATA_RATE_LIMIT_PER_MINUTE", 60)?,
                 burst: nonzero_env("DATA_RATE_LIMIT_BURST", 30)?,
             },
+            static_dir: parse_static_dir(optional_env("STATIC_DIR").as_deref())?,
         })
     }
 }
@@ -239,6 +243,22 @@ fn normalize_optional(value: Option<String>) -> Option<String> {
     })
 }
 
+/// `STATIC_DIR`: unset or blank means no static serving; otherwise a directory that holds
+/// `index.html` (the SPA fallback), checked at startup.
+fn parse_static_dir(value: Option<&str>) -> anyhow::Result<Option<PathBuf>> {
+    let Some(raw) = value else {
+        return Ok(None);
+    };
+    let dir = Path::new(raw);
+    if !dir.is_dir() {
+        anyhow::bail!("STATIC_DIR {raw:?} must be an existing directory");
+    }
+    if !dir.join("index.html").is_file() {
+        anyhow::bail!("STATIC_DIR {raw:?} must contain index.html (the built frontend)");
+    }
+    Ok(Some(dir.to_path_buf()))
+}
+
 /// Parse the bind host; unset means loopback.
 fn parse_app_host(value: Option<&str>) -> anyhow::Result<IpAddr> {
     match value {
@@ -254,7 +274,7 @@ fn parse_app_host(value: Option<&str>) -> anyhow::Result<IpAddr> {
 mod tests {
     use super::{
         check_jwt_secret, normalize_optional, parse_app_host, parse_base_url, parse_cors_origins,
-        parse_fixtures, parse_millis, require,
+        parse_fixtures, parse_millis, parse_static_dir, require,
     };
     use std::net::IpAddr;
     use std::time::Duration;
@@ -378,5 +398,26 @@ mod tests {
         assert_eq!(parse_millis("250"), Some(Duration::from_millis(250)));
         assert_eq!(parse_millis("0"), None);
         assert_eq!(parse_millis("-1"), None);
+    }
+
+    #[test]
+    fn static_dir_must_exist_and_hold_index_html() {
+        assert_eq!(parse_static_dir(None).unwrap(), None);
+
+        let dir = std::env::temp_dir().join(format!("ib-static-config-{}", uuid::Uuid::new_v4()));
+        let raw = dir.to_str().unwrap().to_string();
+        let err = parse_static_dir(Some(&raw)).unwrap_err().to_string();
+        assert!(err.contains("STATIC_DIR"), "{err}");
+
+        std::fs::create_dir_all(&dir).unwrap();
+        let err = parse_static_dir(Some(&raw)).unwrap_err().to_string();
+        assert!(
+            err.contains("STATIC_DIR") && err.contains("index.html"),
+            "{err}"
+        );
+
+        std::fs::write(dir.join("index.html"), "<!doctype html>").unwrap();
+        assert_eq!(parse_static_dir(Some(&raw)).unwrap(), Some(dir.clone()));
+        std::fs::remove_dir_all(&dir).unwrap();
     }
 }

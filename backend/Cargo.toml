@@ -12,7 +12,8 @@ description = "A modular, cloud-native dashboard backend built with Rust and Axu
 axum = { version = "0.7", features = ["macros"] }
 axum-extra = { version = "0.9", features = ["typed-header"] }
 tower = { version = "0.5", features = ["util", "timeout", "limit"] }
-tower-http = { version = "0.5", features = ["cors", "trace", "compression-gzip"] }
+# fs and set-header: the release image serves the built frontend (M5 decision 1, ADR 0003).
+tower-http = { version = "0.5", features = ["cors", "trace", "compression-gzip", "fs", "set-header"] }
 
 # Async runtime
 tokio = { version = "1", features = ["full"] }

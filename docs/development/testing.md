@@ -131,8 +131,21 @@ permission and a per-ref concurrency group that cancels superseded runs. No secr
   toolchain and cargo cache, Node from `.nvmrc`, `npm ci`, `npx playwright install --with-deps chromium`, then
   `make e2e`. The Playwright HTML report and failure traces are uploaded as the `playwright-report` artifact only
   when the job fails. Providers are the local fixture; the job has no keys.
+- **release** job (M5 decision 8): no service containers; on the clean runner `make setup-env` writes a throwaway
+  `.env` (random secrets, no provider keys; never printed or uploaded), `make release` builds the image from the root
+  `Dockerfile` (nothing is pushed), and `make up` starts Postgres, Redis, and the app from `docker-compose.yml`
+  (profile `app`) and waits until they are healthy. A `curl` smoke step against `http://127.0.0.1:8088` then checks:
+  `/healthz` is 200 with `status: ok` and the version from `backend/Cargo.toml`; `/readyz` is 200; `/` is HTML with
+  `Cache-Control: no-cache`; `/dashboards/some-id` returns the same `index.html` (SPA fallback); the first
+  `/assets/*.js` referenced by `index.html` has `Cache-Control: public, max-age=31536000, immutable` and
+  `X-Content-Type-Options: nosniff`; `/api/unknown` is 404 `application/json` with an `error` string; and a new
+  `ci-release-<time>-<random>@example.com` user registers, creates a dashboard, and lists exactly that one. On failure
+  the job prints `docker compose --profile app logs app` (never `docker compose config`, never `.env`); `make down`
+  always runs at the end. No provider is called.
 
 To mirror CI locally, run `GITHUB_ACTIONS=true make backend-check` with `DATABASE_URL` and `REDIS_URL` exported.
+The release job's steps run unchanged locally (`make release`, `make up`, then the smoke commands from
+`.github/workflows/ci.yml`), against the development database and with the existing `.env`.
 
 ## What exists
 
@@ -140,13 +153,14 @@ Backend (`cargo test`, one binary; unit tests sit beside the code, router tests 
 
 | Area | Location | Covers |
 | --- | --- | --- |
-| Config | `config::tests` | Loopback default; required variables name themselves; CORS parsing; `JWT_SECRET` < 32 bytes rejected; base URL, timeout, and fixture-allowlist parsing (loopback `ip:port` only) |
+| Config | `config::tests` | Loopback default; required variables name themselves; CORS parsing; `JWT_SECRET` < 32 bytes rejected; base URL, timeout, and fixture-allowlist parsing (loopback `ip:port` only); `STATIC_DIR` must be an existing directory with `index.html` |
 | Auth helpers | `auth::tests` | Argon2 round trip and rejection; 24 h JWT lifetime; every invalid token is the generic `Unauthorized` |
 | Request validation | `models::user::tests`, `models::dashboard::tests`, `widgets::*::tests` | Email normalisation and validation; password length; dashboard defaults, dotted layout/settings fields, blank names; GitHub username rules; crypto id normalisation; free-text normalisation |
 | Outbound policy | `widgets::net_policy::tests`, `widgets::status::tests`, `widgets::http::tests` | Every blocked address class (loopback, unspecified, private, CGNAT, link-local and metadata, ULA, multicast, broadcast/reserved, documentation, benchmarking, IPv4-mapped/compatible, NAT64, 6to4, IETF-protocol `2001::/23`); the policy resolver rejects `localhost`; scheme/credential/length checks; IP-literal blocking incl. the hex form `0x7f000001`; exact fixture allowlist; path segments percent-encoded |
 | Cache | `cache::tests`, `tests::cache` | Key bounding (hash of long or special parts); unreachable Redis fails open within 3 s; compose Redis round trip with TTL; undecodable entries are misses; provider data shared under normalised keys (one upstream call for two users) |
 | Rate limits | `ratelimit::tests`, `tests::rate_limit` | Burst then 429 per key; cleanup keeps recent keys; auth limited per client IP (other IPs unaffected); data limited per user after authentication (401 before 429) |
 | Middleware | `app::tests` | CORS allowlist (preflight and simple requests); server timeout → JSON 504; unknown route 404 and wrong method 405 as JSON |
+| Static serving (M5) | `tests::frontend` (full router, temporary build directory, no database) | With `STATIC_DIR`: a hashed `/assets/` file is served with `immutable` caching, the three security headers, and gzip on request; `/`, `/index.html`, `/login`, and `/dashboards/<id>` (with and without trailing slash) return `index.html` with 200 and `no-cache`, HEAD included; `/api`, `/api/`, `/api/unknown` (GET and POST), a deep unknown API path, and a missing `/assets/` file are JSON 404s, never `index.html`; `..` and `%2e%2e` paths never serve a file outside the directory; `/healthz`, `/readyz`, and `/api/dashboards` keep their JSON responses; wrong methods on API and frontend paths are JSON 405. Without `STATIC_DIR`: `/`, deep links, and asset paths stay JSON 404s |
 | Auth routes | `tests::auth` (`#[sqlx::test]`) | Register/login/me match the contract; email normalised; duplicate (case-insensitive) → 409; three concurrent duplicate registrations → one 201 and two 409; invalid input → 422 details; wrong password and unknown email → same generic 401; `/me` for a deleted user → 401 |
 | Dashboard routes | `tests::dashboards` (`#[sqlx::test]`) | Create without JSON fields stores `{"widgets":[]}` and `{}`; CRUD responses match the contract; blank name and invalid shapes → 422 with dotted fields; foreign dashboards 404 for GET/PUT/DELETE and invisible in the list; unparsable id 404; 101st dashboard → 409; create for a deleted user → 401; migration 003 backfills legacy `null`/`[]` values and normalises emails |
 | Providers | `tests::providers` (`mockito`) | Each widget's success output matches the contract; the shared `User-Agent` is sent; GitHub token as bearer; NewsAPI key in `X-Api-Key` and absent from the URL; city and topic query-encoded, path-like GitHub usernames rejected without an upstream call; crypto null numbers kept as `null`; upstream 500 and undecodable bodies → generic 502; slow upstream → 502 at the configured timeout for all four providers; missing keys → 503; missing/blank query values → 422 naming the parameter |
@@ -154,7 +168,7 @@ Backend (`cargo test`, one binary; unit tests sit beside the code, router tests 
 | Errors and health | `tests::errors`, `tests::health` | Malformed JSON 400, wrong content type 415, non-object/mistyped bodies 422 with details, all as `application/json`; database down → generic 500; `/healthz` without dependencies; `/readyz` 200 with both up, 503 with either down |
 | Contract | `tests::contract` | Handler output above is validated with `jsonschema` (formats on) against `contracts/api-contract.v1.json`; the contract compiles; a deliberately broken fixture set (pre-M4b `[]` layout, `w: 0`, null settings, bad uuid, blank name, missing field, leaked error fields, raw library error text as a status class) must fail validation (drill 11) |
 
-Totals: 87 backend tests (**observed** 2026-10-10, `make backend-check` on this workstation). Not covered by
+Totals: 94 backend tests (**observed** 2026-10-10, `make verify` on this workstation after M5a; 87 before). Not covered by
 automated tests: the `dns_error` status class (it would need a non-resolving name, which could query external DNS)
 and live provider behaviour (manual, human-scale smoke only).
 

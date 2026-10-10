@@ -5,8 +5,8 @@ Dependency downloads (crates, npm packages, the Postgres and Redis images) need 
 widgets call public APIs at request time; see "Provider keys" below.
 
 Commands are run from the repository root unless a `cd` is shown. Steps below match `.env.example`,
-`frontend/.env.example`, `docker-compose.yml`, `backend/src/config.rs`, `backend/src/main.rs`, and
-`frontend/vite.config.ts`, and the root `Makefile` as of M4a.
+`frontend/.env.example`, `docker-compose.yml`, `backend/src/config.rs`, `backend/src/main.rs`,
+`frontend/vite.config.ts`, the root `Makefile`, `Dockerfile`, and `.dockerignore` as of M5a.
 
 ## Network exposure (D3, mitigated by M4 decision 4)
 
@@ -20,6 +20,7 @@ by the owner 2026-10-10; **locally verified** on this workstation 2026-10-10 as 
 | Postgres `:5432` | `127.0.0.1` (`docker-compose.yml`, `'127.0.0.1:5432:5432'`) | `POSTGRES_USER` / `POSTGRES_PASSWORD` from `.env`, required by compose |
 | Redis `:6379` | `127.0.0.1` (`'127.0.0.1:6379:6379'`) | `REDIS_PASSWORD` from `.env`, required by compose |
 | Vite `:5173` | `127.0.0.1` (`frontend/vite.config.ts`) | n/a |
+| Release app `:8088` (`make up`, M5) | Published as `127.0.0.1:${APP_PUBLISH_PORT:-8088}` (`docker-compose.yml`); inside its container the backend binds `0.0.0.0:8080`, which is reachable only through that loopback publication | API and frontend; anyone who can reach it can self-register |
 | `make e2e` only: fixtures `:18090`/`:18091`, backend `:8090`, Vite `:5175` | `127.0.0.1` (`frontend/playwright.config.ts`, `frontend/e2e/fixtures/server.mjs`); they stop when the run ends | Fixture endpoints accept only the run's dummy keys; the backend uses a throwaway e2e `JWT_SECRET` |
 
 **Observed** on this workstation on 2026-10-10: firewalld zone `FedoraWorkstation` on `wlp1s0` opens
@@ -37,10 +38,10 @@ backend does not warn about it. Through the backend, D1 (status-widget SSRF) is 
 
 | Tool | Version | Notes |
 | --- | --- | --- |
-| Docker + Compose v2 | any current (Docker 29.8.2, Compose v5.5.1 on this workstation) | Runs Postgres and Redis only. Add your user to the `docker` group so `sudo` is unnecessary (already the case here); the legacy instructions' `sudo docker` is not needed. |
+| Docker + Compose v2 | any current (Docker 29.8.2, Compose v5.5.1 on this workstation) | Runs Postgres and Redis, and builds and runs the release image ([Run the release](#run-the-release-docker-only)). Add your user to the `docker` group so `sudo` is unnecessary (already the case here); the legacy instructions' `sudo docker` is not needed. |
 | Node.js | 20.19.0 (`.nvmrc`); `frontend/package.json` `engines.node` is `^20.19.0 \|\| >=22.12.0` | Vite 7 needs `^20.19 \|\| >=22.12`. The Makefile puts the project Node first when `.tools/node-v20.19.0-linux-x64/bin` exists and otherwise uses host Node (`make doctor` checks the version). On this workstation the project Node lives in the gitignored `.tools/node-v20.19.0-linux-x64/bin`; put it first on `PATH` (below). Host Node 24.19.0 also satisfies Vite 7. npm comes with Node; the project uses npm, not pnpm. |
 | Rust | 1.99.0, pinned by `rust-toolchain.toml` (with `rustfmt` and `clippy`); `backend/Cargo.toml` declares `rust-version = "1.89"`, the highest MSRV declared among the locked dependencies | Install [rustup](https://rustup.rs/); inside the checkout it fetches the pinned toolchain on first use. reqwest uses native TLS, so a native build needs OpenSSL development headers and `pkg-config`: **observed** on Fedora 44 that `openssl-sys` fails without `openssl-devel`. Without host Rust, `make backend-check` (and so `make verify`) falls back to a container ([testing](testing.md)), but running the backend (`make backend-dev`) and `make format` need host Rust. |
-| make, awk | any | GNU make drives the targets below; `make setup` uses `awk` and `openssl` to write `.env`. |
+| make, awk | any | GNU make drives the targets below; `make setup` and `make setup-env` use `awk` and `openssl` to write `.env`. |
 | git, curl, openssl | any | `openssl` generates the JWT secret. |
 
 `sqlx-cli` is not required: the backend applies migrations at startup.
@@ -61,9 +62,9 @@ make web-dev       # terminal 2: Vite on 127.0.0.1:5173
 | --- | --- |
 | `make help` | Lists the targets |
 | `make setup` | Runs `npm ci` in `frontend/`. Creates `.env` only if it is absent: copies `.env.example`, generates `POSTGRES_PASSWORD`, `REDIS_PASSWORD` (24 random bytes, hex) and `JWT_SECRET` (32 random bytes, hex) with `openssl rand`, fills the matching `DATABASE_URL`/`REDIS_URL`, sets mode 600, and prints no secret. An existing `.env` is never read or changed. |
-| `make doctor` | Reports Node, npm, Docker and Compose, cargo and rustc (or whether the container fallback will be used), openssl, whether `.env` exists (never its contents), and whether `frontend/node_modules` is installed. Exits non-zero if Node is too old or missing. |
+| `make doctor` | Reports Node, npm, Docker and Compose, cargo and rustc (or whether the container fallback will be used), openssl, whether `.env` exists (never its contents), whether `frontend/node_modules` is installed, and on a final `release:` line whether Docker alone is enough for the release path. Exits non-zero if Node is too old or missing (development needs it; the release does not). |
 | `make db-up` / `make db-down` | `docker compose up -d --wait postgres redis` / `docker compose stop postgres redis`; data volumes are kept. `db-up` needs `.env`. |
-| `make db-reset CONFIRM=yes` | **Destructive**: `docker compose down --volumes` deletes the Postgres and Redis data. Refuses without `CONFIRM=yes`; the only target that removes volumes, and it needs owner approval to run. |
+| `make db-reset CONFIRM=yes` | **Destructive**: `docker compose --profile app down --volumes` removes the containers (including the release app) and deletes the Postgres and Redis data. Refuses without `CONFIRM=yes`; the only target that removes volumes, and it needs owner approval to run. |
 | `make backend-dev` | `cargo run` in `backend/` with the root `.env`; needs host Rust. |
 | `make web-dev` | `npm run dev` in `frontend/`. |
 | `make backend-check`, `make web-check`, `make verify`, `make format` | The quality gates; see [testing](testing.md). |
@@ -129,6 +130,65 @@ compose refuses to start without the secrets.
    server proxies `/api` to `http://127.0.0.1:8080` (`frontend/vite.config.ts`); the `API_PROXY_TARGET`
    environment variable overrides the target (the Playwright harness sets `http://127.0.0.1:8090`).
 
+## Run the release (Docker only)
+
+The release (M5) is one image, `insightboard:local`, built from the root `Dockerfile`: the backend serves the built
+frontend from the same origin. It needs Docker with Compose, `make`, `openssl`, and `awk`; no host Rust or Node.
+`make doctor` ends with a `release:` line that says whether Docker alone is enough on this machine.
+
+```sh
+make setup-env   # .env with generated secrets, if absent (openssl + awk only; no npm)
+make release     # build insightboard:local and insightboard:<version>; nothing is pushed
+make up          # Postgres, Redis, and the app; waits until all three are healthy
+# open http://127.0.0.1:8088
+make logs        # follow the app logs (Ctrl-C stops following, not the app)
+make backup      # pg_dump into backups/ (gitignored), mode 600
+make down        # stop and remove the containers; volumes are kept
+```
+
+| Target | What it does |
+| --- | --- |
+| `make setup-env` | The `.env` half of `make setup` (no `npm ci`): creates `.env` only if it is absent, with generated secrets and mode 600; prints no secret. |
+| `make release` | `docker compose --profile app build app`, then tags the image `insightboard:<version>` (the backend version) beside `insightboard:local`; needs `.env` because compose interpolates `docker-compose.yml`. |
+| `make up` | `docker compose --profile app up -d --wait`: starts Postgres, Redis, and the app (building the image if it is missing) and waits up to 180 s until all three are healthy; prints the published address. After a new `make release`, `make up` recreates the app with the new image; migrations run at startup. |
+| `make down` | `docker compose --profile app down`: stops and removes the app, Postgres, and Redis containers and the network. **Never removes volumes.** A running `make backend-dev` loses its database until `make db-up`. |
+| `make logs` | `docker compose --profile app logs -f app`. |
+| `make backup` | `pg_dump --format=custom` inside the `postgres` container with that container's own `POSTGRES_USER` (no password leaves `.env`), written to `backups/insightboard-<UTC timestamp>.dump` with mode 600 in a mode-700 directory; an empty or failed dump is deleted and the target fails. Postgres must be running (`make db-up` or `make up`). Restore with `pg_restore` (runbook, M5b). |
+
+How the release app runs (`Dockerfile`, `docker-compose.yml` service `app`, profile `app`):
+
+- **Image.** Multi-stage: `node:20.19.0-bookworm-slim` runs `npm ci` and `npm run build`; `rust:1.99.0-bookworm`
+  runs `cargo build --release --locked` (migrations are embedded in the binary); the runtime is `debian:bookworm-slim`
+  with `ca-certificates`, `libssl3`, and `curl` (healthcheck) only. It ships `/app/insightboard-backend` and the built
+  frontend in `/app/dist` (`STATIC_DIR=/app/dist`), owned by root, and runs as the unprivileged user `insightboard`
+  (uid 10001). `.dockerignore` keeps `.env*` (except the examples), `.tools/`, `.git/`, `target/`, `node_modules/`,
+  `dist/`, logs, Playwright output, and `backups/` out of the build context; the image holds no secret.
+- **Configuration.** Compose passes an explicit environment, not `.env` itself: `DATABASE_URL` and `REDIS_URL` are
+  built from `POSTGRES_USER`, `POSTGRES_PASSWORD`, and `REDIS_PASSWORD` with the service names `postgres` and `redis`
+  (the `127.0.0.1` URLs in `.env` would point at the container itself); `JWT_SECRET` and the provider keys come from
+  `.env`; the optional base URLs, timeouts, and rate limits are forwarded when set in `.env` (blank means the
+  default). `STATUS_ALLOWED_FIXTURES` is not forwarded. `CORS_ORIGINS` is the published origin
+  (`http://127.0.0.1:<port>`, `http://localhost:<port>`); `RUST_LOG` is `info`.
+- **Exposure.** Inside its container the backend binds `0.0.0.0:8080` (`APP_HOST` is set by compose, not by `.env`
+  or the image), because a published port cannot reach a loopback-only listener. The host side is published only as
+  `127.0.0.1:${APP_PUBLISH_PORT:-8088}`; nothing listens on `0.0.0.0` or `::` on the host. This is the only
+  non-loopback `APP_HOST` (M5 decision 3).
+- **Ports.** 8088 by default, so the release runs beside `make backend-dev` (8080), Vite (5173), and `make e2e`
+  (8090, 5175). Set `APP_PUBLISH_PORT` in `.env` to change it; `CORS_ORIGINS` follows.
+- **Shared data.** The app joins the same compose project and uses the same Postgres and Redis volumes as
+  development: development and e2e test users exist beside release data (each owner sees only their own dashboards).
+- **Health.** The compose healthcheck is `curl -fsS http://127.0.0.1:8080/readyz` inside the container; the policy
+  is `restart: unless-stopped`, as for Postgres and Redis.
+- **Rate limit.** The auth rate limit keys on the TCP peer address, and behind Docker's loopback port publishing every
+  browser on this machine reaches the app from the same Docker-side address `[INFERENCE: Docker port forwarding]`, so
+  all clients share one auth bucket (10 register or login requests per minute, burst 5), as through the Vite proxy
+  (M5 decision 7). Raise `AUTH_RATE_LIMIT_*` in `.env` and run `make up` if that gets in the way.
+- **Static serving.** `/api/**`, `/healthz`, and `/readyz` behave as in development (`/api/<unknown>` stays a JSON
+  404). Files under `/assets/` (content-hashed by Vite) get `Cache-Control: public, max-age=31536000, immutable`; a
+  missing `/assets/` file is a JSON 404. Every other `GET` for a missing file returns `index.html` (`no-cache`) with
+  200, so deep links such as `/dashboards/<id>` load. Static responses carry `X-Content-Type-Options: nosniff`,
+  `Referrer-Policy: no-referrer`, and `X-Frame-Options: DENY`, and are gzip-compressed when the client asks.
+
 ## Configuration
 
 `.env` is read by the backend at startup (`dotenvy`, before logging initialises). Variables
@@ -138,6 +198,8 @@ compose refuses to start without the secrets.
 | --- | --- | --- |
 | `APP_HOST` | `127.0.0.1` | IP address the backend binds (`std::net::IpAddr`); unparsable values fail startup. Non-loopback values are a deliberate owner-approved change. |
 | `APP_PORT` | `8080` | Port only. Changing it also needs the Vite proxy target changed (`API_PROXY_TARGET`). |
+| `STATIC_DIR` | unset | Directory of the built frontend (`frontend/dist` after `npm run build`) served beside the API, with the SPA fallback described in [Run the release](#run-the-release-docker-only). Unset: unknown paths stay a JSON 404 and Vite serves the frontend. When set it must be an existing directory containing `index.html`, or startup fails naming `STATIC_DIR`. Relative paths start at the working directory. The image sets `/app/dist`. |
+| `APP_PUBLISH_PORT` | `8088` | Read by compose only: the host port of the release app, published on `127.0.0.1`. |
 | `POSTGRES_USER`, `POSTGRES_PASSWORD` | none, required by compose | Read by compose only; the container is initialised with them on first start. Database name is `insightboard`. |
 | `REDIS_PASSWORD` | none, required by compose | Read by compose only (`--requirepass`, and `REDISCLI_AUTH` inside the container so `docker compose exec redis redis-cli ...` works without `-a`). |
 | `DATABASE_URL` | none, required | `postgres://<POSTGRES_USER>:<POSTGRES_PASSWORD>@127.0.0.1:5432/insightboard`; same values as above. |
@@ -170,6 +232,7 @@ the Vite default.
 | --- | --- | --- |
 | 8080 | Backend API | `127.0.0.1` (`APP_HOST`) |
 | 5173 | Vite dev server | `127.0.0.1` |
+| 8088 | Release app (`make up`; `APP_PUBLISH_PORT`) | `127.0.0.1` (published; `0.0.0.0:8080` inside the container only) |
 | 5432 | Postgres (compose service `postgres`) | `127.0.0.1` |
 | 6379 | Redis (compose service `redis`) | `127.0.0.1` |
 
@@ -189,7 +252,7 @@ Keys are optional and must be free-tier keys the owner supplies; never buy a pla
 
 ## Stop, restart, and data
 
-- Stop the backend and Vite with Ctrl-C.
+- Stop the backend and Vite with Ctrl-C; stop the release app with `make down`.
 - `docker compose stop` stops the containers; `docker compose down` removes them. Both keep the named volumes
   `postgres_data` (users and dashboards) and `redis_data` (cache, append-only file enabled), so data survives
   restarts. Compose scopes them to the project, so they appear as `<project>_postgres_data` and
@@ -227,6 +290,8 @@ docker compose exec -T redis redis-cli TTL '<key>'
   membership with `id`.
 - **Port 5432 or 6379 already in use** — another Postgres or Redis is running; stop it. Remapping means editing
   `docker-compose.yml` and `DATABASE_URL`/`REDIS_URL` together, which is an owner-approved change.
+- **`make up` fails with `Bind for 127.0.0.1:8088 failed: port is already allocated`** — another program uses the
+  release port; set `APP_PUBLISH_PORT` in `.env` to a free port and run `make up` again (`CORS_ORIGINS` follows).
 - **`password authentication failed for user "..."`** — an existing `postgres_data` volume keeps the
   credentials it was initialised with; changing `POSTGRES_USER`/`POSTGRES_PASSWORD` in `.env` does not change
   them. Rotate the password in place without deleting data, using the old user and a prompt so the password is
@@ -259,7 +324,8 @@ docker compose exec -T redis redis-cli TTL '<key>'
 
 ## What is not set up
 
-No Dockerfile, application containers, or production configuration. CI is `.github/workflows/ci.yml` (see [testing](testing.md#ci)). The legacy run
+No production or cloud configuration, TLS, or registry. The release image and compose profile are described in
+[Run the release](#run-the-release-docker-only). CI is `.github/workflows/ci.yml` (see [testing](testing.md#ci)). The legacy run
 instructions remain readable at
 [`manual run instructions.md` at `f15c6a3`](https://github.com/lavinhoque33/insightboard/blob/f15c6a3/manual%20run%20instructions.md);
 their absolute paths, `sudo docker`, and `httpstat.us` target no longer apply.

@@ -51,6 +51,8 @@ lerna-debug.log*
 *.db
 *.sqlite
 *.sqlite3
+# make backup output (pg_dump files)
+backups/
 
 # ============================================
 # Docker

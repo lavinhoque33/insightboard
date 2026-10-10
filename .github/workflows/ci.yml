@@ -146,3 +146,72 @@ jobs:
             frontend/e2e/playwright-report
             frontend/e2e/test-results
           retention-days: 7
+
+  release:
+    name: release
+    runs-on: ubuntu-24.04
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      # Generates a throwaway .env (random secrets, no provider keys) on this runner only;
+      # it is never printed or uploaded.
+      - name: Throwaway .env
+        run: make setup-env
+      - name: Build the release image (no push)
+        run: make release
+      - name: Start Postgres, Redis, and the app
+        run: make up
+      # No provider is called: only health, static, and dashboard routes on 127.0.0.1:8088.
+      - name: Smoke checks
+        shell: bash
+        run: |
+          set -euo pipefail
+          base=http://127.0.0.1:8088
+          work="$(mktemp -d)"
+          version="$(sed -n 's/^version *= *"\(.*\)"/\1/p' backend/Cargo.toml)"
+
+          echo "healthz reports version $version"
+          curl -fsS "$base/healthz" | jq -e --arg v "$version" '.status == "ok" and .version == $v'
+
+          echo "readyz is 200"
+          curl -fsS -o /dev/null "$base/readyz"
+
+          echo "/ serves index.html"
+          curl -fsS -D "$work/root.h" -o "$work/root.html" "$base/"
+          grep -qi '^content-type: text/html' "$work/root.h"
+          grep -qi '^cache-control: no-cache' "$work/root.h"
+          grep -q 'id="app"' "$work/root.html"
+
+          echo "a deep link gets the SPA fallback"
+          curl -fsS -D "$work/deep.h" -o "$work/deep.html" "$base/dashboards/some-id"
+          grep -qi '^content-type: text/html' "$work/deep.h"
+          cmp "$work/root.html" "$work/deep.html"
+
+          echo "hashed assets are immutable"
+          asset="$(grep -o '/assets/[^"]*\.js' "$work/root.html" | head -n 1)"
+          curl -fsS -D "$work/asset.h" -o /dev/null "$base$asset"
+          grep -qi '^cache-control: public, max-age=31536000, immutable' "$work/asset.h"
+          grep -qi '^x-content-type-options: nosniff' "$work/asset.h"
+
+          echo "/api/unknown is a JSON 404"
+          result="$(curl -sS -o "$work/unknown.json" -w '%{http_code} %{content_type}' "$base/api/unknown")"
+          test "$result" = "404 application/json"
+          jq -e '.error | type == "string"' "$work/unknown.json"
+
+          echo "register, create a dashboard, list it"
+          email="ci-release-$(date +%s)-$RANDOM@example.com"
+          token="$(curl -fsS -H 'Content-Type: application/json' \
+            -d "{\"email\":\"$email\",\"password\":\"ci-release-smoke-password\"}" \
+            "$base/api/auth/register" | jq -er .token)"
+          curl -fsS -H "Authorization: Bearer $token" -H 'Content-Type: application/json' \
+            -d '{"name":"Release smoke"}' "$base/api/dashboards" | jq -e '.name == "Release smoke"'
+          curl -fsS -H "Authorization: Bearer $token" "$base/api/dashboards" \
+            | jq -e 'length == 1 and .[0].name == "Release smoke"'
+      - name: App logs
+        if: failure()
+        run: docker compose --profile app logs --no-color app
+      - name: Stop the stack
+        if: always()
+        run: make down

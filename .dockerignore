@@ -1,0 +1,45 @@
+# Build context for the root Dockerfile: sources and lockfiles only. Never secrets, local
+# tools, build output, or dependency trees.
+
+# Secrets and local environment (the image reads none; compose passes values at run time)
+**/.env*
+!.env.example
+!frontend/.env.example
+secrets/
+**/*.pem
+**/*.key
+
+# Local tools, VCS, CI, editor state
+.tools/
+.git/
+.github/
+.omp/
+.vscode/
+.idea/
+
+# Build output and dependency trees (rebuilt inside the image)
+**/target/
+**/node_modules/
+**/dist/
+**/*.tsbuildinfo
+
+# Logs, pid files, Playwright output, backups, temporary files
+**/*.log
+**/*.pid
+logs/
+frontend/e2e/test-results/
+frontend/e2e/playwright-report/
+frontend/test-results/
+frontend/playwright-report/
+backups/
+**/*.dump
+tmp/
+temp/
+**/*.tmp
+**/*.bak
+
+# Not needed to build
+docs/
+Dockerfile
+.dockerignore
+docker-compose*.yml

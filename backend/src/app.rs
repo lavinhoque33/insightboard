@@ -2,16 +2,19 @@
 
 use axum::{
     extract::Request,
-    http::{header, HeaderValue, Method},
+    handler::HandlerWithoutStateExt,
+    http::{header, HeaderValue, Method, StatusCode, Uri},
     middleware::{self, Next},
     response::{IntoResponse, Response},
-    routing::{get, post},
+    routing::{any, get, get_service, post, MethodRouter},
     Router,
 };
-use std::{sync::Arc, time::Duration};
+use std::{convert::Infallible, path::Path, sync::Arc, time::Duration};
 use tower_http::{
     compression::CompressionLayer,
     cors::{AllowOrigin, CorsLayer},
+    services::{ServeDir, ServeFile},
+    set_header::SetResponseHeaderLayer,
     trace::TraceLayer,
 };
 
@@ -109,6 +112,7 @@ pub fn router(state: AppState) -> Router {
 
     let cors_origins = state.config.cors_origins.clone();
     let request_timeout = state.config.request_timeout;
+    let static_dir = state.config.static_dir.clone();
     with_middleware(
         Router::new()
             .route("/healthz", get(handlers::health::health_check))
@@ -116,8 +120,84 @@ pub fn router(state: AppState) -> Router {
             .nest("/api", api_routes),
         cors_origins,
         request_timeout,
+        static_dir.as_deref(),
     )
     .with_state(state)
+}
+
+/// Vite's content-hashed build output: a changed file gets a new name.
+const IMMUTABLE: &str = "public, max-age=31536000, immutable";
+
+/// The built frontend in `dir`, used as the fallback for every path no API or health route
+/// matched. `/api` paths stay a JSON 404 and never reach `index.html`; a missing file under
+/// `/assets/` is a JSON 404 (never cached); any other missing path gets `index.html` with 200
+/// so HTML5-history deep links load. Methods other than GET and HEAD get the JSON 405.
+fn frontend(dir: &Path) -> Router {
+    let assets: MethodRouter =
+        get_service(ServeDir::new(dir.join("assets")).fallback(not_found.into_service()))
+            .fallback(method_not_allowed)
+            .layer::<_, Infallible>(middleware::from_fn(skip_unservable_asset))
+            .layer(SetResponseHeaderLayer::overriding(
+                header::CACHE_CONTROL,
+                |res: &Response| {
+                    matches!(
+                        res.status(),
+                        StatusCode::OK | StatusCode::PARTIAL_CONTENT | StatusCode::NOT_MODIFIED
+                    )
+                    .then_some(HeaderValue::from_static(IMMUTABLE))
+                },
+            ));
+    let pages: MethodRouter =
+        get_service(ServeDir::new(dir).fallback(ServeFile::new(dir.join("index.html"))))
+            .fallback(method_not_allowed)
+            .layer::<_, Infallible>(middleware::from_fn(index_for_unservable_page))
+            .layer(SetResponseHeaderLayer::overriding(
+                header::CACHE_CONTROL,
+                HeaderValue::from_static("no-cache"),
+            ));
+
+    Router::new()
+        .route("/api", any(not_found))
+        .route("/api/", any(not_found))
+        .route("/api/*rest", any(not_found))
+        .nest_service("/assets", assets)
+        .fallback_service(pages)
+        .layer(SetResponseHeaderLayer::if_not_present(
+            header::X_CONTENT_TYPE_OPTIONS,
+            HeaderValue::from_static("nosniff"),
+        ))
+        .layer(SetResponseHeaderLayer::if_not_present(
+            header::REFERRER_POLICY,
+            HeaderValue::from_static("no-referrer"),
+        ))
+        .layer(SetResponseHeaderLayer::if_not_present(
+            header::X_FRAME_OPTIONS,
+            HeaderValue::from_static("DENY"),
+        ))
+}
+
+/// `/assets/` paths no file can have are a JSON 404 without touching the filesystem.
+async fn skip_unservable_asset(req: Request, next: Next) -> Response {
+    if unservable(req.uri().path()) {
+        return not_found().await;
+    }
+    next.run(req).await
+}
+
+/// Other paths no file can have get `index.html`, like any missing file.
+async fn index_for_unservable_page(mut req: Request, next: Next) -> Response {
+    if unservable(req.uri().path()) {
+        *req.uri_mut() = Uri::from_static("/index.html");
+    }
+    next.run(req).await
+}
+
+/// A path no file in the build can have, which `ServeDir` would turn into a logged 500: a
+/// segment longer than a file name may be (255 bytes, checked before percent-decoding, which
+/// only shortens it) or an encoded NUL. It is treated as a missing file.
+fn unservable(path: &str) -> bool {
+    path.split('/')
+        .any(|segment| segment.len() > 255 || segment.contains("%00"))
 }
 
 async fn not_found() -> Response {
@@ -139,12 +219,13 @@ async fn request_timeout(limit: Duration, req: Request, next: Next) -> Response 
     }
 }
 
-/// Wrap a router in the HTTP middleware stack (JSON fallbacks, request timeout, CORS allowlist,
-/// compression, tracing).
+/// Wrap a router in the HTTP middleware stack (JSON fallbacks or the built frontend in
+/// `static_dir`, request timeout, CORS allowlist, compression, tracing).
 pub fn with_middleware<S>(
     router: Router<S>,
     cors_origins: Vec<HeaderValue>,
     timeout: Duration,
+    static_dir: Option<&Path>,
 ) -> Router<S>
 where
     S: Clone + Send + Sync + 'static,
@@ -155,8 +236,11 @@ where
         .allow_methods([Method::GET, Method::POST, Method::PUT, Method::DELETE])
         .allow_headers([header::AUTHORIZATION, header::CONTENT_TYPE]);
 
+    let router = match static_dir {
+        Some(dir) => router.fallback_service(frontend(dir)),
+        None => router.fallback(not_found),
+    };
     router
-        .fallback(not_found)
         .method_not_allowed_fallback(method_not_allowed)
         .layer(middleware::from_fn(move |req: Request, next: Next| {
             request_timeout(timeout, req, next)
@@ -193,6 +277,7 @@ mod tests {
                 ),
             vec![HeaderValue::from_static(ALLOWED)],
             Duration::from_millis(100),
+            None,
         )
     }
 

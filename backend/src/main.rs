@@ -43,6 +43,9 @@ async fn main() -> anyhow::Result<()> {
 
     let addr = SocketAddr::new(config.app_host, config.app_port);
     tracing::info!("Starting InsightBoard backend on {}", addr);
+    if let Some(dir) = &config.static_dir {
+        tracing::info!("Serving the built frontend from {}", dir.display());
+    }
 
     // Initialize database connection
     let db = Database::new(&config.database_url).await?;

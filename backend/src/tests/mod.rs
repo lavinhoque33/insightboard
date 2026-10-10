@@ -8,6 +8,7 @@ mod cache;
 mod contract;
 mod dashboards;
 mod errors;
+mod frontend;
 mod health;
 mod providers;
 mod rate_limit;
@@ -75,6 +76,7 @@ pub fn test_config() -> Config {
         request_timeout: Duration::from_secs(10),
         auth_rate_limit: rate(10_000, 10_000),
         data_rate_limit: rate(10_000, 10_000),
+        static_dir: None,
     }
 }
 

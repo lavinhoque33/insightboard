@@ -32,6 +32,59 @@ services:
             retries: 5
         command: ['redis-server', '--appendonly', 'yes', '--requirepass', '${REDIS_PASSWORD:?set REDIS_PASSWORD in .env}']
 
+    # Release app (M5): the image from the root Dockerfile, started only with the `app`
+    # profile (make up). Same Postgres and Redis data as development. Inside the container the
+    # backend binds 0.0.0.0 so the port can be published; the host side is loopback only.
+    app:
+        profiles: ['app']
+        image: insightboard:local
+        build:
+            context: .
+            dockerfile: Dockerfile
+        restart: unless-stopped
+        depends_on:
+            postgres:
+                condition: service_healthy
+            redis:
+                condition: service_healthy
+        ports:
+            - '127.0.0.1:${APP_PUBLISH_PORT:-8088}:8080'
+        # Explicit list, not env_file: DATABASE_URL and REDIS_URL in .env point at 127.0.0.1,
+        # which inside this container is the container itself.
+        environment:
+            APP_HOST: 0.0.0.0
+            APP_PORT: 8080
+            DATABASE_URL: postgres://${POSTGRES_USER:?set POSTGRES_USER in .env}:${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD in .env}@postgres:5432/insightboard
+            REDIS_URL: redis://:${REDIS_PASSWORD:?set REDIS_PASSWORD in .env}@redis:6379
+            JWT_SECRET: ${JWT_SECRET:?set JWT_SECRET in .env}
+            GITHUB_API_TOKEN: ${GITHUB_API_TOKEN:-}
+            OPENWEATHER_API_KEY: ${OPENWEATHER_API_KEY:-}
+            NEWSAPI_API_KEY: ${NEWSAPI_API_KEY:-}
+            # The browser origin is the published loopback port.
+            CORS_ORIGINS: http://127.0.0.1:${APP_PUBLISH_PORT:-8088},http://localhost:${APP_PUBLISH_PORT:-8088}
+            STATIC_DIR: /app/dist
+            RUST_LOG: info
+            # Optional overrides from .env; blank means the built-in default (.env.example).
+            GITHUB_API_BASE_URL: ${GITHUB_API_BASE_URL:-}
+            OPENWEATHER_API_BASE_URL: ${OPENWEATHER_API_BASE_URL:-}
+            NEWSAPI_API_BASE_URL: ${NEWSAPI_API_BASE_URL:-}
+            COINGECKO_API_BASE_URL: ${COINGECKO_API_BASE_URL:-}
+            PROVIDER_CONNECT_TIMEOUT_MS: ${PROVIDER_CONNECT_TIMEOUT_MS:-}
+            PROVIDER_TIMEOUT_MS: ${PROVIDER_TIMEOUT_MS:-}
+            STATUS_CONNECT_TIMEOUT_MS: ${STATUS_CONNECT_TIMEOUT_MS:-}
+            STATUS_TIMEOUT_MS: ${STATUS_TIMEOUT_MS:-}
+            REQUEST_TIMEOUT_MS: ${REQUEST_TIMEOUT_MS:-}
+            AUTH_RATE_LIMIT_PER_MINUTE: ${AUTH_RATE_LIMIT_PER_MINUTE:-}
+            AUTH_RATE_LIMIT_BURST: ${AUTH_RATE_LIMIT_BURST:-}
+            DATA_RATE_LIMIT_PER_MINUTE: ${DATA_RATE_LIMIT_PER_MINUTE:-}
+            DATA_RATE_LIMIT_BURST: ${DATA_RATE_LIMIT_BURST:-}
+        healthcheck:
+            test: ['CMD', 'curl', '-fsS', '-o', '/dev/null', 'http://127.0.0.1:8080/readyz']
+            interval: 10s
+            timeout: 5s
+            retries: 5
+            start_period: 30s
+
 volumes:
     postgres_data:
         driver: local
