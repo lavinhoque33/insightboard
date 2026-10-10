@@ -22,7 +22,7 @@ by a fresh-clone setup on a clean machine and a restart without data loss.
 | 1 | Packaging: one application image; the backend serves the built frontend on the same origin with an SPA fallback | ★ approved, including the `tower-http` features `fs` and `set-header` |
 | 2 | Multi-stage image: `node:20.19.0-bookworm-slim`, `rust:1.99.0-bookworm`, runtime `debian:bookworm-slim` with `libssl3` and `ca-certificates`, non-root, nothing pushed | ★ approved |
 | 3 | In-container bind `0.0.0.0`, published only on `127.0.0.1` | ★ approved |
-| 4 | Compose profile `app` in the existing project, host port `8000`, shared Postgres and Redis data | ★ approved |
+| 4 | Compose profile `app` in the existing project, host port `8088` (owner changed it from the proposed `8000`, which StatusForge already uses on this workstation), shared Postgres and Redis data | ★ approved; port amended 2026-10-10 |
 | 5 | Version `1.0.0` in both manifests; annotated tag `v1.0.0` only on an explicit request after M5 acceptance; no GitHub Release | ★ approved |
 | 6 | `CHANGELOG.md` (Keep a Changelog) and `docs/operations/runbook.md` | ★ approved |
 | 7 | Auth rate limit keeps keying on the peer address; the shared bucket is a documented limit | ★ approved |

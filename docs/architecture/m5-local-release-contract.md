@@ -61,7 +61,7 @@ Delivered in order; both are required for M5 acceptance.
 3. **Exposure** ★ Inside its container the backend binds `0.0.0.0` (required for a published port); compose publishes
    it only as `127.0.0.1:${APP_PUBLISH_PORT}`. This is the only non-loopback `APP_HOST`, it is set by compose rather
    than `.env`, and drill 2 proves nothing listens beyond loopback on the host.
-4. **Port and data** ★ The release service joins the existing compose project as profile `app` on host port `8000`
+4. **Port and data** ★ The release service joins the existing compose project as profile `app` on host port `8088`
    (configurable), so it can run beside `make backend-dev` (8080), Vite (5173), and `make e2e` (8090, 5175), and it
    uses the same Postgres and Redis volumes: one machine, one database. Alternative: a separate compose project with
    its own volumes and ports, isolating release data from development and test data.
@@ -88,7 +88,7 @@ Delivered in order; both are required for M5 acceptance.
 
 | Item | Value | Section |
 | --- | --- | --- |
-| Host port | `127.0.0.1:8000` via `APP_PUBLISH_PORT` | 3 |
+| Host port | `127.0.0.1:8088` via `APP_PUBLISH_PORT` (owner, 2026-10-10; `8000` was proposed, but StatusForge uses it on this workstation) | 3 |
 | Image name | `insightboard:<version>` and `insightboard:local`, built locally only | 2 |
 | Static caching | Hashed files under `/assets/` long-lived (`immutable`); `index.html` `no-cache` | 1 |
 | Response headers on static files | `X-Content-Type-Options: nosniff`, `Referrer-Policy: no-referrer`, `X-Frame-Options: DENY` | 1 |
@@ -175,7 +175,7 @@ manual provider smoke stays within the approved external targets in the roadmap.
 | # | Drill | Expected |
 | --- | --- | --- |
 | 1 | `make release` from a clean tree; inspect the image | Builds; runs as non-root; no `.env`, `.tools/`, `node_modules/`, or source tree in the image |
-| 2 | `make up`; `ss -ltn` | App on `127.0.0.1:8000`; Postgres and Redis on `127.0.0.1`; nothing on `0.0.0.0` or `::` |
+| 2 | `make up`; `ss -ltn` | App on `127.0.0.1:8088`; Postgres and Redis on `127.0.0.1`; nothing on `0.0.0.0` or `::` |
 | 3 | Browser on the release app (desktop and 390 px) | Register, create, add and configure a widget, rename, reload a deep link; `/api/unknown` JSON 404; `/healthz` shows the release version |
 | 4 | Restart without data loss | `docker compose restart`, then `make down` and `make up`: same users and dashboards; a token issued before still works |
 | 5 | Fresh clone, Docker-only `PATH`, own compose project (decision 9b) | Working app by following README and runbook alone; throwaway project removed afterwards |

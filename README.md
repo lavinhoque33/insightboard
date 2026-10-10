@@ -2,79 +2,58 @@
 
 InsightBoard is a personal dashboard builder. You register, create dashboards, and arrange widgets on a
 drag-and-drop grid; each widget shows data from a public provider, fetched and cached by the backend. It is a
-Rust/Axum API backed by Postgres and Redis, with a Vue 3 and TypeScript client. Everything runs locally; nothing
-is deployed.
+Rust/Axum API backed by Postgres and Redis, with a Vue 3 and TypeScript client. Everything runs on your own machine;
+nothing is deployed.
 
 - **$0 of spending.** Free provider tiers only, with keys you supply; no cloud resources.
-- **Local only.** Binds loopback by default (M4 decision 4, below).
+- **Local only.** Every service listens on `127.0.0.1`; nothing is reachable from the network.
 
-**Status:** M0–M3 are **accepted** (2026-10-10), defects included. They were delivered between 2025-10-28 and
-2026-03-03 under a legacy phase protocol and **reported** verified on a previous workstation, with no evidence
-beyond prose. On this workstation, the 2026-10-10 baseline drills B0–B12 **observed** passing builds, tests, and
-user journeys, failing `cargo fmt --check`, `cargo clippy -D warnings`, and `npm audit`, and defects including
-D9, D23, D25, D30 (crypto and news widgets always fail), and D31 (small-width layout); see the
-[baseline verification record](docs/development/baseline-verification.md). M4 — Quality gate and hardening is
-**accepted** (2026-10-10) under its [contract](docs/architecture/m4-quality-gate-contract.md)
-([ADR 0002](docs/decisions/ADR-0002-m4-quality-gate.md)): slices M4a, M4b, and M4c, with CI green on GitHub; see
-the [M4 verification record](docs/development/m4-verification.md). M5 — local release is next. See the
-[roadmap](docs/product/roadmap.md).
+**Status:** M0–M4 are **accepted** (2026-10-10). M5 — local release is **in progress** under its
+[contract](docs/architecture/m5-local-release-contract.md) ([ADR 0003](docs/decisions/ADR-0003-m5-local-release.md)).
+See the [roadmap](docs/product/roadmap.md) and the [changelog](CHANGELOG.md).
 
-## What works (as built at `f15c6a3`)
+## Features
 
-- **Accounts:** register and log in with email and password (Argon2 hashing, 7-day HS256 JWT kept in
-  `localStorage`); `GET /api/me` returns the current user.
-- **Dashboards:** owner-scoped create, list, open, update, and delete. Another user's dashboard is a 404.
-- **Widgets:** five types, each proxied and cached in Redis by the backend:
+- **Accounts:** register and sign in with email and password (Argon2); sessions last 24 hours and return you to the
+  page you asked for.
+- **Dashboards:** create, rename, open, and delete your own dashboards; other users' dashboards are invisible.
+- **Widgets:** five types, each fetched through the backend and cached in Redis:
 
-  | Widget | Input | Provider | Cache TTL |
+  | Widget | Input | Provider | Cache |
   | --- | --- | --- | --- |
-  | GitHub | `username` | GitHub public events (optional token) | 300 s |
-  | Weather | `city` | OpenWeather current weather (key required) | 600 s |
-  | News | `topic` | NewsAPI everything (key required) | 900 s |
-  | Crypto | `ids` (CoinGecko ids) | CoinGecko markets, no key | 300 s |
-  | Status | `urls` (comma list) | a GET to each URL, 5 s each | 120 s |
+  | GitHub | `username` | GitHub public events (optional token) | 5 min |
+  | Weather | `city` | OpenWeather current weather (free key) | 10 min |
+  | News | `topic` | NewsAPI everything (free key) | 15 min |
+  | Crypto | CoinGecko ids | CoinGecko markets, no key | 5 min |
+  | Status | up to 10 URLs | a GET to each public `http`/`https` URL | 2 min, per user |
 
-  Without a key, Weather and News return 400 "OpenWeather API key not configured" and "NewsAPI key not
-  configured".
-- **Editor:** GridStack grid (12 columns). Adding a widget opens its configuration first and creates nothing
-  until you save; drag and resize; layout and configuration auto-save 2 s after the last change. Widgets
-  refresh on their own interval.
-- **Contract:** payload shapes are described in [`contracts/api-contract.v1.json`](contracts/api-contract.v1.json)
-  (JSON Schema) and mirrored by hand in
-  [`frontend/src/contracts/apiContract.ts`](frontend/src/contracts/apiContract.ts). Nothing enforces either yet.
-- **Tests:** 5 backend unit tests and 3 frontend component tests; no integration, end-to-end, or CI.
+- **Editor:** a 12-column GridStack grid with drag and resize (one read-only column below 768 px). Adding a widget
+  opens its configuration first; editing shows the current settings. Changes save automatically; a failed save
+  says so and offers Retry.
+- **Interface:** light and dark themes that follow your system, with a Light/Dark/System switch; keyboard-reachable
+  menus and dialogs; reduced motion respected.
 
-The full as-built reference, including every route and status code, is the
-[M0–M3 baseline contract](docs/architecture/m0-m3-baseline-contract.md).
+## Run the release (Docker only)
 
-Since M4 (2026-10-10): 24-hour tokens; 422 field errors, 409, 429, and 503 for a missing provider key; the status
-widget refuses non-public addresses; crypto and news work (D30); the configuration form pre-fills; failed saves show
-Retry; the editor works at phone width; a redesigned interface with light and dark themes that follow the OS, with a
-Light/Dark/System toggle in the header. Tests: 87 backend, 91 Vitest, 2 Playwright journeys, and GitHub Actions CI.
+Needs Docker with Compose, `make`, `openssl`, and Git; no Rust or Node on the host.
 
-## Limits
+```sh
+git clone https://github.com/lavinhoque33/insightboard.git
+cd insightboard
+make setup-env   # .env with generated secrets (mode 600); provider keys left empty
+make release     # builds the insightboard:local image
+make up          # Postgres, Redis, and the app; waits until healthy
+```
 
-The [defect catalogue](docs/architecture/m0-m3-baseline-contract.md) lists D1–D31 with references and the slice
-that fixes each. The ones to know first:
+Open `http://127.0.0.1:8088`. Stop with `make down` (data is kept). Weather and News need free keys from OpenWeather
+and NewsAPI in `.env`; run `make up` again after adding them. Backups, upgrades, secret rotation, and
+troubleshooting are in the [runbook](docs/operations/runbook.md).
 
-- **D3 — network exposure (mitigated).** Per M4 decision 4 (owner-approved 2026-10-10) the backend binds
-  `127.0.0.1` by default (`APP_HOST`), compose publishes Postgres and Redis on `127.0.0.1` only, and their
-  credentials come from `.env`; **locally verified** on this workstation 2026-10-10 (precondition B0 in the
-  [baseline verification record](docs/development/baseline-verification.md)). The host firewall on this
-  workstation opens ports 1025–65535; the services listen on `127.0.0.1` only.
-  Read [local setup](docs/development/local-setup.md) before starting anything.
-- **D1 — status widget SSRF (fixed in M4b).** The status widget now accepts only `http`/`https` URLs that resolve
-  to public addresses, follows no redirects, and checks at most 10 URLs with short timeouts.
-- **D9, D11 (fixed in M4c).** The configuration form pre-fills the current settings; backend, frontend, and
-  Playwright suites run in CI against local fixtures.
-- **D14 — vulnerable npm dependencies (fixed in M4a).** `npm audit` **observed** 8 production findings on
-  2026-10-10; after the M4a bumps both `npm audit --omit=dev` and the full audit report 0.
+## Develop
 
-## Run it locally
-
-Prerequisites: Docker with Compose, Node 20.19.0 (`.nvmrc`), `make`, `openssl`, and Rust (pinned by
-`rust-toolchain.toml`; `make backend-check` falls back to a container without it). Steps, configuration, and
-troubleshooting are in [local setup](docs/development/local-setup.md). In short:
+Needs Docker with Compose, Node 20.19.0 (`.nvmrc`), `make`, `openssl`, and Rust (pinned by `rust-toolchain.toml`;
+`make backend-check` falls back to a container without it). Details are in
+[local setup](docs/development/local-setup.md).
 
 ```sh
 make setup        # npm ci; creates .env with generated secrets if it is absent
@@ -83,15 +62,27 @@ make backend-dev  # terminal 1: applies migrations, serves 127.0.0.1:8080
 make web-dev      # terminal 2: http://127.0.0.1:5173
 ```
 
-Provider keys are optional; without them Weather and News return 503 "not configured" errors.
+The development servers and the release app share one database.
 
 ## Checks
 
-`make verify` runs every gate (fmt, clippy, cargo test, ESLint, Prettier, Vitest, type-check and build). Backend
-tests use the compose Postgres and Redis, so run `make db-up` first. Commands and current results are in
-[testing](docs/development/testing.md). Automated tests never call live providers. `make e2e` runs the Playwright
-journeys against a loopback provider fixture (one-time `cd frontend && npx playwright install chromium`). GitHub
-Actions runs the backend, web, and e2e jobs on every push to `main`.
+`make verify` runs every gate: rustfmt, clippy, cargo test, ESLint, Prettier, Vitest, type-check, and build. Backend
+tests use the compose Postgres and Redis, so run `make db-up` first. `make e2e` runs the Playwright journeys against
+a loopback provider fixture (one-time `cd frontend && npx playwright install chromium`). GitHub Actions runs the
+backend, web, e2e, and release jobs on every push to `main`. No automated test calls a live provider. Commands and
+current results are in [testing](docs/development/testing.md).
+
+## Limits
+
+- Loopback only and plain HTTP; no TLS between the app, Postgres, and Redis (D21, planned for M6).
+- The session token lives in the browser's `localStorage` for 24 hours, with no refresh or revocation.
+- Anyone who can reach the port can register; all clients share one sign-in rate-limit bucket.
+- One instance on one machine; no automatic backups (`make backup` is manual).
+- Weather and News need your own free provider keys.
+- Moving and resizing widgets needs a mouse or touch; keyboard layout editing is in the backlog.
+
+The defect catalogue D1–D31 and how each was resolved are in the
+[M0–M3 baseline contract](docs/architecture/m0-m3-baseline-contract.md) section 12.
 
 ## Where to start
 
@@ -105,15 +96,14 @@ Actions runs the backend, web, and e2e jobs on every push to `main`.
 ```text
 backend/            Rust crate insightboard-backend: src/{handlers,models,widgets}, auth, cache, config, db, error
 backend/migrations/ SQL migrations, embedded and applied at startup
-frontend/           Vue 3 + TypeScript + Vite client: src/{api,stores,router,views,components,composables,contracts}
-contracts/          api-contract.v1.json (JSON Schema, payload shapes)
-docs/               product, architecture, decisions, development, guides (non-authoritative walkthroughs)
-.omp/AGENTS.md      agent operating guide
-docker-compose.yml  Postgres and Redis only
-Makefile            setup, database, dev servers, checks (make help)
+frontend/           Vue 3 + TypeScript + Vite client; e2e/ holds the Playwright journeys and provider fixture
+contracts/          api-contract.v1.json (JSON Schema, payload shapes), enforced by tests on both sides
+docs/               product, architecture, decisions, development, operations, guides (non-authoritative)
+Dockerfile          release image: the backend serving the built frontend
+docker-compose.yml  Postgres and Redis; the app under the `app` profile
+Makefile            release, development, checks (make help)
+.github/workflows/  CI: backend, web, e2e, release
 ```
-
-There is no Dockerfile or CI workflow yet: CI belongs to M4c and container images to M5.
 
 License: [MIT](LICENSE). Repository:
 [github.com/lavinhoque33/insightboard](https://github.com/lavinhoque33/insightboard) (public). Contact:

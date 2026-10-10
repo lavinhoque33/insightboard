@@ -203,7 +203,7 @@ Scope, exit evidence, and keep-out follow plan section 12/M5 and the
 [ADR 0003](../decisions/ADR-0003-m5-local-release.md)). Legacy phase 12 (local half).
 
 - **M5a — Packaging:** the backend serves the built frontend; one multi-stage image; compose profile `app` on
-  `127.0.0.1:8000`; `make release`, `up`, `down`, `logs`, `backup`; CI `release` job. **In progress.**
+  `127.0.0.1:8088`; `make release`, `up`, `down`, `logs`, `backup`; CI `release` job. **In progress.**
 - **M5b — Release material and drills:** version `1.0.0`, `CHANGELOG.md`, runbook, README release path and
   screenshots, documented limits, drills 1–10. **Planned.** Tag `v1.0.0` only on request after acceptance.
 

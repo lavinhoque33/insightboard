@@ -1,0 +1,58 @@
+# Changelog
+
+All notable changes to InsightBoard. The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
+and versions follow [Semantic Versioning](https://semver.org/). Defect IDs (D1–D31) refer to the catalogue in the
+[M0–M3 baseline contract](docs/architecture/m0-m3-baseline-contract.md) section 12.
+
+## [Unreleased] — 1.0.0
+
+The first release: a local, single-machine product that builds and runs from a fresh clone with Docker alone. It
+covers milestones M0–M5 (2025-10-28 to 2026-10-10); see the [roadmap](docs/product/roadmap.md) and the verification
+records under [`docs/development/`](docs/development/).
+
+### Added
+
+- Accounts with email and password (Argon2), 24-hour JWT sessions; owner-scoped dashboards with create, list, open,
+  rename, update, and delete.
+- Five widgets proxied and cached in Redis by the backend: GitHub activity, OpenWeather, NewsAPI, CoinGecko prices,
+  and URL status checks.
+- GridStack editor: add (configure first), drag, resize, configure with the current settings pre-filled, remove;
+  auto-save with a visible "not saved" state and Retry; a one-column layout below 768 px.
+- A redesigned interface with light and dark themes that follow the system setting, with a Light/Dark/System
+  toggle; keyboard-accessible menus and dialogs; reduced motion respected.
+- Release packaging (M5): one container image in which the backend also serves the built frontend; a compose
+  profile `app` on `127.0.0.1:8088`; `make release`, `up`, `down`, `logs`, and `backup`; a
+  [runbook](docs/operations/runbook.md).
+- Health endpoints: `/healthz` (liveness, reports the version) and `/readyz` (Postgres and Redis).
+- Quality gates and tests: `make verify` (rustfmt, clippy, cargo test, ESLint, Prettier, Vitest, type-check, build),
+  Playwright journeys (`make e2e`) against a loopback provider fixture, and GitHub Actions CI (backend, web, e2e,
+  release).
+- A versioned JSON Schema payload contract (`contracts/api-contract.v1.json`) enforced by tests on both sides; MIT
+  `LICENSE`.
+
+### Changed
+
+- Every service binds to `127.0.0.1`; Postgres and Redis credentials come from `.env` (D3).
+- Validation errors are 422 with field details; a duplicate email is 409; a missing provider key is 503; every
+  error body is JSON (D16, D17).
+- Tokens last 24 hours instead of 7 days; the client checks expiry and returns to the requested page after login
+  (D23).
+- daisyUI moved from a 5.0 beta to stable 5; dependencies updated until `npm audit` reports 0 findings (D12, D14,
+  D24).
+
+### Fixed
+
+- Status widget server-side request forgery: only public `http`/`https` targets, no redirects, capped and timed
+  (D1).
+- Crypto and news always failing for lack of a `User-Agent` (D30); unencoded provider input, including GitHub path
+  injection (D2, D7); missing timeouts and sequential status checks (D5, D20); CORS allowing any origin (D4).
+- Rate limits on authentication and data routes (D6); dashboard JSON defaults and validation (D8).
+- Configuration form not pre-filling (D9), silent save failures (D10), extra saves after leaving the editor (D22),
+  small-width layout (D31), accessibility gaps (D25), and display and copy issues (D27, D28).
+
+### Security
+
+- The release image runs as a non-root user and contains no secrets; `.env` stays on the host.
+- Known limits are listed in the [README](README.md) and the [runbook](docs/operations/runbook.md): loopback only,
+  no TLS (D21, planned for M6), the token in `localStorage`, open registration on the local port, and one shared
+  authentication rate-limit bucket.

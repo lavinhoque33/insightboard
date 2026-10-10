@@ -15,7 +15,14 @@ release is **in progress** under its accepted [contract](architecture/m5-local-r
 5. Use [local setup](development/local-setup.md) and [testing](development/testing.md) to run and check the
    product. Read the network exposure section in local setup before starting any service.
 
-The root [README](../README.md) summarises status, limits, and layout.
+The root [README](../README.md) summarises features, the Docker-only release path, limits, and layout; the
+[changelog](../CHANGELOG.md) lists what each release contains.
+
+## Operations
+
+| Document | Purpose |
+| --- | --- |
+| [Runbook](operations/runbook.md) | Run the local release: first start, daily operation, upgrade, backup and restore, secret rotation, reset, troubleshooting, limits |
 
 ## Product
 
