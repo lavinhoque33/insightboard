@@ -13,7 +13,7 @@ baseline drills on this workstation pending). M4 — Quality gate and hardening 
 3. Read the [session handoff](development/session-handoff.md) for the current checkpoint and exact next action.
 4. Check the [roadmap](product/roadmap.md) for milestone status and the next slice.
 5. Use [local setup](development/local-setup.md) and [testing](development/testing.md) to run and check the
-   product. Read the D3 exposure warning in local setup before starting any service.
+   product. Read the network exposure section in local setup before starting any service.
 
 The root [README](../README.md) summarises status, limits, and layout.
 
@@ -30,7 +30,7 @@ The root [README](../README.md) summarises status, limits, and layout.
 | Document | Purpose |
 | --- | --- |
 | [System overview](architecture/system-overview.md) | Components, request flows, data model, cache keys, ports and binds, boundaries, known gaps by defect ID, planned seams |
-| [M0–M3 baseline contract](architecture/m0-m3-baseline-contract.md) | **Proposed** as-built record at `f15c6a3`: routes, status codes, config, schema, widgets, editor; defect catalogue D1–D29; baseline drills B0–B12 |
+| [M0–M3 baseline contract](architecture/m0-m3-baseline-contract.md) | **Proposed** as-built record at `f15c6a3`: routes, status codes, config, schema, widgets, editor; defect catalogue D1–D31; baseline drills B0–B12 |
 | [M4 quality-gate contract](architecture/m4-quality-gate-contract.md) | **Proposed**: slices M4a–M4c, owner decisions, acceptance drills |
 
 ## Decisions
@@ -43,7 +43,7 @@ The root [README](../README.md) summarises status, limits, and layout.
 
 | Document | Purpose |
 | --- | --- |
-| [Local setup](development/local-setup.md) | Prerequisites, D3 exposure warning, first run, configuration, stop and restart, troubleshooting |
+| [Local setup](development/local-setup.md) | Prerequisites, network exposure (D3, fixed), first run, configuration, stop and restart, troubleshooting |
 | [Testing](development/testing.md) | Evidence vocabulary, commands (native and container), current suites, failing gates, drill conventions, M4 test targets |
 | [Baseline verification](development/baseline-verification.md) | M0–M3 evidence: 2026-10-10 automated baseline, drill results B1–B12 |
 | [Session handoff](development/session-handoff.md) | Current checkpoint, protocol, template, session index; entries under `development/sessions/` |

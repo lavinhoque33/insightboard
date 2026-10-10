@@ -30,7 +30,7 @@ that the capability works; the [roadmap](roadmap.md) records status.
 | **Slice** | A delivery unit inside a milestone (for example M4a), with its own defect IDs and decisions. Completing a slice does not complete the milestone. |
 | **Milestone contract** | The binding behaviour description of a milestone under `docs/architecture/`, **proposed** until the owner accepts it. |
 | **Drill** | A numbered, reproducible check with an expected result: B0–B12 for the baseline, numbered drills in later contracts. Results go to a verification record. |
-| **Defect ID** | A stable identifier `D1`–`D29` from the canonical list in the baseline contract section 12. Never renumbered or reused; new defects are proposed to the main thread for an ID. |
+| **Defect ID** | A stable identifier `D1`–`D31` from the canonical list in the baseline contract section 12. Never renumbered or reused; new defects are proposed to the main thread for an ID. |
 
 ## Evidence words
 

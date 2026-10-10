@@ -5,7 +5,7 @@ Follow [.omp/AGENTS.md](.omp/AGENTS.md), its hard boundaries, and the
 [project plan](INSIGHTBOARD_PROJECT_PLAN.md).
 
 They govern **new and changed code**. The code at `f15c6a3` predates them: existing violations are tracked as
-defect IDs D1–D29 in the [M0–M3 baseline contract](docs/architecture/m0-m3-baseline-contract.md) and are fixed
+defect IDs D1–D31 in the [M0–M3 baseline contract](docs/architecture/m0-m3-baseline-contract.md) and are fixed
 in their scheduled slice, not opportunistically. Do not widen an existing violation; a change that touches one
 either fixes it within the slice that owns its ID or leaves it as it was. The formatting and lint gates named
 here are M4a targets: `cargo fmt --check` and `cargo clippy --all-targets -- -D warnings` fail today (D13), and
@@ -116,7 +116,7 @@ its slice arrives; their presence does not imply implementation.
 ## 9. Auth, secrets, and the local trust boundary
 
 - Backend, Postgres, Redis, Vite, and fixtures bind to loopback. New code never adds a non-loopback listener;
-  the existing `0.0.0.0` bind and compose ports are D3, fixed first in M4a.
+  the backend's bind host comes from `APP_HOST` (default `127.0.0.1`) since the D3 fix on 2026-10-10.
 - `.env.example` documents every variable the backend reads, with non-secret placeholders, and nothing the code
   ignores (D18 tracks the current mismatches).
 - **Secrets are never logged**: not `JWT_SECRET`, provider keys, `Authorization` headers, tokens, password

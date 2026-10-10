@@ -31,10 +31,12 @@ they matter.
 - The 2026-03-03 audit (`f15c6a3`) found and fixed defects inside phases already marked completed.
 - The 2026-10-10 automated baseline on this workstation passes builds and tests; `cargo fmt --check`,
   `cargo clippy -D warnings`, and `npm audit` fail (D13, D14).
-- Journeys have not been re-exercised on this workstation. Owner acceptance of M0–M3 follows baseline drills
-  B1–B12 in the [baseline verification record](../development/baseline-verification.md).
+- Drills B0–B4 and B6–B12 ran on this workstation on 2026-10-10 at `354e06c` after the decision 4 change (B0);
+  they observed D9, D23, D25, and two new defects, D30 (crypto widget always 502) and D31 (small-width layout).
+  B5's free-tier-key half is pending owner keys. Owner acceptance of M0–M3 follows that and a review of the
+  [baseline verification record](../development/baseline-verification.md).
 
-The binding as-built behaviour, the defect catalogue D1–D29, and drills B0–B12 are in the
+The binding as-built behaviour, the defect catalogue D1–D31, and drills B0–B12 are in the
 [M0–M3 baseline contract](../architecture/m0-m3-baseline-contract.md) (**proposed**). Acceptance of M0–M3 records
 the product as it is, defects included; fixing defects is M4 work.
 
@@ -60,7 +62,7 @@ the product as it is, defects included; fixing defects is M4 work.
 | Services start; migrations apply; health answers | Drill B1 in the [baseline verification record](../development/baseline-verification.md) |
 | Data survives a restart without data loss | Drill B4 |
 | Builds and tests pass | Drill B11 (2026-10-10 automated baseline as reference: builds and tests pass; fmt, clippy, audit fail) |
-| No unintended network exposure | Precondition B0; not met at `f15c6a3` (D3) |
+| No unintended network exposure | Precondition B0; not met at `f15c6a3` (D3); met at `354e06c` (observed 2026-10-10) |
 
 **Keep out:** cloud resources, public access, production builds.
 
@@ -143,11 +145,11 @@ ADR 0002 (written at acceptance).
 
 **Slices, in order:**
 
-- **M4a — Reproducibility, gates, and exposure:** D3 (first; requested before drills), D4, D12, D13, D14, D18,
-  D26, D29 (compose). Decisions 1, 2, 3, 4, 7, 14, 16, 17.
+- **M4a — Reproducibility, gates, and exposure:** D3 (landed early in `354e06c`, 2026-10-10), D4, D12, D13, D14,
+  D18, D26, D29 (compose). Decisions 1, 2, 3, 4, 7, 14, 16, 17.
 - **M4b — Outbound safety, API correctness, and contract:** D1, D2, D5, D6, D7, D8, D15, D16, D17, D19, D20,
-  D29 (cache keys). Decisions 5, 6, 8, 9, 10, 11.
-- **M4c — Frontend correctness, test suites, and CI:** D9, D10, D11, D22, D23, D24, D25, D27, D28. Decisions
+  D29 (cache keys), D30. Decisions 5, 6, 8, 9, 10, 11.
+- **M4c — Frontend correctness, test suites, and CI:** D9, D10, D11, D22, D23, D24, D25, D27, D28, D31. Decisions
   12, 13, 15 (and the daisyUI part of 14).
 
 **Decisions pending (owner):** full text and ★ recommendations in the contract.
@@ -157,7 +159,7 @@ ADR 0002 (written at acceptance).
 | 1 | Commit `Cargo.lock`; pin the toolchain; `rust-version` | ★ as proposed | pending | |
 | 2 | Root `Makefile` mirroring StatusForge, host Rust or container fallback | ★ as proposed | pending | |
 | 3 | fmt and clippy gates; ESLint and Prettier; `vue-tsc` in `build` | ★ as proposed | pending | |
-| 4 | Loopback defaults, compose on `127.0.0.1`, credentials from `.env` (before drills, B0) | ★ as proposed | pending | |
+| 4 | Loopback defaults, compose on `127.0.0.1`, credentials from `.env` (before drills, B0) | ★ as proposed | **approved** ★; landed in `354e06c` as the B0 mitigation | 2026-10-10 |
 | 5 | Outbound policy for the status widget and all providers | ★ as proposed | pending | |
 | 6 | `governor` rate limiting; Argon2 in `spawn_blocking` | ★ as proposed | pending | |
 | 7 | CORS allowlist from `CORS_ORIGINS` | ★ as proposed | pending | |
@@ -174,9 +176,8 @@ ADR 0002 (written at acceptance).
 
 **Agents:** to be chosen in M4 preparation and recorded here; tiers follow [`.omp/AGENTS.md`](../../.omp/AGENTS.md).
 
-**Next slice:** M4 preparation (present decisions 1–17, record the owner's choices and dates above, write ADR 0002,
-accept the contract), then M4a starting with decision 4 (D3). If the owner approves decision 4 before the drills,
-that change lands first as the B0 mitigation.
+**Next slice:** M4 preparation (present decisions 1–3 and 5–17, record the owner's choices and dates above, write
+ADR 0002, accept the contract), then M4a. Decision 4 (D3) already landed in `354e06c` as the B0 mitigation.
 
 **Keep out:** cloud work, app container images (M5), OpenAPI generation, new widgets, dark theme, public dashboards.
 
@@ -214,7 +215,8 @@ before any other external request.
 
 ## Next action
 
-1. Owner decision on B0: approve loopback-only binds (M4 decision 4) or another mitigation for D3.
-2. Drills B1–B12 into the [baseline verification record](../development/baseline-verification.md); then owner
-   acceptance of M0–M3.
-3. M4 preparation.
+1. Owner enters free-tier `OPENWEATHER_API_KEY` and `NEWSAPI_API_KEY` (optional `GITHUB_API_TOKEN`) into `.env`;
+   the main thread restarts the backend and runs the key half of B5 (one weather and one news request).
+2. Owner acceptance of M0–M3 against the [baseline verification record](../development/baseline-verification.md),
+   defects included.
+3. M4 preparation: decisions 1–3 and 5–17, ADR 0002, contract acceptance; then M4a.

@@ -2,10 +2,10 @@
 
 - Status: **proposed** — owner decisions pending. The owner settles decisions 1–17 in M4 preparation; the main
   thread then records the choices in the [roadmap](../product/roadmap.md), writes ADR 0002, and marks this contract
-  **accepted**. Until then nothing here is binding and no M4 implementation starts, except that decision 4 (D3) is
-  requested before the baseline drills.
+  **accepted**. Until then nothing here is binding and no M4 implementation starts, except decision 4 (D3), which
+  the owner approved on 2026-10-10 and which landed before the baseline drills (`354e06c`).
 - Sources: [M0–M3 baseline contract](m0-m3-baseline-contract.md) (behaviour as built and the canonical defect list
-  D1–D29), [baseline verification record](../development/baseline-verification.md) (automated baseline
+  D1–D31), [baseline verification record](../development/baseline-verification.md) (automated baseline
   2026-10-10), [project plan](../../INSIGHTBOARD_PROJECT_PLAN.md) sections 4, 10–12, [ADR 0001](../decisions/ADR-0001-foundation-stack.md),
   [system overview](system-overview.md), [coding practices](../../CODING_PRACTICES.md).
 
@@ -17,11 +17,11 @@ baseline contract section 12; this document does not restate them.
 
 Delivered in order; all three are required for M4 acceptance.
 
-- **M4a — Reproducibility, gates, and exposure:** D3 (first; requested before drills), D4, D12, D13, D14, D18,
-  D26, D29 (compose). Decisions 1, 2, 3, 4, 7, 14, 16, 17.
+- **M4a — Reproducibility, gates, and exposure:** D3 (landed early in `354e06c`; M4a drill 2 still applies), D4,
+  D12, D13, D14, D18, D26, D29 (compose). Decisions 1, 2, 3, 4, 7, 14, 16, 17.
 - **M4b — Outbound safety, API correctness, and contract:** D1, D2, D5, D6, D7, D8, D15, D16, D17, D19, D20,
-  D29 (cache keys). Decisions 5, 6, 8, 9, 10, 11.
-- **M4c — Frontend correctness, test suites, and CI:** D9, D10, D11, D22, D23, D24, D25, D27, D28. Decisions
+  D29 (cache keys), D30. Decisions 5, 6, 8, 9, 10, 11.
+- **M4c — Frontend correctness, test suites, and CI:** D9, D10, D11, D22, D23, D24, D25, D27, D28, D31. Decisions
   12, 13, 15 (and the daisyUI part of 14).
 
 D21 (TLS features) belongs to M6.

@@ -48,7 +48,7 @@ Playwright are not installed.
 | `cargo clippy --all-targets -- -D warnings` | Lints, warnings as errors |
 | `cargo test jwt_roundtrip` | One test by name filter |
 
-**Backend, container fallback** (from the repository root, when host Rust is absent, as on this workstation).
+**Backend, container fallback** (from the repository root, when host Rust is absent; this workstation has host Rust since 2026-10-10).
 The mount is read-only and the build runs in a throwaway copy, so nothing is written to the checkout. With no
 committed `Cargo.lock` (D12), every run resolves dependencies afresh from crates.io:
 
@@ -68,18 +68,21 @@ split the chain.
 | `backend/src/auth.rs` | `auth::tests::jwt_roundtrip` | `sub` and `email` survive encode/decode; `exp > iat` |
 | `backend/src/config.rs` | `config::tests::normalize_optional_strips_blank_values` | Unset, empty, and blank optional values become `None` |
 | `backend/src/config.rs` | `config::tests::normalize_optional_trims_and_keeps_non_empty` | Optional values are trimmed |
+| `backend/src/config.rs` | `config::tests::app_host_defaults_to_loopback` | Unset `APP_HOST` binds `127.0.0.1` (D3) |
+| `backend/src/config.rs` | `config::tests::app_host_parses_ip_and_rejects_garbage` | An IP literal parses; a non-IP value fails naming `APP_HOST` |
 | `frontend/src/components/__tests__/BaseWidget.spec.ts` | "emits configure when Configure is clicked from options menu" | Options menu opens and Configure emits once |
 | `frontend/src/views/__tests__/DashboardEditorView.spec.ts` | "does not create a widget until configuration is saved" | Draft-on-add: modal opens, Cancel leaves no grid item (stores and GridStack mocked) |
 | `frontend/src/views/__tests__/DashboardEditorView.spec.ts` | "creates the widget only after saving valid configuration" | Save with a valid status URL adds one grid item; the save payload is not asserted |
 
-Totals: 5 backend unit tests and 3 frontend component tests. Nothing covers routes, the database, Redis,
+Totals: 7 backend unit tests and 3 frontend component tests. Nothing covers routes, the database, Redis,
 providers, the API client, stores, router guards, the contract, the configuration-modal prefill (D9), or
 end-to-end journeys; there is no CI (D11).
 
 ## Current results and known failing gates
 
-**Observed** on 2026-10-10 on this workstation at `f15c6a3` (frontend with Node 20.19.0 from `.tools/`; backend
-with the container command above, rustc 1.99.0):
+**Observed** on 2026-10-10 on this workstation at `354e06c` (drill B11; frontend with Node 20.19.0 from `.tools/`;
+backend native with rustup stable, rustc 1.99.0). The earlier run at `f15c6a3` in the container gave the same
+results with 5 backend tests:
 
 | Check | Result |
 | --- | --- |
@@ -88,8 +91,8 @@ with the container command above, rustc 1.99.0):
 | `npm run build` | Pass; CSS warning `Unknown at rule: @property` (D24) |
 | `npm audit --omit=dev` | **Fail**: 8 findings, 7 high and 1 moderate (D14); full `npm audit`: 17 |
 | `cargo build` | Pass; 2 dead-code warnings |
-| `cargo test` | Pass; 5 tests |
-| `cargo fmt --check` | **Fail**: 67 diff hunks across all 15 source files (D13) |
+| `cargo test` | Pass; 7 tests |
+| `cargo fmt --check` | **Fail**: 67 diff hunks across 16 source files (D13) |
 | `cargo clippy --all-targets -- -D warnings` | **Fail**: the 2 dead-code warnings (D13) |
 
 Details are in the [baseline verification record](baseline-verification.md). Until M4a fixes D13 and D14, a
@@ -102,8 +105,8 @@ rustfmt style (without reformatting the crate), and no new audit findings. The l
 - Baseline drills B0–B12 are defined in the [M0–M3 baseline contract](../architecture/m0-m3-baseline-contract.md)
   and their results recorded in the [baseline verification record](baseline-verification.md). Later milestones
   define their drills in their own contract and record them in their own `*-verification.md`.
-- **B0 is a precondition:** no compose or backend run on this workstation until the D3 exposure has an
-  owner-approved mitigation ([local setup](local-setup.md)).
+- **B0 is a precondition:** loopback binds and `.env` credentials ([local setup](local-setup.md)); met on this
+  workstation since 2026-10-10 (`354e06c`).
 - Drills record the command or UI steps, the expected result from the contract, the **observed** result, date
   and time in UTC, the environment, and the commit. A drill that exposes a known defect (for example B8 and D9)
   is recorded as an observed defect, not a pass.

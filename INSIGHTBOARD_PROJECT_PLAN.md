@@ -96,8 +96,8 @@ These boundaries are mirrored in [`.omp/AGENTS.md`](.omp/AGENTS.md) and bind eve
   tiers only, with keys the owner supplies; free tiers are not permission for anything else.
 - **No AWS or cloud access from local paths.** No ambient credentials, control-plane calls, resource creation, or
   deploys. IaC is synth-only until an approved milestone (M7).
-- **Loopback only.** Backend, Postgres, Redis, Vite, and fixtures bind to `127.0.0.1`. Current violations (D3) are
-  defects scheduled first in M4a; never widen exposure; no tunnels or LAN or public listeners.
+- **Loopback only.** Backend, Postgres, Redis, Vite, and fixtures bind to `127.0.0.1` (D3 fixed by M4 decision 4 on
+  2026-10-10); never widen exposure; no tunnels or LAN or public listeners.
 - **No live providers in automated paths.** Tests and CI never call GitHub, OpenWeather, NewsAPI, CoinGecko, or
   arbitrary status URLs; they use local mock servers with configurable base URLs.
 - **Approved manual targets only.** Manual provider smoke stays at human scale (a handful of requests) against the
@@ -209,8 +209,8 @@ restricted in M4b (decision 5).
 
 ## 10. Security and privacy
 
-- **Exposure.** Local use only. At `f15c6a3` the backend and both compose services listen on all interfaces with
-  default credentials (D3) and CORS is permissive (D4); M4a restores loopback-only defaults and an origin allowlist.
+- **Exposure.** Local use only. At `f15c6a3` the backend and both compose services listened on all interfaces with
+  default credentials (D3, fixed 2026-10-10 by M4 decision 4) and CORS is permissive (D4, M4a allowlist).
 - **Outbound requests.** Every provider call is made on the user's behalf from the owner's machine. Requests must be
   limited by scheme, destination address class, count, and time, with user input encoded (D1, D2, D5, D7, D20);
   M4b decision 5.
@@ -258,7 +258,7 @@ One numbering for all delivery. M0–M3 describe what exists; M4–M7 are future
 | M1 — Accounts and dashboards | Register and login with JWT sessions; owner-scoped dashboard CRUD; frontend auth flow and dashboard list | 3 Authentication, 4 Dashboard Management, 6 Frontend Foundation | **Implemented but unverified** |
 | M2 — Widgets and editor | Five provider widgets through a cached backend proxy; GridStack editor with persisted layout | 5 Widget Implementations (Backend), 7 Frontend Dashboard UI / Widget System, 8 Widget Components, 9 Polish and Features | **Implemented but unverified** |
 | M3 — UI polish and contract alignment | daisyUI styling, auth and editor fixes, v1 payload contract, draft-on-add editor | 10 Frontend Styling with daisyUI; 2025-11-04 fixes; 2026-03-03 remediation (`f15c6a3`) | **Implemented but unverified** |
-| M4 — Quality gate and hardening | Reproducible builds, passing gates, loopback defaults, safe outbound calls, real test suites, CI | 11 Testing and CI/CD, plus defects D1–D29 | **Planned**; [contract](docs/architecture/m4-quality-gate-contract.md) **proposed**, owner decisions pending |
+| M4 — Quality gate and hardening | Reproducible builds, passing gates, loopback defaults, safe outbound calls, real test suites, CI | 11 Testing and CI/CD, plus defects D1–D31 | **Planned**; [contract](docs/architecture/m4-quality-gate-contract.md) **proposed**, decision 4 approved and landed 2026-10-10, other owner decisions pending |
 | M5 — Local release | A reproducible, documented, independently runnable local product | 12 Deployment Preparation (local half) | **Planned** |
 | M6 — AWS readiness | Cloud adapters and an inspectable, synth-only experiment proposal, without deployment | 12 Deployment Preparation (cloud half) | **Planned** |
 | M7 — AWS experiment | A validated and cleaned-up cloud execution path | none | **Deferred**; owner approval and a $0 path required |
@@ -328,7 +328,7 @@ owner's credentials.
 
 **Scope:** the [M4 contract](docs/architecture/m4-quality-gate-contract.md) in three slices: M4a reproducibility,
 gates, and exposure; M4b outbound safety, API correctness, and contract; M4c frontend correctness, test suites, and
-CI. Defects D1–D29 except D21; decisions 1–17.
+CI. Defects D1–D31 except D21 (D3 landed early on 2026-10-10 under decision 4); decisions 1–17.
 
 **Exit evidence:** the contract's acceptance drills, including a fresh clone through `make setup verify`, loopback
 listeners shown by `ss -ltn`, status-widget rejections, 429 rate limiting, contract tests failing on a broken
@@ -441,7 +441,7 @@ Permission to change code is not permission for any of these.
 
 | Risk | Mitigation direction |
 | :--- | :--- |
-| Services reachable from the LAN while running (D3) | Loopback binds before any drill (B0, M4 decision 4) |
+| Services reachable from the LAN while running (D3) | Loopback binds and `.env` credentials (M4 decision 4, landed 2026-10-10 before the drills; B0) |
 | The status widget used as a network probe from the owner's machine (D1) | Restrict schemes, addresses, count, redirects, and errors (M4b decision 5); drills use only approved targets |
 | The owner's GitHub token or provider keys misused or logged (D2, D7) | Encode input, move keys to headers, never log them (M4b) |
 | Legacy "verified" claims mistaken for evidence | Label them **reported**; accept M0–M3 only after drills |
@@ -455,13 +455,13 @@ Permission to change code is not permission for any of these.
 
 ## 17. Open decisions (owner)
 
-1. **B0 mitigation for D3:** approve loopback-only binds (M4 decision 4) ahead of the drills, or another mitigation.
-2. **M4 decisions 1–17**, including the owner calls in 8 (token lifetime; localStorage or httpOnly cookie), 10 (400
-   or 422 with details; 400 or 503 for a missing key), and 15 (dashboard title source; Save or auto-save; keyboard
-   layout editing now or backlog). Recorded in the [roadmap](docs/product/roadmap.md).
+1. **B0 mitigation for D3:** decided 2026-10-10 — M4 decision 4 approved and landed (`354e06c`).
+2. **M4 decisions 1–3 and 5–17**, including the owner calls in 8 (token lifetime; localStorage or httpOnly cookie),
+   10 (400 or 422 with details; 400 or 503 for a missing key), and 15 (dashboard title source; Save or auto-save;
+   keyboard layout editing now or backlog). Recorded in the [roadmap](docs/product/roadmap.md).
 3. **License:** an MIT `LICENSE` (M4 decision 16); until then the README states "MIT intended; no LICENSE file
    committed".
-4. **Provider keys for B5:** whether to supply free-tier OpenWeather and NewsAPI keys, or run B5 without them.
+4. **Provider keys for B5:** decided 2026-10-10 — free-tier keys, entered by the owner into `.env`.
 5. **M5:** container images or a compose profile; whether to tag a version.
 6. **M6:** IaC tool; whether Cognito lands in M6 or stays in the backlog.
 7. **Backlog:** which section 5 items, if any, become milestones.
@@ -480,7 +480,7 @@ Permission to change code is not permission for any of these.
 | [`docs/product/roadmap.md`](docs/product/roadmap.md) | Milestone status, decisions, approved external targets | Main thread |
 | [`docs/product/terminology.md`](docs/product/terminology.md) | Shared vocabulary | Main thread or delegate |
 | [`docs/architecture/system-overview.md`](docs/architecture/system-overview.md) | Runtime shape, flows, ports, known gaps | Main thread or delegate |
-| [`docs/architecture/m0-m3-baseline-contract.md`](docs/architecture/m0-m3-baseline-contract.md) | As-built behaviour, defect catalogue D1–D29, drills B0–B12 | Main thread or delegate |
+| [`docs/architecture/m0-m3-baseline-contract.md`](docs/architecture/m0-m3-baseline-contract.md) | As-built behaviour, defect catalogue D1–D31, drills B0–B12 | Main thread or delegate |
 | [`docs/architecture/m4-quality-gate-contract.md`](docs/architecture/m4-quality-gate-contract.md) | Proposed M4 contract and decisions 1–17 | Main thread or delegate |
 | [`docs/decisions/ADR-0001-foundation-stack.md`](docs/decisions/ADR-0001-foundation-stack.md) | Stack decisions (retroactive) | Main thread or delegate |
 | [`docs/development/local-setup.md`](docs/development/local-setup.md) | Setup, configuration, troubleshooting | Main thread or delegate |

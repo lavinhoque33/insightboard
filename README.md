@@ -48,7 +48,7 @@ The full as-built reference, including every route and status code, is the
 
 ## Limits
 
-The [defect catalogue](docs/architecture/m0-m3-baseline-contract.md) lists D1–D29 with references and the slice
+The [defect catalogue](docs/architecture/m0-m3-baseline-contract.md) lists D1–D31 with references and the slice
 that fixes each. The ones to know first:
 
 - **D3 — network exposure (mitigated).** Per M4 decision 4 (owner-approved 2026-10-10) the backend binds

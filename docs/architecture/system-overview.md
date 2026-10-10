@@ -149,15 +149,15 @@ By area; each ID is defined in the [baseline contract](m0-m3-baseline-contract.m
 
 | Area | Defect IDs |
 | --- | --- |
-| Exposure and CORS | D3, D4 |
-| Outbound calls | D1, D2, D5, D7, D20 |
+| Exposure and CORS | D3 (fixed 2026-10-10), D4 |
+| Outbound calls | D1, D2, D5, D7, D20, D30 |
 | Abuse and load | D6 |
 | API correctness and contract | D8, D15, D16, D17 |
 | Configuration, cache, health | D18, D19, D29 |
 | Build, gates, dependencies | D12, D13, D14, D26 |
 | Tests | D11 |
 | Frontend editor and session | D9, D10, D22, D23, D28 |
-| Styling, accessibility, copy | D24, D25, D27 |
+| Styling, accessibility, copy | D24, D25, D27, D31 |
 | Cloud readiness | D21 |
 
 ## Future seams (planned)

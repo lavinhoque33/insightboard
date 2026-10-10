@@ -34,8 +34,8 @@ These apply to every agent in every session. They are not milestone-dependent.
   provider tiers only, with keys the owner supplies; free tiers are not permission for anything else.
 - **No AWS or cloud access from local paths.** No ambient credentials, control-plane calls, resource creation,
   or deploys. Infrastructure as code is synth-only until an approved milestone (M7).
-- **Loopback only.** Backend, Postgres, Redis, Vite, and fixtures bind to `127.0.0.1`. Current violations
-  (D3: backend on `0.0.0.0`, compose ports on all interfaces) are defects scheduled first in M4a. Never widen
+- **Loopback only.** Backend, Postgres, Redis, Vite, and fixtures bind to `127.0.0.1` (D3 fixed by M4 decision 4
+  on 2026-10-10; `APP_HOST` defaults to loopback, compose ports are `127.0.0.1:`-prefixed). Never widen
   exposure; no tunnels or LAN/public listeners.
 - **No live providers in automated paths.** Tests and CI never call GitHub, OpenWeather, NewsAPI, CoinGecko, or
   arbitrary status URLs; use local mock servers with configurable base URLs.
@@ -200,7 +200,7 @@ handoff rather than expanding scope.
   and [baseline verification](../docs/development/baseline-verification.md). Cite them only through the
   GitHub permalinks at `f15c6a3` given in those documents. The legacy stop-and-confirm phase protocol no longer
   applies.
-- **Defect IDs.** D1–D29 are catalogued in the
+- **Defect IDs.** D1–D31 are catalogued in the
   [M0–M3 baseline contract](../docs/architecture/m0-m3-baseline-contract.md). They are stable: reference them,
   never renumber them; a newly found defect is reported to the main thread, which assigns the next ID.
 - **Toolchain.** Node 20.19.0 per `.nvmrc` (Vite 7 needs `^20.19 || >=22.12`); on this workstation the project
