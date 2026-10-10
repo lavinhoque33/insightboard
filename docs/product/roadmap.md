@@ -17,7 +17,7 @@ they matter.
 | M1 — Accounts and dashboards | Register and login with JWT sessions; owner-scoped dashboard CRUD; frontend auth flow and dashboard list | **Accepted** 2026-10-10 (owner), defects included; see the qualification below and the [baseline verification record](../development/baseline-verification.md) |
 | M2 — Widgets and editor | Five provider widgets through a cached backend proxy; GridStack editor with persisted layout | **Accepted** 2026-10-10 (owner), defects included; see the qualification below and the [baseline verification record](../development/baseline-verification.md) |
 | M3 — UI polish and contract alignment | daisyUI styling, auth and editor fixes, v1 payload contract, draft-on-add editor | **Accepted** 2026-10-10 (owner), defects included; see the qualification below and the [baseline verification record](../development/baseline-verification.md) |
-| M4 — Quality gate and hardening | Reproducible builds, passing gates, loopback defaults, safe outbound calls, real test suites, CI | **Locally verified** 2026-10-10 (M4a, M4b, M4c; CI green on GitHub); [contract](../architecture/m4-quality-gate-contract.md) **accepted** ([ADR 0002](../decisions/ADR-0002-m4-quality-gate.md)); [record](../development/m4-verification.md); owner acceptance next |
+| M4 — Quality gate and hardening | Reproducible builds, passing gates, loopback defaults, safe outbound calls, real test suites, CI | **Accepted** 2026-10-10 (owner) after M4a, M4b, M4c were locally verified and CI passed on GitHub; [contract](../architecture/m4-quality-gate-contract.md) ([ADR 0002](../decisions/ADR-0002-m4-quality-gate.md)); [record](../development/m4-verification.md) |
 | M5 — Local release | A reproducible, documented, independently runnable local product | **Planned** |
 | M6 — AWS readiness | Cloud adapters and an inspectable, synth-only experiment proposal, without deployment | **Planned** |
 | M7 — AWS experiment | A validated and cleaned-up cloud execution path | **Deferred**; owner approval and a $0 path required |
@@ -136,7 +136,7 @@ and cached by the backend.
 
 **Keep out:** dark theme, new widgets, OpenAPI.
 
-## M4 — Quality gate and hardening (locally verified)
+## M4 — Quality gate and hardening (accepted)
 
 **Objective (plan 12/M4):** reproducible builds, passing gates, loopback defaults, safe outbound calls, real test
 suites, and CI, fixing the defects the baseline recorded. Legacy phase 11 (Testing and CI/CD) folds in here.
@@ -190,7 +190,7 @@ rate limits, dashboard cap, 422 shape, `/readyz`) in the contract's "Preparation
 
 Research as needed: `research-medium` by default, `research-heavy` for cross-layer audits.
 
-**Next:** owner acceptance of M4, then M5 — local release. M4a, M4b, and M4c are locally verified.
+**Accepted** by the owner 2026-10-10. **Next:** M5 — local release.
 
 **Keep out:** cloud work, app container images (M5), OpenAPI generation, new widgets, public dashboards, keyboard
 layout editing (backlog). Light and dark themes with a toggle joined M4c with the owner's visual overhaul
@@ -230,5 +230,5 @@ before any other external request.
 
 ## Next action
 
-1. Owner: accept M4 (or name gaps) from the [M4 verification record](../development/m4-verification.md).
-2. Then M5 — local release: write its contract with the owner before implementation.
+1. M5 — local release: draft its contract (scope, decisions for the owner, acceptance drills) from plan section
+   12/M5 and get owner acceptance before implementation.

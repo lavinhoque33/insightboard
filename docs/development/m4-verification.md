@@ -1,7 +1,7 @@
 # M4 verification record
 
 Evidence for the [M4 contract](../architecture/m4-quality-gate-contract.md) acceptance drills (section 14). Main thread
-only. One section per slice; M4 is accepted only after M4a, M4b, and M4c are recorded and the owner accepts.
+only. One section per slice. **M4 accepted** by the owner on 2026-10-10 after all three slices were recorded.
 
 ## M4a — reproducibility, gates, and exposure
 
