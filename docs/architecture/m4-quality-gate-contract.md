@@ -1,9 +1,9 @@
 # M4 contract: quality gate and hardening
 
-- Status: **proposed** — owner decisions pending. The owner settles decisions 1–17 in M4 preparation; the main
-  thread then records the choices in the [roadmap](../product/roadmap.md), writes ADR 0002, and marks this contract
-  **accepted**. Until then nothing here is binding and no M4 implementation starts, except decision 4 (D3), which
-  the owner approved on 2026-10-10 and which landed before the baseline drills (`354e06c`).
+- Status: **accepted** 2026-10-10. The owner settled decisions 1–17 on 2026-10-10 (decision 4 earlier the same day,
+  landed in `354e06c`); the choices are recorded in the [roadmap](../product/roadmap.md) and
+  [ADR 0002](../decisions/ADR-0002-m4-quality-gate.md). Values this contract left to M4 preparation were set by the
+  main thread and are listed under "Preparation values"; the owner may change any of them before its slice starts.
 - Sources: [M0–M3 baseline contract](m0-m3-baseline-contract.md) (behaviour as built and the canonical defect list
   D1–D31), [baseline verification record](../development/baseline-verification.md) (automated baseline
   2026-10-10), [project plan](../../INSIGHTBOARD_PROJECT_PLAN.md) sections 4, 10–12, [ADR 0001](../decisions/ADR-0001-foundation-stack.md),
@@ -69,11 +69,30 @@ D21 (TLS features) belongs to M6.
 16. ★ Add an MIT `LICENSE` (the README already intends MIT).
 17. ★ Keep `docs/guides/` as non-authoritative reference; do not rewrite them in M4.
 
-Owner calls collected: decision 8 (token TTL; localStorage vs httpOnly cookie), decision 10 (400 vs 422 with
-details; 400 vs 503 for a missing provider key), decision 15 (title source of truth; Save vs auto-save; keyboard
-layout editing now or backlog). Decisions without ★ (8, 9, 10, 14, 15) still need explicit owner approval; new
-dependencies named in any decision (for example `jsonschema`, ajv, ESLint, Prettier, Playwright) are approved only
-by that decision.
+### Owner choices (2026-10-10)
+
+- All ★ decisions (1–7, 11–13, 16, 17) approved as written; decisions 9 and 14 approved as written.
+- Decision 8: token lifetime **24 hours** (was 7 days); the token stays in **localStorage**.
+- Decision 10: validation failures return **422 with details**; a missing provider key returns **503**.
+- Decision 15: the dashboard title comes from **`name`**; **auto-save stays**, with a visible error and retry;
+  **keyboard layout editing** (moving and resizing widgets without a mouse) goes to the unscheduled **backlog**.
+- Dependencies approved through these decisions: the `jsonschema` crate (11); ajv (11); ESLint with
+  `eslint-plugin-vue`, `typescript-eslint`, and `eslint-config-prettier`, and Prettier (3); Playwright (12);
+  `tower` with the `util` feature as a backend dev-dependency for `oneshot` router tests (12). `governor` and
+  `mockito` are already declared. Any other new dependency needs owner approval and a line in ADR 0002.
+
+### Preparation values (main thread, 2026-10-10)
+
+| Item | Value | Section |
+| --- | --- | --- |
+| Status-widget redirects | Not followed; a 3xx is reported as that URL's result | 3 |
+| Status-widget URL cap and concurrency | At most 10 URLs per request, 5 at a time, each with a 2 s connect and 4 s total timeout: worst case 8 s, inside the frontend's 10 s client timeout | 3 |
+| Shared provider client | 3 s connect and 8 s total timeout; a fixed `User-Agent` naming InsightBoard (D30) | 3 |
+| Status cache scope | Per user (the key includes the user id); provider data stays shared under normalised keys | 3 |
+| Rate limits | Auth routes: 10 requests per minute per client IP, burst 5. `/api/data/*`: 60 per minute per authenticated user, burst 30. Both configurable, with these defaults | 4 |
+| Dashboard list bound | A per-user cap of 100 dashboards; creating beyond it returns 409 `{error}` | 6 |
+| Validation details shape | 422 `{error, details:[{field, message}]}`; `field` is the request field, dotted for nested JSON (for example `layout_json.widgets.0.w`) | 7 |
+| Health | `/healthz` stays dependency-free liveness; a new `/readyz` returns 200 when Postgres and Redis answer, 503 otherwise | 9 |
 
 ## 1. Reproducibility and gates (M4a; decisions 1–3; D12, D13)
 
@@ -109,9 +128,9 @@ Status widget:
 - Accepts `http` and `https` only. Each host is resolved and every resulting address is rejected if loopback,
   private, link-local, unspecified, or a cloud metadata address (including `169.254.169.254`); the check is repeated
   against the address actually dialled.
-- Redirects are not followed, or each hop is re-validated under the same rules (chosen in preparation).
-- At most a fixed number of URLs per request and bounded concurrency; values set in M4 preparation so the worst case
-  fits the client timeout.
+- Redirects are not followed; a 3xx response is reported as that URL's result.
+- At most 10 URLs per request, checked 5 at a time, each with a 2 s connect and 4 s total timeout, so the worst case
+  (8 s) fits the frontend's 10 s client timeout.
 - Failures return generic error classes, never library error text.
 - A development-only allowlist admits loopback fixtures for tests and drills; it is off by default.
 
@@ -119,16 +138,18 @@ All providers:
 
 - User input is encoded as a path segment or query value, never interpolated raw; a GitHub username containing `/`
   or `..` is rejected or encoded.
-- One shared HTTP client with connect and total timeouts.
+- One shared HTTP client with a 3 s connect and 8 s total timeout and a fixed `User-Agent` naming InsightBoard (D30).
 - Provider keys move from query strings to headers where the provider supports it; keys never appear in logs.
 - A null numeric value from CoinGecko degrades that item rather than failing the whole response (shape decided with
   decision 11).
-- Cache keys are normalised and bounded; whether status results are cached per user is set in preparation.
+- Cache keys are normalised and bounded; status results are cached per user (the key includes the user id), and
+  provider data stays shared.
 
 ## 4. Rate limiting (M4b; decision 6; D6)
 
-- `governor` limits auth routes and `/api/data/*`; over-limit requests get 429 with `{error}`. Limits per route
-  class are set in M4 preparation.
+- `governor` limits auth routes and `/api/data/*`; over-limit requests get 429 with `{error}`. Defaults: auth routes
+  (register, login) 10 requests per minute per client IP with a burst of 5; `/api/data/*` 60 per minute per
+  authenticated user with a burst of 30. Both come from configuration so tests can change them.
 - Argon2 hashing and verification run in `spawn_blocking`.
 
 ## 5. Auth (M4b; decision 8; D17)
@@ -138,8 +159,8 @@ All providers:
 - A duplicate email returns 409, including the race between the existence check and the insert.
 - `/me` for a user that no longer exists returns 401.
 - 401 bodies are generic; the JWT error kind is not returned.
-- Token lifetime and storage (localStorage or httpOnly cookie) follow the owner's call; if storage changes, the
-  frontend session handling in section 12 changes with it.
+- Tokens are valid for 24 hours (owner, 2026-10-10; 7 days at `f15c6a3`) and stay in localStorage (owner); the client
+  checks expiry (section 12). Refresh tokens stay out of scope.
 
 ## 6. Dashboard JSON (M4b; decision 9; D8)
 
@@ -149,14 +170,17 @@ All providers:
 - `layout_json` and `settings_json` are validated against the contract shapes on create and update; invalid shapes
   return the validation error of section 7.
 - Update rejects an empty or blank name.
-- The dashboard list is bounded (paging or a per-user cap, chosen in preparation) (D29).
+- The dashboard list is bounded by a per-user cap of 100 dashboards; creating beyond it returns 409 `{error}` (D29).
 
 ## 7. Error model (M4b; decision 10; D16)
 
-- Every error response, including axum extractor rejections, is JSON `{error}` (with optional details if the owner
-  picks 422).
-- Validation status (400, or 422 with details) and missing-provider-key status (400 or 503) follow the owner's call;
-  the frontend client formats exactly what the backend sends and drops unreachable branches.
+- Every error response, including axum extractor rejections, is JSON. Malformed JSON and a wrong content type keep
+  400 and 415 with `{error}`.
+- Well-formed input that fails validation (missing, mistyped, or invalid fields) returns 422
+  `{error, details:[{field, message}]}` (owner, 2026-10-10); `field` is dotted for nested JSON.
+- A missing provider key returns 503 `{error}` (owner, 2026-10-10; 400 at `f15c6a3`).
+- The frontend client formats exactly what the backend sends, shows field details on forms, and drops unreachable
+  branches.
 
 ## 8. Contract enforcement (M4b; decision 11; D15)
 
@@ -176,7 +200,8 @@ All providers:
 - Frontend: API client (Bearer header, 401 handling), stores, router guards, configuration modal (including
   prefill), editor (add, configure, remove, save failure, unmount).
 - Playwright journeys against a provider fixture cover login, dashboard create, widget add and configure, reload.
-- Health: whether `/healthz` gains dependency checks or a separate readiness route is set in preparation (D19).
+- Health: `/healthz` stays a dependency-free liveness check; a new `/readyz` returns 200 when Postgres and Redis
+  answer and 503 otherwise (D19).
 
 ## 10. CI (M4c; decision 13)
 
@@ -205,9 +230,11 @@ All providers:
 - Styling uses daisyUI 5 class names and theme variables; global overrides and inert configuration are removed
   (D24).
 - Accessibility: labelled inputs, keyboard-reachable logout and menus, dialog semantics with focus management and
-  Escape, `aria-label` on icon buttons, live regions for saving and loading (D25). Keyboard layout editing follows
-  the owner's call.
-- Display and copy fixes in D27; dashboard title source and settings in D28 follow the owner's call.
+  Escape, `aria-label` on icon buttons, live regions for saving and loading (D25). Keyboard layout editing (moving
+  and resizing widgets without a mouse) is in the unscheduled backlog (owner, 2026-10-10), not M4.
+- Auto-save stays; a failed save shows a visible error with retry (owner, 2026-10-10; D10).
+- Display and copy fixes in D27. The dashboard title comes from `name` (owner, 2026-10-10): the client displays
+  `name` and new writes no longer duplicate it into `settings.title`; the other D28 items as catalogued.
 
 ## 13. Licensing and docs (M4a; decisions 16, 17)
 

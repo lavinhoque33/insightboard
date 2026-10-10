@@ -3,7 +3,7 @@
 InsightBoard is a personal dashboard builder: accounts, owner-scoped dashboards, and five provider widgets on a
 GridStack grid, served by a Rust/Axum API with Postgres and Redis and a Vue 3 client. M0–M3 are **accepted**
 (2026-10-10, defects included, after baseline drills B0–B12 on this workstation). M4 — Quality gate and hardening
-is **planned**, its contract **proposed**.
+is **planned**, its contract **accepted** (2026-10-10).
 
 ## Start here
 
@@ -30,13 +30,14 @@ The root [README](../README.md) summarises status, limits, and layout.
 | --- | --- |
 | [System overview](architecture/system-overview.md) | Components, request flows, data model, cache keys, ports and binds, boundaries, known gaps by defect ID, planned seams |
 | [M0–M3 baseline contract](architecture/m0-m3-baseline-contract.md) | **Accepted** as-built record at `f15c6a3`: routes, status codes, config, schema, widgets, editor; defect catalogue D1–D31; baseline drills B0–B12 |
-| [M4 quality-gate contract](architecture/m4-quality-gate-contract.md) | **Proposed**: slices M4a–M4c, owner decisions, acceptance drills |
+| [M4 quality-gate contract](architecture/m4-quality-gate-contract.md) | **Accepted** 2026-10-10: slices M4a–M4c, owner decisions and preparation values, acceptance drills |
 
 ## Decisions
 
 | Document | Purpose |
 | --- | --- |
 | [ADR 0001: foundation stack](decisions/ADR-0001-foundation-stack.md) | **Proposed** retroactive record of the stack chosen 2025-10-28 to 2026-03-03: Rust/Axum, SQLx, Postgres, Redis, Vue 3, Pinia, GridStack, Tailwind and daisyUI |
+| [ADR 0002: M4 quality gate](decisions/ADR-0002-m4-quality-gate.md) | **Accepted** owner choices on M4 decisions 1–17, dependencies they approve, and M4 preparation values |
 
 ## Development
 

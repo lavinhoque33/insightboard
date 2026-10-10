@@ -13,7 +13,7 @@
      entry under `docs/development/sessions/`;
   2. the current milestone in the [roadmap](../docs/product/roadmap.md);
   3. the active milestone contract (today the [M4 quality-gate contract](../docs/architecture/m4-quality-gate-contract.md),
-     **proposed**; the as-built reference is the [M0–M3 baseline contract](../docs/architecture/m0-m3-baseline-contract.md));
+     **accepted** 2026-10-10 with [ADR 0002](../docs/decisions/ADR-0002-m4-quality-gate.md); the as-built reference is the [M0–M3 baseline contract](../docs/architecture/m0-m3-baseline-contract.md));
   4. the [project plan](../INSIGHTBOARD_PROJECT_PLAN.md) sections the task touches;
   5. [CODING_PRACTICES.md](../CODING_PRACTICES.md);
   6. [testing](../docs/development/testing.md).

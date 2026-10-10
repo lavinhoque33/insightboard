@@ -104,6 +104,22 @@
   baseline record, and checkpoint; the baseline contract, the as-built description of M0–M3, is marked
   **accepted** with them. D30 stays scheduled in M4b.
 
+## Owner decisions: M4 preparation
+
+- Presented decisions 1–3 and 5–17 from the [M4 contract](../../architecture/m4-quality-gate-contract.md) with ★
+  recommendations and main-thread recommendations for the owner calls.
+- Owner choices (2026-10-10): every ★ decision approved as written; 9 and 14 approved as written; 8 — token 24
+  hours, localStorage; 10 — 422 with details, 503 for a missing key; 15 — title from `name`, auto-save with visible
+  error and retry, keyboard layout editing to the backlog.
+- Main-thread preparation values (owner may change before the slice): status widget no redirects, 10 URLs, 5 at a
+  time, 2 s connect and 4 s total timeout, per-user cache; provider client 3 s and 8 s with a `User-Agent`; rate
+  limits auth 10/min per IP (burst 5) and data 60/min per user (burst 30); 100 dashboards per user, 409 beyond;
+  422 body `{error, details:[{field, message}]}`; `/readyz` for Postgres and Redis.
+- Recorded: contract marked **accepted**; [ADR 0002](../../decisions/ADR-0002-m4-quality-gate.md) written
+  (decisions, approved dependencies, preparation values); roadmap decision table and agents per slice; plan
+  (status, open decisions, backlog); README, index, testing, `.omp/AGENTS.md`. ADR 0001 left **proposed**: it asks
+  for owner confirmation, which was not asked explicitly.
+
 ## Close
 
 - Milestone and slice: M0–M3 baseline drills; M4a decision 4 landed early.
@@ -114,8 +130,8 @@
   keyless half of B5 about 05:00–05:20 UTC; the keyed news and github requests about 05:57 UTC; keyed weather
   about 16:22 UTC. All drills B0–B12 are recorded.
 - What remains unverified or blocked: nothing in the drills. Not pushed.
-- Decisions and permissions still needed: M4 decisions 1–3 and 5–17; any push.
+- Decisions and permissions still needed: owner confirmation of ADR 0001 (retroactive stack record); any push.
 - Runtime state left: compose running (loopback); backend running from `backend/target/debug` on
   `127.0.0.1:8080` with the keys loaded; Vite stopped.
-- Next recommended action: M4 preparation — present decisions 1–3 and 5–17 with ★ recommendations, record the
-  choices, write ADR 0002, owner acceptance of the M4 contract; then M4a.
+- Next recommended action: M4a — brief `implement-medium` (contract sections 1, 2, 11 audit part, 13; M4a drills),
+  then `verify`, and record evidence in `docs/development/m4-verification.md`.

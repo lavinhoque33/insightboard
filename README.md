@@ -14,8 +14,9 @@ beyond prose. On this workstation, the 2026-10-10 baseline drills B0–B12 **obs
 user journeys, failing `cargo fmt --check`, `cargo clippy -D warnings`, and `npm audit`, and defects including
 D9, D23, D25, D30 (crypto and news widgets always fail), and D31 (small-width layout); see the
 [baseline verification record](docs/development/baseline-verification.md). M4 — Quality gate and hardening is
-next: **planned**, with its [contract](docs/architecture/m4-quality-gate-contract.md) **proposed**, decision 4
-landed, and the other owner decisions pending. See the [roadmap](docs/product/roadmap.md).
+next: **planned**, with its [contract](docs/architecture/m4-quality-gate-contract.md) **accepted** on 2026-10-10
+([ADR 0002](docs/decisions/ADR-0002-m4-quality-gate.md)) and decision 4 already landed. See the
+[roadmap](docs/product/roadmap.md).
 
 ## What works (as built at `f15c6a3`)
 

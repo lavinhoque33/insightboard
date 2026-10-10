@@ -116,9 +116,9 @@ rustfmt style (without reformatting the crate), and no new audit findings. The l
   checks are not an accessibility evaluation.
 - Never paste secrets, tokens, or full logs into a record; reference them by name.
 
-## Target test architecture (M4, proposed)
+## Target test architecture (M4)
 
-From the [M4 contract](../architecture/m4-quality-gate-contract.md), **proposed** and pending owner decisions:
+From the [M4 contract](../architecture/m4-quality-gate-contract.md), **accepted** 2026-10-10:
 
 - **Contract tests (decision 11):** Rust `jsonschema` against handler output; ajv in Vitest against fixtures and
   `apiContract.ts`-typed payloads; a deliberately broken fixture must fail.

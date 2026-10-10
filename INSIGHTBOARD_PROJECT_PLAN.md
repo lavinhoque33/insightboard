@@ -133,7 +133,7 @@ deployment (M6).
 - Dark theme and theme toggle.
 - Dashboard rename and per-dashboard refresh settings (if not taken by M4c decision 15).
 - Chart.js visualisations.
-- Keyboard layout editing (if not taken by M4c).
+- Keyboard layout editing (moving and resizing widgets without a mouse; M4 decision 15 placed it here on 2026-10-10).
 
 **Non-goals (dropped):** React Native app; WebSockets or real-time push; plugin marketplace; Mantine;
 `/api/auth/refresh`; live demo hosting. Also, from the legacy spec: not a commercial SaaS and not a real-time
@@ -258,7 +258,7 @@ One numbering for all delivery. M0–M3 describe what exists; M4–M7 are future
 | M1 — Accounts and dashboards | Register and login with JWT sessions; owner-scoped dashboard CRUD; frontend auth flow and dashboard list | 3 Authentication, 4 Dashboard Management, 6 Frontend Foundation | **Accepted** 2026-10-10, defects included |
 | M2 — Widgets and editor | Five provider widgets through a cached backend proxy; GridStack editor with persisted layout | 5 Widget Implementations (Backend), 7 Frontend Dashboard UI / Widget System, 8 Widget Components, 9 Polish and Features | **Accepted** 2026-10-10, defects included |
 | M3 — UI polish and contract alignment | daisyUI styling, auth and editor fixes, v1 payload contract, draft-on-add editor | 10 Frontend Styling with daisyUI; 2025-11-04 fixes; 2026-03-03 remediation (`f15c6a3`) | **Accepted** 2026-10-10, defects included |
-| M4 — Quality gate and hardening | Reproducible builds, passing gates, loopback defaults, safe outbound calls, real test suites, CI | 11 Testing and CI/CD, plus defects D1–D31 | **Planned**; [contract](docs/architecture/m4-quality-gate-contract.md) **proposed**, decision 4 approved and landed 2026-10-10, other owner decisions pending |
+| M4 — Quality gate and hardening | Reproducible builds, passing gates, loopback defaults, safe outbound calls, real test suites, CI | 11 Testing and CI/CD, plus defects D1–D31 | **Planned**; [contract](docs/architecture/m4-quality-gate-contract.md) **accepted** 2026-10-10 with owner decisions 1–17 ([ADR 0002](docs/decisions/ADR-0002-m4-quality-gate.md)); decision 4 landed |
 | M5 — Local release | A reproducible, documented, independently runnable local product | 12 Deployment Preparation (local half) | **Planned** |
 | M6 — AWS readiness | Cloud adapters and an inspectable, synth-only experiment proposal, without deployment | 12 Deployment Preparation (cloud half) | **Planned** |
 | M7 — AWS experiment | A validated and cleaned-up cloud execution path | none | **Deferred**; owner approval and a $0 path required |
@@ -335,7 +335,7 @@ listeners shown by `ss -ltn`, status-widget rejections, 429 rate limiting, contr
 fixture, the D9 prefill drill, CI green, and B1–B10 rerun green; recorded in an M4 verification record.
 
 **Keep out:** cloud, Docker images for app services (M5), OpenAPI generation, new widgets, dark theme, public
-dashboards.
+dashboards, keyboard layout editing (backlog).
 
 ### M5 — Local release
 
@@ -456,11 +456,11 @@ Permission to change code is not permission for any of these.
 ## 17. Open decisions (owner)
 
 1. **B0 mitigation for D3:** decided 2026-10-10 — M4 decision 4 approved and landed (`354e06c`).
-2. **M4 decisions 1–3 and 5–17**, including the owner calls in 8 (token lifetime; localStorage or httpOnly cookie),
-   10 (400 or 422 with details; 400 or 503 for a missing key), and 15 (dashboard title source; Save or auto-save;
-   keyboard layout editing now or backlog). Recorded in the [roadmap](docs/product/roadmap.md).
-3. **License:** an MIT `LICENSE` (M4 decision 16); until then the README states "MIT intended; no LICENSE file
-   committed".
+2. **M4 decisions 1–3 and 5–17:** decided 2026-10-10 — recorded in the [roadmap](docs/product/roadmap.md) and
+   [ADR 0002](docs/decisions/ADR-0002-m4-quality-gate.md) (token 24 hours in localStorage; 422 with details; 503
+   for a missing key; title from `name`; auto-save with visible errors; keyboard layout editing to the backlog).
+3. **License:** decided 2026-10-10 — an MIT `LICENSE` (M4 decision 16) lands in M4a; until then the README states
+   "MIT intended; no LICENSE file committed".
 4. **Provider keys for B5:** decided 2026-10-10 — free-tier keys, entered by the owner into `.env`.
 5. **M5:** container images or a compose profile; whether to tag a version.
 6. **M6:** IaC tool; whether Cognito lands in M6 or stays in the backlog.
@@ -481,8 +481,9 @@ Permission to change code is not permission for any of these.
 | [`docs/product/terminology.md`](docs/product/terminology.md) | Shared vocabulary | Main thread or delegate |
 | [`docs/architecture/system-overview.md`](docs/architecture/system-overview.md) | Runtime shape, flows, ports, known gaps | Main thread or delegate |
 | [`docs/architecture/m0-m3-baseline-contract.md`](docs/architecture/m0-m3-baseline-contract.md) | As-built behaviour, defect catalogue D1–D31, drills B0–B12 | Main thread or delegate |
-| [`docs/architecture/m4-quality-gate-contract.md`](docs/architecture/m4-quality-gate-contract.md) | Proposed M4 contract and decisions 1–17 | Main thread or delegate |
+| [`docs/architecture/m4-quality-gate-contract.md`](docs/architecture/m4-quality-gate-contract.md) | M4 contract (accepted 2026-10-10) and decisions 1–17 | Main thread or delegate |
 | [`docs/decisions/ADR-0001-foundation-stack.md`](docs/decisions/ADR-0001-foundation-stack.md) | Stack decisions (retroactive) | Main thread or delegate |
+| [`docs/decisions/ADR-0002-m4-quality-gate.md`](docs/decisions/ADR-0002-m4-quality-gate.md) | M4 owner decisions, approved dependencies, preparation values | Main thread or delegate |
 | [`docs/development/local-setup.md`](docs/development/local-setup.md) | Setup, configuration, troubleshooting | Main thread or delegate |
 | [`docs/development/testing.md`](docs/development/testing.md) | Check commands and current results | Main thread or delegate |
 | [`docs/development/baseline-verification.md`](docs/development/baseline-verification.md) | M0–M3 evidence: reported legacy claims, observed baseline, drills | Main thread |

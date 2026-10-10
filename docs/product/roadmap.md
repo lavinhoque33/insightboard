@@ -17,7 +17,7 @@ they matter.
 | M1 — Accounts and dashboards | Register and login with JWT sessions; owner-scoped dashboard CRUD; frontend auth flow and dashboard list | **Accepted** 2026-10-10 (owner), defects included; see the qualification below and the [baseline verification record](../development/baseline-verification.md) |
 | M2 — Widgets and editor | Five provider widgets through a cached backend proxy; GridStack editor with persisted layout | **Accepted** 2026-10-10 (owner), defects included; see the qualification below and the [baseline verification record](../development/baseline-verification.md) |
 | M3 — UI polish and contract alignment | daisyUI styling, auth and editor fixes, v1 payload contract, draft-on-add editor | **Accepted** 2026-10-10 (owner), defects included; see the qualification below and the [baseline verification record](../development/baseline-verification.md) |
-| M4 — Quality gate and hardening | Reproducible builds, passing gates, loopback defaults, safe outbound calls, real test suites, CI | **Planned**; [contract](../architecture/m4-quality-gate-contract.md) **proposed**, owner decisions pending |
+| M4 — Quality gate and hardening | Reproducible builds, passing gates, loopback defaults, safe outbound calls, real test suites, CI | **Planned**; [contract](../architecture/m4-quality-gate-contract.md) **accepted** 2026-10-10 ([ADR 0002](../decisions/ADR-0002-m4-quality-gate.md)); M4a next |
 | M5 — Local release | A reproducible, documented, independently runnable local product | **Planned** |
 | M6 — AWS readiness | Cloud adapters and an inspectable, synth-only experiment proposal, without deployment | **Planned** |
 | M7 — AWS experiment | A validated and cleaned-up cloud execution path | **Deferred**; owner approval and a $0 path required |
@@ -141,8 +141,8 @@ and cached by the backend.
 **Objective (plan 12/M4):** reproducible builds, passing gates, loopback defaults, safe outbound calls, real test
 suites, and CI, fixing the defects the baseline recorded. Legacy phase 11 (Testing and CI/CD) folds in here.
 
-The binding details will be the [M4 contract](../architecture/m4-quality-gate-contract.md) (**proposed**) and
-ADR 0002 (written at acceptance).
+The binding details are the [M4 contract](../architecture/m4-quality-gate-contract.md) (**accepted** 2026-10-10)
+and [ADR 0002](../decisions/ADR-0002-m4-quality-gate.md).
 
 **Slices, in order:**
 
@@ -153,34 +153,44 @@ ADR 0002 (written at acceptance).
 - **M4c — Frontend correctness, test suites, and CI:** D9, D10, D11, D22, D23, D24, D25, D27, D28, D31. Decisions
   12, 13, 15 (and the daisyUI part of 14).
 
-**Decisions pending (owner):** full text and ★ recommendations in the contract.
+**Decisions (owner, 2026-10-10):** full text in the contract; preparation values (status-widget cap and timeouts,
+rate limits, dashboard cap, 422 shape, `/readyz`) in the contract's "Preparation values" table.
 
 | # | Decision | Recommendation | Owner choice | Date |
 | --- | --- | --- | --- | --- |
-| 1 | Commit `Cargo.lock`; pin the toolchain; `rust-version` | ★ as proposed | pending | |
-| 2 | Root `Makefile` mirroring StatusForge, host Rust or container fallback | ★ as proposed | pending | |
-| 3 | fmt and clippy gates; ESLint and Prettier; `vue-tsc` in `build` | ★ as proposed | pending | |
+| 1 | Commit `Cargo.lock`; pin the toolchain; `rust-version` | ★ as proposed | **approved** ★ | 2026-10-10 |
+| 2 | Root `Makefile` mirroring StatusForge, host Rust or container fallback | ★ as proposed | **approved** ★ | 2026-10-10 |
+| 3 | fmt and clippy gates; ESLint and Prettier; `vue-tsc` in `build` | ★ as proposed | **approved** ★ | 2026-10-10 |
 | 4 | Loopback defaults, compose on `127.0.0.1`, credentials from `.env` (before drills, B0) | ★ as proposed | **approved** ★; landed in `354e06c` as the B0 mitigation | 2026-10-10 |
-| 5 | Outbound policy for the status widget and all providers | ★ as proposed | pending | |
-| 6 | `governor` rate limiting; Argon2 in `spawn_blocking` | ★ as proposed | pending | |
-| 7 | CORS allowlist from `CORS_ORIGINS` | ★ as proposed | pending | |
-| 8 | Auth hardening; owner calls: token TTL, localStorage vs httpOnly cookie | no ★ | pending | |
-| 9 | Dashboard JSON defaults, migration and backfill, shape validation | no ★ | pending | |
-| 10 | Error model; owner calls: 400 vs 422 with details, 400 vs 503 for a missing key | no ★ | pending | |
-| 11 | Contract tests on both sides; OpenAPI later | ★ as proposed | pending | |
-| 12 | Test suites with local mocks, no live providers | ★ as proposed | pending | |
-| 13 | GitHub Actions CI without secrets or live providers | ★ as proposed | pending | |
-| 14 | Dependency fixes, daisyUI stable, unused removals, `engines` | no ★ | pending | |
-| 15 | Frontend defects; owner calls: title source (`name` ★), auto-save with visible errors ★, keyboard layout editing | partial ★ | pending | |
-| 16 | MIT `LICENSE` | ★ as proposed | pending | |
-| 17 | Keep `docs/guides/` non-authoritative | ★ as proposed | pending | |
+| 5 | Outbound policy for the status widget and all providers | ★ as proposed | **approved** ★ | 2026-10-10 |
+| 6 | `governor` rate limiting; Argon2 in `spawn_blocking` | ★ as proposed | **approved** ★ | 2026-10-10 |
+| 7 | CORS allowlist from `CORS_ORIGINS` | ★ as proposed | **approved** ★ | 2026-10-10 |
+| 8 | Auth hardening; owner calls: token TTL, localStorage vs httpOnly cookie | no ★ | **approved**; TTL 24 hours; localStorage | 2026-10-10 |
+| 9 | Dashboard JSON defaults, migration and backfill, shape validation | no ★ | **approved** as written | 2026-10-10 |
+| 10 | Error model; owner calls: 400 vs 422 with details, 400 vs 503 for a missing key | no ★ | **approved**; 422 with details; 503 | 2026-10-10 |
+| 11 | Contract tests on both sides; OpenAPI later | ★ as proposed | **approved** ★ | 2026-10-10 |
+| 12 | Test suites with local mocks, no live providers | ★ as proposed | **approved** ★ | 2026-10-10 |
+| 13 | GitHub Actions CI without secrets or live providers | ★ as proposed | **approved** ★; enabling needs a push request | 2026-10-10 |
+| 14 | Dependency fixes, daisyUI stable, unused removals, `engines` | no ★ | **approved** as written | 2026-10-10 |
+| 15 | Frontend defects; owner calls: title source (`name` ★), auto-save with visible errors ★, keyboard layout editing | partial ★ | **approved**; `name`; auto-save with error and retry; keyboard layout editing to the backlog | 2026-10-10 |
+| 16 | MIT `LICENSE` | ★ as proposed | **approved** ★ | 2026-10-10 |
+| 17 | Keep `docs/guides/` non-authoritative | ★ as proposed | **approved** ★ | 2026-10-10 |
 
-**Agents:** to be chosen in M4 preparation and recorded here; tiers follow [`.omp/AGENTS.md`](../../.omp/AGENTS.md).
+**Agents** (tiers per [`.omp/AGENTS.md`](../../.omp/AGENTS.md)):
 
-**Next slice:** M4 preparation (present decisions 1–3 and 5–17, record the owner's choices and dates above, write
-ADR 0002, accept the contract), then M4a. Decision 4 (D3) already landed in `354e06c` as the B0 mitigation.
+| Slice | Implementation | Verification |
+| --- | --- | --- |
+| M4a | `implement-medium`; the fmt reformat commit may go to `implement-light` | `verify` |
+| M4b | `implement-heavy` (backend, contract pair, and client change together) | `verify` |
+| M4c | `implement-heavy` | `verify-browser` (desktop, 390 px, keyboard) |
 
-**Keep out:** cloud work, app container images (M5), OpenAPI generation, new widgets, dark theme, public dashboards.
+Research as needed: `research-medium` by default, `research-heavy` for cross-layer audits.
+
+**Next slice:** M4a — reproducibility, gates, and exposure (D4, D12, D13, D14, D18, D26, D29 compose; decisions 1, 2,
+3, 7, 14, 16, 17). Decision 4 (D3) already landed in `354e06c`.
+
+**Keep out:** cloud work, app container images (M5), OpenAPI generation, new widgets, dark theme, public dashboards,
+keyboard layout editing (backlog).
 
 ## M5 — Local release (planned)
 
@@ -216,7 +226,6 @@ before any other external request.
 
 ## Next action
 
-1. M4 preparation: the owner decides 1–3 and 5–17 (★ recommendations in the
-   [M4 contract](../architecture/m4-quality-gate-contract.md)); the main thread records the choices above, writes
-   ADR 0002, and the owner accepts the contract.
-2. M4a.
+1. M4a: brief `implement-medium` with the contract sections 1, 2, 11 (audit part), and 13; one writer each for
+   `backend/Cargo.toml`, `Cargo.lock`, `frontend/package.json`, `frontend/package-lock.json`, `docker-compose.yml`.
+2. Record M4a evidence in `docs/development/m4-verification.md`; then M4b.
