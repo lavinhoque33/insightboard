@@ -75,6 +75,19 @@ allowlisted loopback fixtures; `jsonschema` is built without its HTTP/file `$ref
 workstation on 2026-10-10 by running the test binary under `strace -f -e trace=connect`: every `connect` went to
 `127.0.0.1` (plus resolver address-selection probes to `::1` port 0 when resolving `localhost`).
 
+## CI
+
+`.github/workflows/ci.yml` runs on push and pull request to `main` and on manual dispatch, with `contents: read`
+permission and a per-ref concurrency group that cancels superseded runs. No secrets, provider keys, or deploy step.
+
+- **backend** job: Postgres 16 and Redis 7 service containers bound to the runner's `127.0.0.1`, throwaway CI-only
+  credentials in the workflow `env` (not secrets), the toolchain from `rust-toolchain.toml`, a cargo cache, then
+  `make backend-check`. With `GITHUB_ACTIONS=true` (set by Actions) `require-db` only checks that `DATABASE_URL`
+  and `REDIS_URL` are set, and `.env` is optional; locally the behaviour is unchanged, even with `CI=true`.
+- **web** job: Node from `.nvmrc`, `npm ci`, then `make web-check`.
+
+To mirror CI locally, run `GITHUB_ACTIONS=true make backend-check` with `DATABASE_URL` and `REDIS_URL` exported.
+
 ## What exists
 
 Backend (`cargo test`, one binary; unit tests sit beside the code, router tests in `backend/src/tests/`):
@@ -141,7 +154,7 @@ From the [M4 contract](../architecture/m4-quality-gate-contract.md), **accepted*
 - **Frontend (decision 12):** API client, stores, router guards, configuration modal, and editor tests; Playwright
   journeys against a provider fixture.
 - **CI (decision 13):** GitHub Actions backend and web jobs with Postgres and Redis services, no secrets, no live
-  providers. Enabling CI is an owner action.
+  providers (`.github/workflows/ci.yml`, M4c).
 - **Gates (decision 3), in place since M4a:** `cargo fmt --check`, `cargo clippy --all-targets -- -D warnings`,
   ESLint, Prettier, `vue-tsc`, Vitest, and `cargo test`, run by `make verify`.
 

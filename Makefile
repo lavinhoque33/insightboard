@@ -31,7 +31,7 @@ help:
 	  '  db-reset       DESTRUCTIVE: remove containers and data volumes (needs CONFIRM=yes)' \
 	  '  backend-dev    Run the API on 127.0.0.1:8080 with the root .env (needs host Rust)' \
 	  '  web-dev        Run Vite on 127.0.0.1:5173 with the /api proxy' \
-	  '  backend-check  cargo fmt --check, clippy -D warnings, test, build (host Rust, else container); needs db-up' \
+	  '  backend-check  cargo fmt --check, clippy -D warnings, test, build (host Rust, else container); needs db-up (GitHub Actions: uses DATABASE_URL/REDIS_URL)' \
 	  '  web-check      ESLint + Prettier check, Vitest, vue-tsc + vite build' \
 	  '  verify         backend-check and web-check; backend tests need Postgres and Redis (make db-up)' \
 	  '  format         cargo fmt and Prettier write (needs host Rust)'
@@ -103,12 +103,20 @@ require-web-deps:
 
 # Backend tests use the compose Postgres (isolated #[sqlx::test] databases) and Redis
 # (unique key prefixes). Checks state only; never starts, stops, or recreates containers.
+# In GitHub Actions (GITHUB_ACTIONS=true) the workflow's service containers replace compose:
+# the target only checks that DATABASE_URL and REDIS_URL are set, and .env is not needed.
+# Keyed on GITHUB_ACTIONS, not CI: some local shells and agent harnesses export CI=true.
+ifeq ($(GITHUB_ACTIONS),true)
+require-db:
+	@[ -n "$$DATABASE_URL" ] && [ -n "$$REDIS_URL" ] || { printf '%s\n' 'CI: DATABASE_URL and REDIS_URL must be set for backend-check'; exit 1; }
+else
 require-db: require-env
 	@command -v docker >/dev/null 2>&1 || { printf '%s\n' 'backend-check needs Docker for Postgres and Redis'; exit 1; }
 	@running="$$(docker compose ps --status running --services 2>/dev/null)"; \
 	for svc in postgres redis; do \
 	  printf '%s\n' "$$running" | grep -qx "$$svc" || { printf '%s\n' "backend-check needs Postgres and Redis running: run make db-up ($$svc is not running)"; exit 1; }; \
 	done
+endif
 
 db-up: require-env
 	docker compose up -d --wait postgres redis
@@ -133,7 +141,8 @@ web-dev: require-web-deps
 # --- checks -----------------------------------------------------------------
 
 # Host Rust when present; otherwise a throwaway container. Tests read DATABASE_URL and
-# REDIS_URL from .env (exported to cargo without printing). The container mounts backend/
+# REDIS_URL from .env (exported to cargo without printing) when it exists; in CI they come
+# from the environment. The container mounts backend/
 # read-only, builds in a copy inside the container (no root-owned files in the checkout),
 # uses the host network to reach the 127.0.0.1 Postgres and Redis, and downloads crates on
 # every run (no cache volume).
@@ -141,8 +150,8 @@ ifneq ($(HAVE_CARGO),)
 backend-check: require-db
 	cd $(BACKEND) && cargo fmt --check
 	cd $(BACKEND) && cargo clippy --locked --all-targets -- -D warnings
-	@printf '%s\n' 'cd $(BACKEND) && cargo test --locked  (environment from .env)'
-	@cd $(BACKEND) && set -a && . ../.env && set +a && cargo test --locked
+	@printf '%s\n' 'cd $(BACKEND) && cargo test --locked  (environment from .env when present)'
+	@cd $(BACKEND) && if [ -f ../.env ]; then set -a && . ../.env && set +a; fi && cargo test --locked
 	cd $(BACKEND) && cargo build --locked
 else
 backend-check: require-db

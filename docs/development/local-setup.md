@@ -256,7 +256,7 @@ docker compose exec -T redis redis-cli TTL '<key>'
 
 ## What is not set up
 
-No Dockerfile, application containers, CI workflow (M4c), or production configuration. The legacy run
+No Dockerfile, application containers, or production configuration. CI is `.github/workflows/ci.yml` (see [testing](testing.md#ci)). The legacy run
 instructions remain readable at
 [`manual run instructions.md` at `f15c6a3`](https://github.com/lavinhoque33/insightboard/blob/f15c6a3/manual%20run%20instructions.md);
 their absolute paths, `sudo docker`, and `httpstat.us` target no longer apply.
