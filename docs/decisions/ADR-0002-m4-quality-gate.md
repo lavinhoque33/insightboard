@@ -44,7 +44,7 @@ the B0 mitigation and landed in `354e06c`; the owner settled the rest the same d
 | Dependency | Side | Decision | Use |
 | --- | --- | --- | --- |
 | `jsonschema` | backend (dev) | 11 | Validate handler output against `contracts/api-contract.v1.json` |
-| `tower` with `util` | backend (dev) | 12 | `ServiceExt::oneshot` router tests |
+| `tower` with `util` | backend (dev) | 12 | `ServiceExt::oneshot` router tests; already a regular dependency with `util`, so M4a added nothing |
 | ajv | frontend (dev) | 11 | Validate fixtures and typed payloads against the contract |
 | ESLint, `eslint-plugin-vue`, `typescript-eslint`, `eslint-config-prettier` | frontend (dev) | 3 | `lint` script |
 | Prettier | frontend (dev) | 3 | Formatting gate |

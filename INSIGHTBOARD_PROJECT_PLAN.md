@@ -258,7 +258,7 @@ One numbering for all delivery. M0–M3 describe what exists; M4–M7 are future
 | M1 — Accounts and dashboards | Register and login with JWT sessions; owner-scoped dashboard CRUD; frontend auth flow and dashboard list | 3 Authentication, 4 Dashboard Management, 6 Frontend Foundation | **Accepted** 2026-10-10, defects included |
 | M2 — Widgets and editor | Five provider widgets through a cached backend proxy; GridStack editor with persisted layout | 5 Widget Implementations (Backend), 7 Frontend Dashboard UI / Widget System, 8 Widget Components, 9 Polish and Features | **Accepted** 2026-10-10, defects included |
 | M3 — UI polish and contract alignment | daisyUI styling, auth and editor fixes, v1 payload contract, draft-on-add editor | 10 Frontend Styling with daisyUI; 2025-11-04 fixes; 2026-03-03 remediation (`f15c6a3`) | **Accepted** 2026-10-10, defects included |
-| M4 — Quality gate and hardening | Reproducible builds, passing gates, loopback defaults, safe outbound calls, real test suites, CI | 11 Testing and CI/CD, plus defects D1–D31 | **Planned**; [contract](docs/architecture/m4-quality-gate-contract.md) **accepted** 2026-10-10 with owner decisions 1–17 ([ADR 0002](docs/decisions/ADR-0002-m4-quality-gate.md)); decision 4 landed |
+| M4 — Quality gate and hardening | Reproducible builds, passing gates, loopback defaults, safe outbound calls, real test suites, CI | 11 Testing and CI/CD, plus defects D1–D31 | **In progress**; [contract](docs/architecture/m4-quality-gate-contract.md) **accepted** 2026-10-10 with owner decisions 1–17 ([ADR 0002](docs/decisions/ADR-0002-m4-quality-gate.md)); M4a **locally verified** 2026-10-10 ([record](docs/development/m4-verification.md)) |
 | M5 — Local release | A reproducible, documented, independently runnable local product | 12 Deployment Preparation (local half) | **Planned** |
 | M6 — AWS readiness | Cloud adapters and an inspectable, synth-only experiment proposal, without deployment | 12 Deployment Preparation (cloud half) | **Planned** |
 | M7 — AWS experiment | A validated and cleaned-up cloud execution path | none | **Deferred**; owner approval and a $0 path required |
@@ -459,8 +459,7 @@ Permission to change code is not permission for any of these.
 2. **M4 decisions 1–3 and 5–17:** decided 2026-10-10 — recorded in the [roadmap](docs/product/roadmap.md) and
    [ADR 0002](docs/decisions/ADR-0002-m4-quality-gate.md) (token 24 hours in localStorage; 422 with details; 503
    for a missing key; title from `name`; auto-save with visible errors; keyboard layout editing to the backlog).
-3. **License:** decided 2026-10-10 — an MIT `LICENSE` (M4 decision 16) lands in M4a; until then the README states
-   "MIT intended; no LICENSE file committed".
+3. **License:** decided 2026-10-10 — MIT (M4 decision 16); `LICENSE` committed in M4a (`2780fc0`).
 4. **Provider keys for B5:** decided 2026-10-10 — free-tier keys, entered by the owner into `.env`.
 5. **M5:** container images or a compose profile; whether to tag a version.
 6. **M6:** IaC tool; whether Cognito lands in M6 or stays in the backlog.
@@ -487,6 +486,7 @@ Permission to change code is not permission for any of these.
 | [`docs/development/local-setup.md`](docs/development/local-setup.md) | Setup, configuration, troubleshooting | Main thread or delegate |
 | [`docs/development/testing.md`](docs/development/testing.md) | Check commands and current results | Main thread or delegate |
 | [`docs/development/baseline-verification.md`](docs/development/baseline-verification.md) | M0–M3 evidence: reported legacy claims, observed baseline, drills | Main thread |
+| [`docs/development/m4-verification.md`](docs/development/m4-verification.md) | M4 evidence by slice: drills, checks, incidents | Main thread |
 | [`docs/development/session-handoff.md`](docs/development/session-handoff.md) | Current checkpoint and session index | Main thread |
 | [`docs/development/sessions/`](docs/development/sessions/) | One entry per session | Main thread |
 | [`docs/guides/`](docs/guides/) | Non-authoritative walkthroughs from the legacy period | Banners only |
