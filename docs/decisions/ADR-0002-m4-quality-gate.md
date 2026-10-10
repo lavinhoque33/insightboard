@@ -48,11 +48,14 @@ the B0 mitigation and landed in `354e06c`; the owner settled the rest the same d
 | ajv | frontend (dev) | 11 | Validate fixtures and typed payloads against the contract |
 | ESLint, `eslint-plugin-vue`, `typescript-eslint`, `eslint-config-prettier` | frontend (dev) | 3 | `lint` script |
 | Prettier | frontend (dev) | 3 | Formatting gate |
-| Playwright (`@playwright/test`) | frontend (dev) | 12 | Browser journeys against a provider fixture |
+| Playwright (`@playwright/test`) | frontend (dev) | 12 | Browser journeys against a provider fixture; added in M4c as ^1.64.0 (Chromium only; browser binaries live in `~/.cache/ms-playwright`, outside the repository) |
 
 Already declared and now used: `governor` (6), `mockito` (12). Version bumps under decision 14 (axios, vue, vite,
 transitive packages, daisyUI stable 5) are covered by that decision. Any other new dependency needs owner approval
-and a row here.
+and a row here. In M4c daisyUI moved from `^5.0.0-beta.9` to `^5.7.47` and `autoprefixer` was removed (inert under
+Tailwind 4). The M4c visual overhaul (owner, 2026-10-10: light and dark themes following the OS, with a toggle) uses
+no new dependency: the owner declined a self-hosted font and an icon library, so it uses the system font stack and
+inline SVG icons.
 
 ### Preparation values
 

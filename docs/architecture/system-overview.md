@@ -23,8 +23,9 @@ flowchart LR
 ```
 
 - The backend and frontend run natively; Postgres and Redis are the only containers (`docker-compose.yml`). There is
-  no Dockerfile and no production build path. The root `Makefile` runs setup, the database, and the gates
-  (`make verify`); there is no CI yet (M4c).
+  no Dockerfile and no production build path. The root `Makefile` runs setup, the database, the gates
+  (`make verify`), and the Playwright journeys (`make e2e`); GitHub Actions runs the backend, web, and e2e jobs on
+  every push to `main`.
 - The browser talks only to the Vite dev server; Vite proxies `/api` to `http://127.0.0.1:8080`. The backend also
   grants CORS only to the origins in `CORS_ORIGINS` (default the Vite dev origins `http://127.0.0.1:5173` and
   `http://localhost:5173`; methods GET, POST, PUT, DELETE; headers `Authorization` and `Content-Type`; no
@@ -44,11 +45,12 @@ flowchart LR
    the token is an HS256 JWT valid for 24 hours. A duplicate email is 409 (the insert decides, so concurrent
    registrations cannot both succeed). A wrong password and an unknown email are the same 401 `{"error":"Unauthorized"}`,
    and an unknown email still runs one Argon2 verification against a dummy hash.
-3. The client stores `auth_token` and `user` in localStorage; the router treats their presence as "authenticated"
-   (client-side expiry check: M4c).
+3. The client stores `auth_token` and `user` in localStorage and treats the session as signed in while the token's
+   `exp` claim lies in the future; on start it confirms the session with `GET /api/me`.
 4. Every later request carries `Authorization: Bearer <token>`; the `UserCtx` extractor validates it. Every token
    failure is the generic 401; `/me` for a user that no longer exists is 401.
-5. A 401 outside login and register clears storage and reloads at `/login` (D23, M4c).
+5. A 401 outside login and register, or a stored token past its `exp`, clears the session and opens
+   `/login?redirect=<current route>`; after login the client returns to that same-origin path.
 
 ### Dashboard save
 
@@ -59,17 +61,17 @@ sequenceDiagram
     participant S as Dashboard store
     participant B as Backend
     participant P as Postgres
-    U->>E: drag, resize, add (Save), configure, remove
+    U->>E: drag, resize, add (Save), configure, remove, rename
     E->>E: restart 2 s debounce timer
-    E->>S: updateDashboard(id, {widgets:[{id,type,x,y,w,h,config}]})
-    S->>B: PUT /api/dashboards/:id {layout_json}
+    E->>S: updateDashboard(id, {name, layout})
+    S->>B: PUT /api/dashboards/:id {name, layout_json}
     B->>P: UPDATE ... WHERE id AND user_id (validated layout_json)
     B-->>S: 200 dashboard, or 422 {error, details}
-    Note over E,S: a failed PUT reaches console.error only (D10, M4c)
+    Note over E,S: one save at a time; a failure shows "not saved" with Retry and keeps the edits; leaving flushes once
 ```
 
-New dashboards are created from the list with `name` "New Dashboard", an empty layout, and
-`settings_json = {title, theme}`.
+New dashboards are created from the list with only `name` "New Dashboard"; the server stores `{"widgets":[]}` and
+`settings_json = {}`. The client never reads or writes `settings_json`.
 
 ### Widget data with cache
 
@@ -157,7 +159,8 @@ any failure is a cache miss with a warning, and after a failed connect Redis is 
 
 - Local accounts only; no refresh token, revocation, roles, or Cognito.
 - Tokens carry `sub`, `email`, `exp`, `iat` and last 24 hours; `JWT_SECRET` shorter than 32 bytes stops startup.
-- The client never checks token expiry and never calls `/me` (D23, M4c).
+- The client checks the token's `exp` before each request and on navigation, and confirms the session with `/me`
+  on start (D23, fixed in M4c).
 
 ## Configuration
 
@@ -213,10 +216,10 @@ By area; each ID is defined in the [baseline contract](m0-m3-baseline-contract.m
 | Abuse and load | D6 (M4b) |
 | API correctness and contract | D8, D15, D16, D17 (M4b: backend `jsonschema` and frontend ajv contract tests) |
 | Configuration, cache, health | D18 (fixed in M4a), D19 (M4b), D29 (compose part fixed in M4a; cache keys and dashboard cap M4b) |
-| Build, gates, dependencies | D12, D13, D14, D26 (fixed in M4a; daisyUI beta remains, M4c) |
-| Tests | D11 (backend router, DB, Redis, mock-provider tests M4b; frontend suites, Playwright, CI pending, M4c) |
-| Frontend editor and session | D9, D10, D22, D23, D28 |
-| Styling, accessibility, copy | D24, D25, D27, D31 |
+| Build, gates, dependencies | D12, D13, D14, D26 (fixed in M4a; daisyUI stable 5 in M4c) |
+| Tests | D11 (fixed: backend suites in M4b; Vitest, Playwright, and CI in M4c) |
+| Frontend editor and session | D9, D10, D22, D23, D28 (fixed in M4c) |
+| Styling, accessibility, copy | D24, D25, D27, D31 (fixed in M4c; keyboard layout editing in the backlog) |
 | Cloud readiness | D21 |
 
 ## Future seams (planned)

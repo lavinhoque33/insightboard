@@ -52,7 +52,7 @@ Temporary files from the probe were deleted.
   contract's `[{field, message}]` shape; the `errors`/`validation` fallbacks are unreachable (D16, M4b). **Resolved
   in M4b** (`b20986e`).
 - `WidgetConfigModal.vue` casts form values to `string` before calling a field validator; safe only while validators
-  sit on text fields (M4c).
+  sit on text fields (M4c). **Resolved in M4c** (`5caff27`: typed field union).
 - Two checkouts still share loopback ports 5432 and 6379 (documented in local setup).
 - The workstation `.env` keeps the old `RUST_LOG` filter (`insightboard=debug`); `.env.example` now uses
   `insightboard_backend`. Cosmetic; owner's file.
@@ -102,8 +102,64 @@ Temporary files from the probe were deleted.
 ### Carried forward (not M4b defects)
 
 - Auth inputs are disabled while a request runs, so keyboard focus drops to `<body>` after each submit
-  (`verify-browser` O2; D25, M4c).
+  (`verify-browser` O2; D25, M4c). **Resolved in M4c** (`5caff27`: `readonly` and `aria-disabled` while submitting).
 - Auth forms show the backend's 429 text, widgets the friendlier `errorMessage.ts` text (consistent with section 7;
   wording choice for M4c).
 - Users whose email normalisation would collide keep their stored casing (migration 003 design).
 - `dns_error` status class is not covered by an automated test (would need external DNS).
+
+## M4c — frontend correctness, test suites, CI, and visual overhaul
+
+- Status: **locally verified** on this workstation, 2026-10-10 (UTC); CI observed on GitHub.
+- Commits: `e20a0bc` (CI), `5caff27` (frontend correctness, daisyUI stable 5, Vitest suites), `13e9018` (visual
+  overhaul with light and dark themes, Playwright journeys, CI `e2e` job). Session
+  [2026-10-10-05-m4c](sessions/2026-10-10-05-m4c.md).
+- Scope: D9, D10, D11, D22, D23, D24, D25, D27, D28, D31; decisions 12, 13, 15 and the daisyUI part of 14; the M4a and
+  M4b carry-forward items. Added by the owner: a visual overhaul with light and dark themes following the OS and a
+  Light/Dark/System toggle, without new dependencies (system fonts, inline SVG icons).
+- Implemented by `implement-medium` (CI) and `implement-heavy` (correctness; overhaul; Playwright). Verified by
+  `verify` and `verify-browser`; drills 15 and 16 by the main thread.
+
+### Drills
+
+| # | Drill | Expected | Observed | Result |
+| --- | --- | --- | --- | --- |
+| 12 | Configure an existing widget (the D9 prefill drill) | Form shows the current configuration; Save keeps unchanged fields | Playwright journey (each `make e2e`); `verify-browser`: all five widget types prefilled, no-op Save sends no PUT, stored layout keeps every config; main thread B8 equivalent below | Pass |
+| 13 | Make a save fail | Visible error with retry; no silent loss | Playwright journey fails the PUT with 500: "Your changes are not saved" with Retry, name kept; Retry after the failure lifts saves, reload keeps it. `verify-browser` repeated with 500 and 502 at 1440 and 390 px | Pass (failure injected in the browser, not by stopping the backend) |
+| 14 | Edit, then leave the editor | No extra PUT after leaving | Playwright: pending save flushed on leave, then no PUT for 3 s; `verify-browser`: zero PUTs in 4 s after leaving | Pass |
+| 15 | CI on a pushed branch | fmt, clippy, ESLint, Vitest, `cargo test` green | GitHub Actions on `main`: run 38081483318 (`e20a0bc`) and 38082966318 (`5caff27`) backend and web success; run 38087833114 (`13e9018`) backend, web, and e2e success | Pass |
+| 16 | Rerun baseline drills B1–B10 | All green; B8 passes as drill 12 | Main thread, dev backend on `127.0.0.1:8080`: B1 `/healthz` 200 and `/readyz` ready; B2 register 201, login with upper-cased email 200, `/api/me` 200, duplicate 409, 7-character password 422 `password`, wrong password 401, no token 401; B3 create (`{"widgets":[]}`, `{}`), list, get, update 200, a second user gets 404 for GET, PUT, DELETE and an empty list; B4 after `docker compose restart` and a backend restart the pre-restart token reads the unchanged dashboard; B5 one request each (London weather, rust news, octocat GitHub, bitcoin, example.com) all 200; B6 repeats in 2 ms, Redis keys `insightboard:crypto:bitcoin` (TTL 293), `insightboard:github:octocat`, per-user status keys; B7 browser drag and resize `0,0,4,3` → `4,0,6,5`, "All changes saved", same after reload; B8 = drill 12; B9 remove widget → 0 after reload, delete with the native confirm → `DELETE` and the empty state after reload; B10 invalid `auth_token` → `/login?redirect=/dashboards`, storage cleared, no false hint | Pass |
+
+### Other checks
+
+| Check | Who | Outcome |
+| --- | --- | --- |
+| `make verify` | Main thread (final tree) | Exit 0: 87 backend tests; Vitest 91 tests in 12 files; fmt, clippy, ESLint, Prettier, build |
+| `make e2e` | Main thread; `verify` ×3, `M4cE2E` ×2 (reported) | 2 journeys passed each run, about 25 s |
+| Network isolation of `make e2e` | `verify`, `M4cE2E` (reported) | `strace` connect audit: every IPv4 connect to `127.0.0.1` (fixture 18090/18091, backend 8090, Vite 5175, compose 5432/6379); Chromium's IPv6 reachability probe fails with `ENETUNREACH`; fixture rejects anything but the run's dummy keys |
+| `npm audit --omit=dev`, full audit | Main thread, `verify` | 0 and 0 |
+| Dependencies | `verify` | `@playwright/test` ^1.64.0 only new package (ADR 0002); daisyUI `^5.7.47`; `autoprefixer` removed; lockfile adds only the Playwright packages |
+| Contract section 12 item by item | `verify` (reported) | D9, D10, D22–D25, D27, D28 pass with file references; D31 pass at code level and in `verify-browser` |
+| Browser: both themes at 1440 and 390 px; theme default, toggle, persistence, no flash, reduced motion; contrast; keyboard and menus; drills 12–14; D23 deep link and expired token; console | `verify-browser` (reported) | Pass after one fix (below). Contrast: muted text 6.2:1 light, 8.1–8.4:1 dark; focus ring 6.0:1 and 6.3:1 |
+| Theme logic | `useTheme.spec.ts` (4 tests) | Stored choice beats the OS; System follows OS changes; invalid value falls back |
+
+### Findings fixed during review
+
+- High (regression from the restyle): the configuration dialog did not take focus on open, so Escape and the focus
+  trap did not engage. `useDialogFocus` now retries initial focus until the dialog is focusable; the Playwright
+  journey asserts focus and Escape with real key presses; `verify-browser` rechecked 12 combinations (3 open paths ×
+  2 themes × reduced motion on/off): pass.
+- Low: the editor title truncated to a stub at 390 px; the toolbar now wraps.
+- Low: unused icons and a theme token removed; the M4a validator cast and the M4b auth focus drop resolved.
+- CI switch keyed on `GITHUB_ACTIONS` instead of `CI` (this harness exports `CI=true`).
+
+### Observations
+
+- Escape pressed within the first ~100 ms of opening the dialog (up to ~500 ms with reduced motion) is ignored until
+  focus lands; a second Escape closes it.
+- A widget added in 1-column mode (below 768 px) gets GridStack's default desktop position.
+- Auth forms show the backend's 429 text; widgets show the `errorMessage.ts` wording.
+- The scroll fade on widget bodies needs CSS scroll-driven animations (not in Firefox today); without them there is no
+  fade.
+- Each `make e2e` run leaves two users and dashboards in the compose database.
+- Pushing a workflow file needs the `workflow` OAuth scope; the stored HTTPS credential lacks it, so pushes go over SSH.

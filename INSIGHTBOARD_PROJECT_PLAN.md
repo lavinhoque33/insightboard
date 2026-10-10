@@ -130,9 +130,8 @@ deployment (M6).
 - AI summary widget (likely a paid LLM; conflicts with $0).
 - S3 uploads.
 - Cognito (unless it lands in M6).
-- Dark theme and theme toggle.
-- Dashboard rename and per-dashboard refresh settings (if not taken by M4c decision 15).
 - Chart.js visualisations.
+- Per-dashboard refresh settings (`settings_json` is unused by the client since M4c).
 - Keyboard layout editing (moving and resizing widgets without a mouse; M4 decision 15 placed it here on 2026-10-10).
 
 **Non-goals (dropped):** React Native app; WebSockets or real-time push; plugin marketplace; Mantine;
@@ -258,7 +257,7 @@ One numbering for all delivery. M0–M3 describe what exists; M4–M7 are future
 | M1 — Accounts and dashboards | Register and login with JWT sessions; owner-scoped dashboard CRUD; frontend auth flow and dashboard list | 3 Authentication, 4 Dashboard Management, 6 Frontend Foundation | **Accepted** 2026-10-10, defects included |
 | M2 — Widgets and editor | Five provider widgets through a cached backend proxy; GridStack editor with persisted layout | 5 Widget Implementations (Backend), 7 Frontend Dashboard UI / Widget System, 8 Widget Components, 9 Polish and Features | **Accepted** 2026-10-10, defects included |
 | M3 — UI polish and contract alignment | daisyUI styling, auth and editor fixes, v1 payload contract, draft-on-add editor | 10 Frontend Styling with daisyUI; 2025-11-04 fixes; 2026-03-03 remediation (`f15c6a3`) | **Accepted** 2026-10-10, defects included |
-| M4 — Quality gate and hardening | Reproducible builds, passing gates, loopback defaults, safe outbound calls, real test suites, CI | 11 Testing and CI/CD, plus defects D1–D31 | **In progress**; [contract](docs/architecture/m4-quality-gate-contract.md) **accepted** 2026-10-10 with owner decisions 1–17 ([ADR 0002](docs/decisions/ADR-0002-m4-quality-gate.md)); M4a and M4b **locally verified** 2026-10-10 ([record](docs/development/m4-verification.md)) |
+| M4 — Quality gate and hardening | Reproducible builds, passing gates, loopback defaults, safe outbound calls, real test suites, CI | 11 Testing and CI/CD, plus defects D1–D31 | **Locally verified** 2026-10-10 (M4a, M4b, M4c; CI green on GitHub); [contract](docs/architecture/m4-quality-gate-contract.md) **accepted** with owner decisions 1–17 ([ADR 0002](docs/decisions/ADR-0002-m4-quality-gate.md)); [record](docs/development/m4-verification.md) |
 | M5 — Local release | A reproducible, documented, independently runnable local product | 12 Deployment Preparation (local half) | **Planned** |
 | M6 — AWS readiness | Cloud adapters and an inspectable, synth-only experiment proposal, without deployment | 12 Deployment Preparation (cloud half) | **Planned** |
 | M7 — AWS experiment | A validated and cleaned-up cloud execution path | none | **Deferred**; owner approval and a $0 path required |
@@ -334,8 +333,9 @@ CI. Defects D1–D31 except D21 (D3 landed early on 2026-10-10 under decision 4)
 listeners shown by `ss -ltn`, status-widget rejections, 429 rate limiting, contract tests failing on a broken
 fixture, the D9 prefill drill, CI green, and B1–B10 rerun green; recorded in an M4 verification record.
 
-**Keep out:** cloud, Docker images for app services (M5), OpenAPI generation, new widgets, dark theme, public
-dashboards, keyboard layout editing (backlog).
+**Keep out:** cloud, Docker images for app services (M5), OpenAPI generation, new widgets, public dashboards,
+keyboard layout editing (backlog). Light and dark themes with a toggle and dashboard rename moved from the backlog
+into M4c (owner, 2026-10-10).
 
 ### M5 — Local release
 

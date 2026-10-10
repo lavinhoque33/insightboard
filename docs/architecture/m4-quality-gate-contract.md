@@ -209,6 +209,8 @@ All providers:
   `make backend-check` and `make web-check` (or their documented equivalents).
 - No secrets, no provider keys, no live provider calls, no deploy step.
 - Enabling CI is a push to the public origin; the owner's standing push authorization (2026-10-10) covers it.
+- M4c added an `e2e` job: the Playwright journeys with the same Postgres and Redis service containers, a loopback
+  provider fixture, and the report uploaded as an artifact only on failure.
 
 ## 11. Dependencies (M4a and M4c; decision 14; D14, D24, D26)
 
@@ -282,6 +284,7 @@ local mocks; manual provider smoke stays within the approved external targets in
 
 ## 15. Out of scope
 
-Cloud work of any kind; Docker images for app services (M5); OpenAPI generation; new widgets; dark theme; public
+Cloud work of any kind; Docker images for app services (M5); OpenAPI generation; new widgets; public
 dashboards; TLS features for sqlx and redis (D21, M6); the unscheduled backlog in the
-[project plan](../../INSIGHTBOARD_PROJECT_PLAN.md) section 5.
+[project plan](../../INSIGHTBOARD_PROJECT_PLAN.md) section 5. "Dark theme" was listed here until the owner added a
+visual overhaul with light and dark themes (following the OS, with a toggle) to M4c on 2026-10-10.
