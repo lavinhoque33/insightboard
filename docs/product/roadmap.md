@@ -215,11 +215,16 @@ readiness.
 
 **Keep out:** cloud, registries, public hosting, domains, TLS (D21, M6), a GitHub Release object, the backlog.
 
-## M6 — AWS readiness (planned)
+## M6 — AWS readiness (planned; contract proposed)
 
 Scope, exit evidence, and keep-out follow plan section 12/M6: a Lambda-compatible packaging seam, synth-only IaC
 (tool chosen by the owner), a Cognito-compatible auth seam unless deferred, TLS features for sqlx and redis (D21),
 and a cost and cleanup proposal. No AWS credentials, no deploy. Legacy phase 12 (cloud half).
+
+The [M6 contract](../architecture/m6-aws-readiness-contract.md) and draft
+[ADR 0004](../decisions/ADR-0004-m6-aws-readiness.md) are **proposed** (2026-10-10). They cover slices M6a (backend
+seams and TLS), M6b (synth-only infrastructure), and M6c (experiment proposal and drills), with decisions 1–12 and a
+list of new dependencies. Work starts only after the owner decides.
 
 ## M7 — AWS experiment (deferred)
 
@@ -243,6 +248,6 @@ before any other external request.
 
 ## Next action
 
-1. M6 — AWS readiness: draft its contract (packaging seam, synth-only IaC tool, auth seam, D21 TLS, cost and cleanup
-   proposal) for owner review before any work.
+1. M6 — AWS readiness: the owner reviews the [M6 contract](../architecture/m6-aws-readiness-contract.md) (decisions
+   1–12, the dependency list, the RDS CA bundle download) before any work.
 2. Tag `v1.0.0`: done 2026-10-10 on `7c90107`.

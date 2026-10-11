@@ -10,13 +10,13 @@ entry lives in [`sessions/`](sessions/) so this file stays short as history grow
 | Field | Current state |
 | --- | --- |
 | Updated | 2026-10-10 (UTC) |
-| Latest session | [2026-10-10-07-readme](sessions/2026-10-10-07-readme.md) |
-| Milestone | M0–M5 **accepted** 2026-10-10 (M0–M3 defects included; M4 after M4a, M4b, M4c locally verified, [M4 verification record](m4-verification.md); M5 after M5a and M5b locally verified with drills 1–10, [M5 verification record](m5-verification.md)). Release `1.0.0` tagged `v1.0.0` on `7c90107` (pushed 2026-10-10; no GitHub Release object). Next milestone M6 — AWS readiness (**planned**, no contract). ADR 0001 **accepted** 2026-10-10. |
+| Latest session | [2026-10-10-08-m6-contract](sessions/2026-10-10-08-m6-contract.md) |
+| Milestone | M0–M5 **accepted** 2026-10-10 (M0–M3 defects included; M4 after M4a, M4b, M4c locally verified, [M4 verification record](m4-verification.md); M5 after M5a and M5b locally verified with drills 1–10, [M5 verification record](m5-verification.md)). Release `1.0.0` tagged `v1.0.0` on `7c90107` (pushed 2026-10-10; no GitHub Release object). M6 — AWS readiness **planned**; [contract](../architecture/m6-aws-readiness-contract.md) and [ADR 0004](../decisions/ADR-0004-m6-aws-readiness.md) **proposed** 2026-10-10, owner decisions pending. ADR 0001 **accepted** 2026-10-10. |
 | Last accepted task | Session 2026-10-10-06: M5 accepted by the owner. M5a `9a14027` (F1 fixed), M5b `cdb9359` (version 1.0.0, screenshots) and `e6abe8c` (verification record, doc fixes); CI runs 38096580273, 38097611740, 38099977195 green on all four jobs. Pushed over SSH: `8cc1e54..12b1fdb`, `12b1fdb..f998146`, `f998146..cdb9359`, `cdb9359..e6abe8c`, then the acceptance records commit. |
-| Active task | None. |
+| Active task | M6 contract review by the owner (decisions 1–12, dependency list, RDS CA bundle download). No implementation started. |
 | Active delegates / write ownership | None. |
 | Blockers | None. Standing push authorization since 2026-10-10 (scope in `.omp/AGENTS.md`); force-push, tags, releases, PRs, and visibility changes still need an explicit request. HTTPS pushes that touch `.github/workflows/` need the `workflow` OAuth scope (`gh auth refresh -s workflow`); SSH pushes work. |
-| Exact next action | Draft the M6 — AWS readiness contract (plan section 12/M6) for owner review before any work. |
+| Exact next action | On the owner's choices: record them in the contract and ADR 0004 (accepted), then delegate M6a (backend seams and TLS) per the contract. |
 | Workspace | This workstation (Fedora 44): clone `/home/axeleratorx/PersProject/InsightBoard`, `origin` public and in sync with `main`. `.env` present (gitignored, mode 600). Compose containers `insightboard-postgres-1`, `insightboard-redis-1` on `127.0.0.1`; release app stopped (`make up` serves `127.0.0.1:8088`); images `insightboard:local` and `insightboard:1.0.0`. Backend `13e9018` debug build on `127.0.0.1:8080`; Vite on `127.0.0.1:5173`. Dev database holds drill, browser, demo, and e2e test users. Backend tests and `make e2e` need `make db-up`; Playwright Chromium installed. rustc 1.99.0 (pinned); Node 20.19.0 in `.tools/`. |
 
 ## Protocol
@@ -80,6 +80,7 @@ Create `sessions/YYYY-MM-DD-NN-short-topic.md`:
 
 | Session | Outcome |
 | --- | --- |
+| [2026-10-10-08-m6-contract](sessions/2026-10-10-08-m6-contract.md) | M6 contract and ADR 0004 **proposed** (CDK synth-only, Cognito deferred, `lambda` feature, rustls for D21, one Lambda + Function URL + RDS shape, cost about $18/month while deployed); awaiting owner decisions. |
 | [2026-10-10-07-readme](sessions/2026-10-10-07-readme.md) | Root README rewritten as a product README at the owner's request (no milestone or workflow material); claims checked against source. |
 | [2026-10-10-06-m5-contract](sessions/2026-10-10-06-m5-contract.md) | M5 contract and ADR 0003 accepted (port 8088); M5a and M5b locally verified, drills 1–10 pass, CI green (`12b1fdb..e6abe8c` pushed). Owner accepted M5; version 1.0.0, no tag yet. |
 | [2026-10-10-05-m4c](sessions/2026-10-10-05-m4c.md) | M4c locally verified: CI workflow `e20a0bc` (`implement-medium`), frontend correctness `5caff27` and visual overhaul with light and dark themes plus Playwright `13e9018` (`implement-heavy` ×3); `verify` and `verify-browser` (one dialog-focus regression fixed); drills 12–16 by the main thread; CI green incl. e2e. Pushed over SSH (`a27a8de..8cc1e54`). Owner accepted M4. |

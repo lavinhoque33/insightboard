@@ -41,6 +41,7 @@ The root [README](../README.md) summarises features, the Docker-only release pat
 | [M0–M3 baseline contract](architecture/m0-m3-baseline-contract.md) | **Accepted** as-built record at `f15c6a3`: routes, status codes, config, schema, widgets, editor; defect catalogue D1–D31; baseline drills B0–B12 |
 | [M4 quality-gate contract](architecture/m4-quality-gate-contract.md) | **Accepted** 2026-10-10: slices M4a–M4c, owner decisions and preparation values, acceptance drills |
 | [M5 local-release contract](architecture/m5-local-release-contract.md) | **Accepted** 2026-10-10: slices M5a–M5b, owner decisions 1–9, preparation values, acceptance drills |
+| [M6 AWS-readiness contract](architecture/m6-aws-readiness-contract.md) | **Proposed** 2026-10-10: slices M6a–M6c, decisions 1–12 with recommendations (CDK synth-only, Cognito deferred, Lambda feature, rustls for D21), new dependencies for approval, cost estimate, cleanup, drills |
 
 ## Decisions
 
@@ -49,6 +50,7 @@ The root [README](../README.md) summarises features, the Docker-only release pat
 | [ADR 0001: foundation stack](decisions/ADR-0001-foundation-stack.md) | **Accepted** 2026-10-10 retroactive record of the stack chosen 2025-10-28 to 2026-03-03: Rust/Axum, SQLx, Postgres, Redis, Vue 3, Pinia, GridStack, Tailwind and daisyUI |
 | [ADR 0002: M4 quality gate](decisions/ADR-0002-m4-quality-gate.md) | **Accepted** owner choices on M4 decisions 1–17, dependencies they approve, and M4 preparation values |
 | [ADR 0003: M5 local release](decisions/ADR-0003-m5-local-release.md) | **Accepted** owner choices on M5 decisions 1–9: one image, compose profile, version `1.0.0`, clean-machine evidence |
+| [ADR 0004: M6 AWS readiness](decisions/ADR-0004-m6-aws-readiness.md) | **Proposed** record of M6 decisions 1–12 (resolves plan open decision 6 and D21 once accepted); owner choices pending |
 
 ## Development
 
@@ -67,6 +69,7 @@ The root [README](../README.md) summarises features, the Docker-only release pat
 | [2026-10-10-05 M4c](development/sessions/2026-10-10-05-m4c.md) | M4c: frontend correctness, Vitest and Playwright suites, CI, visual overhaul with light and dark themes; drills 12–16 |
 | [2026-10-10-06 M5](development/sessions/2026-10-10-06-m5-contract.md) | M5 contract accepted (ADR 0003, port 8088); M5a packaging with F1 fix; M5b version 1.0.0, changelog, runbook, README and screenshots, drills 1–10; owner accepted M5 |
 | [2026-10-10-07 README](development/sessions/2026-10-10-07-readme.md) | Root README rewritten as a product README for the GitHub landing page |
+| [2026-10-10-08 M6 contract](development/sessions/2026-10-10-08-m6-contract.md) | M6 contract and ADR 0004 drafted from two read-only research reports and main-thread checks; awaiting owner decisions |
 
 ## Guides (non-authoritative)
 
