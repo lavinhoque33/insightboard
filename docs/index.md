@@ -62,7 +62,7 @@ The root [README](../README.md) summarises features, the Docker-only release pat
 | [Baseline verification](development/baseline-verification.md) | M0–M3 evidence: 2026-10-10 automated baseline, drill results B0–B12 |
 | [M4 verification](development/m4-verification.md) | M4 drill evidence by slice; M4a, M4b, M4c locally verified; M4 accepted 2026-10-10 |
 | [M5 verification](development/m5-verification.md) | M5 evidence: M5a packaging checks and F1 fix, M5b drills 1–10, screenshots provenance; M5 accepted 2026-10-10 |
-| [M6 verification](development/m6-verification.md) | M6 evidence: M6a and M6b reviews, drills 1–9 (RIE, TLS, offline synth, template inspection, credential hygiene) |
+| [M6 verification](development/m6-verification.md) | M6 evidence: M6a and M6b reviews, drills 1–9 (RIE, TLS, offline synth, template inspection, credential hygiene, CI); M6 accepted 2026-10-11 |
 | [Session handoff](development/session-handoff.md) | Current checkpoint, protocol, template, session index; entries under `development/sessions/` |
 | [2026-10-10-01 workflow onboarding](development/sessions/2026-10-10-01-workflow-onboarding.md) | The session that moved InsightBoard onto this workflow |
 | [2026-10-10-02 B0 loopback and drills](development/sessions/2026-10-10-02-b0-loopback-and-drills.md) | Decision 4 (D3 fix), host toolchain, and baseline drills B0–B12 |
@@ -71,7 +71,7 @@ The root [README](../README.md) summarises features, the Docker-only release pat
 | [2026-10-10-05 M4c](development/sessions/2026-10-10-05-m4c.md) | M4c: frontend correctness, Vitest and Playwright suites, CI, visual overhaul with light and dark themes; drills 12–16 |
 | [2026-10-10-06 M5](development/sessions/2026-10-10-06-m5-contract.md) | M5 contract accepted (ADR 0003, port 8088); M5a packaging with F1 fix; M5b version 1.0.0, changelog, runbook, README and screenshots, drills 1–10; owner accepted M5 |
 | [2026-10-10-07 README](development/sessions/2026-10-10-07-readme.md) | Root README rewritten as a product README for the GitHub landing page |
-| [2026-10-10-08 M6](development/sessions/2026-10-10-08-m6-contract.md) | M6 contract and ADR 0004 accepted; M6a backend seams and M6b synth-only `infra/` (`implement-heavy` ×2); M6c proposal, docs, drills 1–9 |
+| [2026-10-10-08 M6](development/sessions/2026-10-10-08-m6-contract.md) | M6 contract and ADR 0004 accepted; M6a backend seams and M6b synth-only `infra/` (`implement-heavy` ×2); M6c proposal, docs, drills 1–9; owner accepted M6 |
 
 ## Guides (non-authoritative)
 

@@ -247,7 +247,7 @@ By area; each ID is defined in the [baseline contract](m0-m3-baseline-contract.m
 - **M5 — Local release (accepted 2026-10-10):** one image with the backend serving the built frontend, a compose profile
   bound to loopback, the runbook, and version `1.0.0`; see the [M5 contract](m5-local-release-contract.md) and the
   [runbook](../operations/runbook.md).
-- **M6 — AWS readiness (in progress):** the `lambda` cargo feature, rustls TLS (D21), the cache-disabled mode, and the
+- **M6 — AWS readiness (accepted 2026-10-11):** the `lambda` cargo feature, rustls TLS (D21), the cache-disabled mode, and the
   synth-only CDK package in `infra/`; Cognito is deferred to the backlog (ADR 0004). Nothing is deployed and no AWS
   credentials are used; see the [M6 contract](m6-aws-readiness-contract.md).
 - No seam for the unscheduled backlog (background refresh, public dashboards, AI widget, S3 uploads) exists or is

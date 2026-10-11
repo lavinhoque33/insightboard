@@ -251,7 +251,7 @@ automated accessibility checks are not a human accessibility evaluation; skipped
 One numbering for all delivery. M0–M3 describe what exists; M4–M7 are future work. Status lives in the
 [roadmap](docs/product/roadmap.md); this table is the baseline.
 
-| Milestone | Outcome | Legacy phases | Status (2026-10-10) |
+| Milestone | Outcome | Legacy phases | Status (2026-10-11) |
 | --- | --- | --- | --- |
 | M0 — Foundation | Toolchain, compose Postgres and Redis, Axum skeleton with config, migrations, and health; Vue shell | 1 Project Foundation, 2 Backend Core | **Accepted** 2026-10-10, defects included |
 | M1 — Accounts and dashboards | Register and login with JWT sessions; owner-scoped dashboard CRUD; frontend auth flow and dashboard list | 3 Authentication, 4 Dashboard Management, 6 Frontend Foundation | **Accepted** 2026-10-10, defects included |
@@ -259,7 +259,7 @@ One numbering for all delivery. M0–M3 describe what exists; M4–M7 are future
 | M3 — UI polish and contract alignment | daisyUI styling, auth and editor fixes, v1 payload contract, draft-on-add editor | 10 Frontend Styling with daisyUI; 2025-11-04 fixes; 2026-03-03 remediation (`f15c6a3`) | **Accepted** 2026-10-10, defects included |
 | M4 — Quality gate and hardening | Reproducible builds, passing gates, loopback defaults, safe outbound calls, real test suites, CI | 11 Testing and CI/CD, plus defects D1–D31 | **Accepted** 2026-10-10 (owner) after M4a, M4b, M4c were locally verified with CI green; [contract](docs/architecture/m4-quality-gate-contract.md) with owner decisions 1–17 ([ADR 0002](docs/decisions/ADR-0002-m4-quality-gate.md)); [record](docs/development/m4-verification.md) |
 | M5 — Local release | A reproducible, documented, independently runnable local product | 12 Deployment Preparation (local half) | **Accepted** 2026-10-10 (owner) after M5a and M5b were locally verified with CI green; [contract](docs/architecture/m5-local-release-contract.md) with owner decisions 1–9 ([ADR 0003](docs/decisions/ADR-0003-m5-local-release.md)); [record](docs/development/m5-verification.md) |
-| M6 — AWS readiness | Cloud adapters and an inspectable, synth-only experiment proposal, without deployment | 12 Deployment Preparation (cloud half) | **Planned** |
+| M6 — AWS readiness | Cloud adapters and an inspectable, synth-only experiment proposal, without deployment | 12 Deployment Preparation (cloud half) | **Accepted** 2026-10-11 (owner) after M6a, M6b, M6c were locally verified with CI green; [contract](docs/architecture/m6-aws-readiness-contract.md) with owner decisions 1–12 ([ADR 0004](docs/decisions/ADR-0004-m6-aws-readiness.md)); [record](docs/development/m6-verification.md) |
 | M7 — AWS experiment | A validated and cleaned-up cloud execution path | none | **Deferred**; owner approval and a $0 path required |
 
 **Qualification for M0–M3.** Delivered 2025-10-28 to 2026-03-03 under the legacy stop-and-confirm phase protocol,

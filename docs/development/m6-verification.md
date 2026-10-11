@@ -5,8 +5,8 @@ decisions in [ADR 0004](../decisions/ADR-0004-m6-aws-readiness.md)). Everything 
 44, kernel 7.2.8, Docker 29.8.2, rustc 1.99.0, Node 20.19.0) on 2026-10-11 between 01:50 and 02:10 UTC (2026-10-10
 local), on the M6 working tree based on `50be1e2`, unless it names GitHub Actions. **Observed** = run or inspected by
 the main thread; **reported** = a delegated agent's result. No step used AWS credentials, called an AWS API, or
-deployed anything. Session: [2026-10-10-08](sessions/2026-10-10-08-m6-contract.md). **M6a, M6b, and M6c locally
-verified; drills 1–9 pass; owner acceptance pending.**
+deployed anything. Session: [2026-10-10-08](sessions/2026-10-10-08-m6-contract.md). **M6 accepted by the owner
+2026-10-11 (UTC)** after M6a, M6b, and M6c were locally verified and drills 1–9 passed.
 
 ## M6a — backend seams
 
