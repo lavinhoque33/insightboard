@@ -467,6 +467,7 @@ Permission to change code is not permission for any of these.
    version `1.0.0`, tagged `v1.0.0` on `7c90107` at the owner's request after acceptance ([ADR 0003](docs/decisions/ADR-0003-m5-local-release.md)).
 6. **M6:** decided 2026-10-10 — AWS CDK v2 in TypeScript, synth-only; Cognito stays in the backlog
    ([M6 contract](docs/architecture/m6-aws-readiness-contract.md), [ADR 0004](docs/decisions/ADR-0004-m6-aws-readiness.md)).
+   Accepted 2026-10-11; version `1.1.0`, tagged `v1.1.0` on `5d5b49f` at the owner's request.
 7. **Backlog:** which section 5 items, if any, become milestones.
 
 ---

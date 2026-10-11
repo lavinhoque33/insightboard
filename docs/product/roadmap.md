@@ -234,6 +234,7 @@ download. Slices:
   2026-10-11 (UTC); CI green.
 
 Evidence: [M6 verification record](../development/m6-verification.md). **Accepted by the owner 2026-10-11 (UTC).**
+Released as version `1.1.0`: annotated tag `v1.1.0` on `5d5b49f` (CI run 38106775355 green); no GitHub Release object.
 
 ## M7 — AWS experiment (deferred)
 
@@ -262,4 +263,4 @@ before any other external request.
 
 1. M6 accepted 2026-10-11. M7 stays deferred until the owner approves it separately; its contract would start from
    the [experiment proposal](../operations/aws-experiment-proposal.md) preconditions.
-2. Tag `v1.0.0`: done 2026-10-10 on `7c90107`.
+2. Tags: `v1.0.0` on `7c90107` (2026-10-10, M5); `v1.1.0` on `5d5b49f` (2026-10-11, M6).

@@ -72,6 +72,7 @@ The root [README](../README.md) summarises features, the Docker-only release pat
 | [2026-10-10-06 M5](development/sessions/2026-10-10-06-m5-contract.md) | M5 contract accepted (ADR 0003, port 8088); M5a packaging with F1 fix; M5b version 1.0.0, changelog, runbook, README and screenshots, drills 1–10; owner accepted M5 |
 | [2026-10-10-07 README](development/sessions/2026-10-10-07-readme.md) | Root README rewritten as a product README for the GitHub landing page |
 | [2026-10-10-08 M6](development/sessions/2026-10-10-08-m6-contract.md) | M6 contract and ADR 0004 accepted; M6a backend seams and M6b synth-only `infra/` (`implement-heavy` ×2); M6c proposal, docs, drills 1–9; owner accepted M6 |
+| [2026-10-11-01 v1.1.0 release](development/sessions/2026-10-11-01-v1.1.0-release.md) | Release 1.1.0 for M6: version bump, changelog, CI green, tag `v1.1.0` |
 
 ## Guides (non-authoritative)
 
