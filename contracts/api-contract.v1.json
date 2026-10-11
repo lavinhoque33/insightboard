@@ -212,7 +212,7 @@
       "additionalProperties": false
     },
     "ReadyResponse": {
-      "description": "GET /readyz 200 body when Postgres and Redis answer; otherwise 503 ErrorResponse.",
+      "description": "GET /readyz 200 body when Postgres and Redis answer; otherwise 503 ErrorResponse. With the cache disabled (the Lambda entry point without REDIS_URL) only Postgres is checked and cache is \"disabled\"; the field is absent otherwise.",
       "type": "object",
       "required": [
         "status"
@@ -221,6 +221,10 @@
         "status": {
           "type": "string",
           "const": "ready"
+        },
+        "cache": {
+          "type": "string",
+          "const": "disabled"
         }
       },
       "additionalProperties": false

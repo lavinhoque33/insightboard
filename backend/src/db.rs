@@ -11,13 +11,14 @@ pub struct Database {
 }
 
 impl Database {
-    /// Create a new database connection pool
-    pub async fn new(database_url: &str) -> anyhow::Result<Self> {
+    /// Create a new database connection pool of at most `max_connections`.
+    pub async fn new(database_url: &str, max_connections: u32) -> anyhow::Result<Self> {
         let pool = PgPoolOptions::new()
-            .max_connections(10)
+            .max_connections(max_connections)
             .acquire_timeout(ACQUIRE_TIMEOUT)
             .connect(database_url)
-            .await?;
+            .await
+            .map_err(|e| anyhow::anyhow!("could not connect to Postgres (DATABASE_URL): {e}"))?;
 
         Ok(Self { pool })
     }

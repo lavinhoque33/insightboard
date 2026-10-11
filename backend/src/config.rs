@@ -12,6 +12,21 @@ const DEFAULT_CORS_ORIGINS: &str = "http://127.0.0.1:5173,http://localhost:5173"
 /// HS256 needs a key at least as long as its 256-bit output (M4 decision 8).
 pub const MIN_JWT_SECRET_BYTES: usize = 32;
 
+/// Postgres pool size when `DB_MAX_CONNECTIONS` is unset (M6 decision 11).
+const DEFAULT_DB_MAX_CONNECTIONS: u32 = 10;
+/// Upper bound on `DB_MAX_CONNECTIONS`: Postgres' default `max_connections`.
+const MAX_DB_MAX_CONNECTIONS: u32 = 100;
+
+/// Whether `REDIS_URL` must be set. Only the Lambda entry point may run without Redis (M6
+/// decision 9); the server keeps requiring it.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum RedisRequirement {
+    Required,
+    /// An unset or blank `REDIS_URL` disables the cache.
+    #[cfg(any(test, feature = "lambda"))]
+    Optional,
+}
+
 /// A `governor` quota: sustained requests per minute and burst size.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub struct RateLimit {
@@ -34,7 +49,10 @@ pub struct Config {
     pub app_host: IpAddr,
     pub app_port: u16,
     pub database_url: String,
-    pub redis_url: String,
+    /// Postgres pool size (`DB_MAX_CONNECTIONS`).
+    pub db_max_connections: u32,
+    /// `None` only when `REDIS_URL` is optional (Lambda) and unset: the cache is disabled.
+    pub redis_url: Option<String>,
     pub jwt_secret: String,
     pub cors_origins: Vec<HeaderValue>,
     pub github_api_token: Option<String>,
@@ -57,7 +75,7 @@ pub struct Config {
 
 impl Config {
     /// Load configuration from environment variables
-    pub fn from_env() -> anyhow::Result<Self> {
+    pub fn from_env(redis: RedisRequirement) -> anyhow::Result<Self> {
         Ok(Self {
             app_host: parse_app_host(env::var("APP_HOST").ok().as_deref())?,
             app_port: env::var("APP_PORT")
@@ -65,7 +83,13 @@ impl Config {
                 .parse()
                 .map_err(|e| anyhow::anyhow!("APP_PORT must be a port number: {e}"))?,
             database_url: required_env("DATABASE_URL")?,
-            redis_url: required_env("REDIS_URL")?,
+            db_max_connections: parse_env(
+                "DB_MAX_CONNECTIONS",
+                DEFAULT_DB_MAX_CONNECTIONS,
+                parse_pool_size,
+                &format!("an integer from 1 to {MAX_DB_MAX_CONNECTIONS}"),
+            )?,
+            redis_url: redis_url(redis, env::var("REDIS_URL").ok())?,
             jwt_secret: check_jwt_secret(required_env("JWT_SECRET")?)?,
             cors_origins: parse_cors_origins(env::var("CORS_ORIGINS").ok().as_deref())?,
             github_api_token: optional_env("GITHUB_API_TOKEN"),
@@ -108,6 +132,24 @@ fn check_jwt_secret(secret: String) -> anyhow::Result<String> {
         );
     }
     Ok(secret)
+}
+
+/// `REDIS_URL` under `requirement`: required (the server) or optional (Lambda).
+fn redis_url(
+    requirement: RedisRequirement,
+    value: Option<String>,
+) -> anyhow::Result<Option<String>> {
+    match requirement {
+        RedisRequirement::Required => require("REDIS_URL", value).map(Some),
+        #[cfg(any(test, feature = "lambda"))]
+        RedisRequirement::Optional => Ok(normalize_optional(value)),
+    }
+}
+
+fn parse_pool_size(raw: &str) -> Option<u32> {
+    raw.parse::<u32>()
+        .ok()
+        .filter(|n| (1..=MAX_DB_MAX_CONNECTIONS).contains(n))
 }
 
 /// An optional variable parsed with `parse`; unset or blank means `default`.
@@ -274,7 +316,8 @@ fn parse_app_host(value: Option<&str>) -> anyhow::Result<IpAddr> {
 mod tests {
     use super::{
         check_jwt_secret, normalize_optional, parse_app_host, parse_base_url, parse_cors_origins,
-        parse_fixtures, parse_millis, parse_static_dir, require,
+        parse_fixtures, parse_millis, parse_pool_size, parse_static_dir, redis_url, require,
+        RedisRequirement,
     };
     use std::net::IpAddr;
     use std::time::Duration;
@@ -398,6 +441,33 @@ mod tests {
         assert_eq!(parse_millis("250"), Some(Duration::from_millis(250)));
         assert_eq!(parse_millis("0"), None);
         assert_eq!(parse_millis("-1"), None);
+    }
+
+    #[test]
+    fn pool_size_is_bounded() {
+        assert_eq!(parse_pool_size("1"), Some(1));
+        assert_eq!(parse_pool_size("2"), Some(2));
+        assert_eq!(parse_pool_size("100"), Some(100));
+        for bad in ["0", "101", "-1", "2.5", "ten"] {
+            assert_eq!(parse_pool_size(bad), None, "{bad}");
+        }
+    }
+
+    #[test]
+    fn redis_url_is_required_by_the_server_and_optional_for_lambda() {
+        for value in [None, Some(String::new()), Some("  ".to_string())] {
+            let err = redis_url(RedisRequirement::Required, value.clone())
+                .unwrap_err()
+                .to_string();
+            assert!(err.contains("REDIS_URL"), "{err}");
+            assert_eq!(redis_url(RedisRequirement::Optional, value).unwrap(), None);
+        }
+        for requirement in [RedisRequirement::Required, RedisRequirement::Optional] {
+            assert_eq!(
+                redis_url(requirement, Some(" redis://127.0.0.1:6379 ".into())).unwrap(),
+                Some("redis://127.0.0.1:6379".to_string())
+            );
+        }
     }
 
     #[test]

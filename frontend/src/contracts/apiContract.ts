@@ -27,9 +27,14 @@ export interface ContractHealthResponse {
 	version: string;
 }
 
-/** GET /readyz 200 body; 503 with ContractErrorResponse when Postgres or Redis is down. */
+/**
+ * GET /readyz 200 body; 503 with ContractErrorResponse when Postgres or Redis is down. `cache` is
+ * present only when the cache is disabled (the Lambda entry point without REDIS_URL), where only
+ * Postgres is checked.
+ */
 export interface ContractReadyResponse {
 	status: 'ready';
+	cache?: 'disabled';
 }
 
 export interface ContractRegisterRequest {

@@ -1,0 +1,56 @@
+# InsightBoard Lambda package (M6 decision 4): a static x86_64 musl `bootstrap` built with
+# `--features lambda`, the built frontend under `static/`, and the public RDS CA bundle under
+# `certs/`, zipped for the `provided.al2023` runtime. Build with `make lambda-build`; the zip is
+# exported to backend/target/lambda/ with `--output` and nothing is pushed or deployed.
+# Context: the repository root (root .dockerignore). Named context `certs`: infra/certs.
+
+ARG RUST_IMAGE=rust:1.99.0-bookworm
+ARG NODE_IMAGE=node:20.19.0-bookworm-slim
+
+# --- frontend: npm ci + vue-tsc + vite build (as in the release Dockerfile) ------------------
+FROM ${NODE_IMAGE} AS frontend
+WORKDIR /build/frontend
+COPY frontend/package.json frontend/package-lock.json ./
+RUN npm ci --no-audit --no-fund
+# vue-tsc also type-checks the contract test, which imports ../contracts/api-contract.v1.json.
+COPY contracts/ /build/contracts/
+COPY frontend/ ./
+RUN npm run build
+
+# --- backend: static musl binary -------------------------------------------------------------
+FROM ${RUST_IMAGE} AS backend
+ENV TARGET=x86_64-unknown-linux-musl
+RUN apt-get update \
+    && apt-get install -y --no-install-recommends musl-tools \
+    && rm -rf /var/lib/apt/lists/* \
+    && rustup target add "$TARGET"
+WORKDIR /build/backend
+# Dependency layer against a stub binary, so source-only changes reuse it.
+COPY backend/Cargo.toml backend/Cargo.lock ./
+RUN mkdir src \
+    && printf 'fn main() {}\n' > src/main.rs \
+    && cargo build --release --locked --features lambda --target "$TARGET" \
+    && rm -rf src
+# Migrations are embedded by sqlx::migrate! at compile time.
+COPY backend/migrations/ migrations/
+COPY backend/src/ src/
+# touch: the stub's build artefacts are newer than the copied sources' mtimes.
+RUN touch src/main.rs \
+    && cargo build --release --locked --features lambda --target "$TARGET" \
+    && cp "target/$TARGET/release/insightboard-backend" /build/bootstrap
+
+# --- package: bootstrap, static/, certs/ at the zip root -------------------------------------
+FROM debian:bookworm-slim AS zip
+RUN apt-get update \
+    && apt-get install -y --no-install-recommends zip \
+    && rm -rf /var/lib/apt/lists/*
+WORKDIR /package
+COPY --from=backend /build/bootstrap bootstrap
+COPY --from=frontend /build/frontend/dist/ static/
+COPY --from=certs rds-global-bundle.pem certs/rds-global-bundle.pem
+# -X: no extra file attributes; owner execute bit on bootstrap is kept.
+RUN chmod 0755 bootstrap \
+    && zip -X -r -9 /insightboard-lambda.zip bootstrap static certs
+
+FROM scratch AS package
+COPY --from=zip /insightboard-lambda.zip /insightboard-lambda.zip

@@ -191,6 +191,10 @@ const health: ContractHealthResponse = {
 	version: '0.1.0',
 };
 const ready: ContractReadyResponse = { status: 'ready' };
+const readyCacheDisabled: ContractReadyResponse = {
+	status: 'ready',
+	cache: 'disabled',
+};
 
 describe('api-contract.v1.json', () => {
 	beforeAll(() => {
@@ -231,6 +235,7 @@ describe('api-contract.v1.json', () => {
 		expectValid('ValidationErrorResponse', validationError);
 		expectValid('HealthResponse', health);
 		expectValid('ReadyResponse', ready);
+		expectValid('ReadyResponse', readyCacheDisabled);
 	});
 
 	it('accepts a whole-contract document built from the fixtures', () => {

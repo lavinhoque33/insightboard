@@ -38,8 +38,11 @@ temp/
 **/*.tmp
 **/*.bak
 
-# Not needed to build
+# Not needed to build. infra/ never enters the context: backend/Dockerfile.lambda gets the RDS
+# CA bundle through the named build context `certs` (make lambda-build).
 docs/
+infra/
 Dockerfile
+backend/Dockerfile.lambda
 .dockerignore
 docker-compose*.yml

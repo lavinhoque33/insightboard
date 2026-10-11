@@ -53,7 +53,7 @@ async fn provider_data_is_shared_under_normalised_keys() {
         .create_async()
         .await;
     let mut config = test_config();
-    config.redis_url = redis_url();
+    config.redis_url = Some(redis_url());
     config.provider_urls.coingecko = Url::parse(&server.url()).unwrap();
     let app = TestApp::new(config, unused_pool()).await;
     let alice = app.token(Uuid::new_v4());
@@ -65,6 +65,34 @@ async fn provider_data_is_shared_under_normalised_keys() {
         ("/api/data/crypto?ids=%20BITCOIN%20,bitcoin", &bob),
     ] {
         let res = app.get(uri, Some(token)).await;
+        assert_eq!(res.status, StatusCode::OK);
+        assert_eq!(res.body[0]["id"], "bitcoin");
+    }
+    mock.assert_async().await;
+}
+
+#[tokio::test]
+async fn a_disabled_cache_calls_the_provider_every_time() {
+    let mut server = mockito::Server::new_async().await;
+    let mock = server
+        .mock("GET", "/api/v3/coins/markets")
+        .match_query(mockito::Matcher::Any)
+        .with_body(
+            json!([{"id": "bitcoin", "symbol": "btc", "name": "Bitcoin", "current_price": 1.0,
+                     "price_change_percentage_24h": 0.0, "market_cap": 1.0, "total_volume": 1.0}])
+            .to_string(),
+        )
+        .expect(2)
+        .create_async()
+        .await;
+    let mut config = test_config();
+    config.redis_url = None;
+    config.provider_urls.coingecko = Url::parse(&server.url()).unwrap();
+    let app = TestApp::new(config, unused_pool()).await;
+    let token = app.token(Uuid::new_v4());
+
+    for _ in 0..2 {
+        let res = app.get("/api/data/crypto?ids=bitcoin", Some(&token)).await;
         assert_eq!(res.status, StatusCode::OK);
         assert_eq!(res.body[0]["id"], "bitcoin");
     }

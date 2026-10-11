@@ -10,6 +10,8 @@ mod dashboards;
 mod errors;
 mod frontend;
 mod health;
+#[cfg(feature = "lambda")]
+mod lambda;
 mod providers;
 mod rate_limit;
 mod status;
@@ -56,7 +58,8 @@ pub fn test_config() -> Config {
         app_host: [127, 0, 0, 1].into(),
         app_port: 0,
         database_url: String::new(),
-        redis_url: NO_REDIS.to_string(),
+        db_max_connections: 10,
+        redis_url: Some(NO_REDIS.to_string()),
         jwt_secret: TEST_SECRET.to_string(),
         cors_origins: vec![],
         github_api_token: None,
@@ -107,11 +110,13 @@ pub struct TestResponse {
 
 impl TestApp {
     /// A router over `pool` with a fresh cache key prefix (fail-open when Redis is the closed
-    /// default).
+    /// default; disabled when `config.redis_url` is `None`).
     pub async fn new(config: Config, pool: PgPool) -> Self {
-        let cache = Cache::new(&config.redis_url, &format!("ib-test:{}:", Uuid::new_v4()))
-            .await
-            .unwrap();
+        let prefix = format!("ib-test:{}:", Uuid::new_v4());
+        let cache = match &config.redis_url {
+            Some(url) => Cache::new(url, &prefix).await.unwrap(),
+            None => Cache::disabled(&prefix),
+        };
         let state = AppState::new(config, Database::from_pool(pool), cache).unwrap();
         Self {
             router: router(state),

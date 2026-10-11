@@ -18,11 +18,13 @@ tower-http = { version = "0.5", features = ["cors", "trace", "compression-gzip",
 # Async runtime
 tokio = { version = "1", features = ["full"] }
 
-# Database
-sqlx = { version = "0.8", features = ["runtime-tokio", "postgres", "uuid", "chrono", "json"] }
+# Database. TLS (D21, M6 decision 5): rustls with the ring backend and the bundled webpki roots;
+# `sslrootcert=` in DATABASE_URL adds a custom CA (for example the RDS bundle).
+sqlx = { version = "0.8", features = ["runtime-tokio", "tls-rustls-ring-webpki", "postgres", "uuid", "chrono", "json"] }
 
-# Redis cache
-redis = { version = "0.27", features = ["tokio-comp", "connection-manager"] }
+# Redis cache. `rediss://` uses rustls with the system roots (rustls-native-certs), so
+# SSL_CERT_FILE can point at a custom CA bundle. No insecure-TLS feature (M6 decision 5).
+redis = { version = "0.27", features = ["tokio-comp", "tokio-rustls-comp", "connection-manager"] }
 
 # Serialization
 serde = { version = "1.0", features = ["derive"] }
@@ -32,8 +34,9 @@ serde_json = "1.0"
 jsonwebtoken = "9"
 argon2 = "0.5"
 
-# HTTP client for external APIs
-reqwest = { version = "0.12", features = ["json"] }
+# HTTP client for external APIs. rustls with the bundled webpki roots instead of the default
+# native TLS (OpenSSL); charset and http2 are kept from the default features.
+reqwest = { version = "0.12", default-features = false, features = ["json", "rustls-tls", "charset", "http2"] }
 
 # Error handling
 anyhow = "1.0"
@@ -54,6 +57,13 @@ uuid = { version = "1.0", features = ["v4", "serde"] }
 
 # Rate limiting
 governor = "0.6"
+
+# Lambda entry point (M6 decision 3); compiled only with `--features lambda`.
+lambda_http = { version = "1.3", optional = true, default-features = false, features = ["apigw_http"] }
+
+[features]
+# Switches the binary's entry point to AWS Lambda (Function URL / HTTP API payload v2).
+lambda = ["dep:lambda_http"]
 
 [dev-dependencies]
 # Testing

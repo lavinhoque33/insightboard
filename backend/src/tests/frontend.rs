@@ -15,19 +15,20 @@ use super::{
     test_config, unused_pool, TestApp,
 };
 
-const INDEX: &str = "<!doctype html><html><body><div id=\"app\"></div></body></html>";
-const SCRIPT: &str = "console.log('insightboard frontend bundle, long enough to be compressed');";
+pub(super) const INDEX: &str = "<!doctype html><html><body><div id=\"app\"></div></body></html>";
+pub(super) const SCRIPT: &str =
+    "console.log('insightboard frontend bundle, long enough to be compressed');";
 const SECRET: &str = "outside the static directory";
 const IMMUTABLE: &str = "public, max-age=31536000, immutable";
 
 /// A throwaway build directory (`index.html`, a hashed asset, a public file) with a file
 /// next to it that must never be served. Removed on drop.
-struct Dist {
+pub(super) struct Dist {
     root: PathBuf,
 }
 
 impl Dist {
-    fn new() -> Self {
+    pub(super) fn new() -> Self {
         let root = std::env::temp_dir().join(format!("ib-static-{}", Uuid::new_v4()));
         let dist = root.join("dist");
         std::fs::create_dir_all(dist.join("assets")).unwrap();
@@ -42,7 +43,7 @@ impl Dist {
         Self { root }
     }
 
-    fn dir(&self) -> PathBuf {
+    pub(super) fn dir(&self) -> PathBuf {
         self.root.join("dist")
     }
 }

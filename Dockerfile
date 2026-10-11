@@ -32,9 +32,10 @@ RUN touch src/main.rs && cargo build --release --locked
 
 # --- runtime -------------------------------------------------------------------------------
 FROM debian:bookworm-slim
-# libssl3 + ca-certificates: reqwest native TLS to the providers; curl: the compose healthcheck.
+# ca-certificates: the system roots for rediss:// (rustls-native-certs; the backend uses rustls
+# everywhere and links no OpenSSL, M6 decision 5); curl: the compose healthcheck.
 RUN apt-get update \
-    && apt-get install -y --no-install-recommends ca-certificates curl libssl3 \
+    && apt-get install -y --no-install-recommends ca-certificates curl \
     && rm -rf /var/lib/apt/lists/*
 RUN groupadd --system --gid 10001 insightboard \
     && useradd --system --uid 10001 --gid insightboard --no-create-home \

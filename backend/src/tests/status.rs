@@ -185,7 +185,7 @@ async fn results_are_cached_per_user() {
     let mut fixture = mockito::Server::new_async().await;
     let hits = fixture.mock("GET", "/up").expect(2).create_async().await;
     let mut config = test_config();
-    config.redis_url = super::redis_url();
+    config.redis_url = Some(super::redis_url());
     config.status_allowed_fixtures = vec![fixture.socket_address()];
     let app = TestApp::new(config, super::unused_pool()).await;
     let alice = app.token(Uuid::new_v4());

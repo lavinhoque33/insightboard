@@ -31,10 +31,13 @@ struct ConnState {
 }
 
 /// Redis cache. Every operation is bounded and fails open: an unavailable or slow Redis is a
-/// cache miss with a warning, never a request failure (D19).
+/// cache miss with a warning, never a request failure (D19). A disabled cache (no Redis; the
+/// Lambda entry point without `REDIS_URL`, M6 decision 9) never connects: reads miss and writes
+/// are skipped silently.
 #[derive(Clone)]
 pub struct Cache {
-    client: Client,
+    /// `None` when the cache is disabled.
+    client: Option<Client>,
     prefix: Arc<str>,
     state: Arc<Mutex<ConnState>>,
 }
@@ -46,7 +49,7 @@ impl Cache {
         let client = Client::open(redis_url)
             .map_err(|e| anyhow::anyhow!("REDIS_URL is not a valid Redis URL: {e}"))?;
         let cache = Self {
-            client,
+            client: Some(client),
             prefix: Arc::from(prefix),
             state: Arc::new(Mutex::new(ConnState::default())),
         };
@@ -56,7 +59,24 @@ impl Cache {
         Ok(cache)
     }
 
+    /// A cache without Redis: no connection is ever attempted.
+    pub fn disabled(prefix: &str) -> Self {
+        Self {
+            client: None,
+            prefix: Arc::from(prefix),
+            state: Arc::new(Mutex::new(ConnState::default())),
+        }
+    }
+
+    /// `false` for [`Cache::disabled`]; readiness then checks Postgres only.
+    pub fn is_enabled(&self) -> bool {
+        self.client.is_some()
+    }
+
     async fn connection(&self) -> Result<ConnectionManager, String> {
+        let Some(client) = &self.client else {
+            return Err("cache disabled (no REDIS_URL)".to_string());
+        };
         let mut state = self.state.lock().await;
         if let Some(conn) = &state.conn {
             return Ok(conn.clone());
@@ -73,7 +93,7 @@ impl Cache {
             .set_number_of_retries(1);
         let attempt = tokio::time::timeout(
             OPERATION_TIMEOUT,
-            ConnectionManager::new_with_config(self.client.clone(), config),
+            ConnectionManager::new_with_config(client.clone(), config),
         )
         .await;
         match attempt {
@@ -116,11 +136,15 @@ impl Cache {
         key
     }
 
-    /// Get a value; any failure (unavailable, timeout, undecodable) is a miss.
+    /// Get a value; any failure (unavailable, timeout, undecodable) is a miss, and a disabled
+    /// cache always misses.
     pub async fn get<T>(&self, key: &str) -> Option<T>
     where
         T: DeserializeOwned,
     {
+        if !self.is_enabled() {
+            return None;
+        }
         let owned = key.to_string();
         let raw: Option<String> = match self
             .run(|mut conn| async move { conn.get(owned).await })
@@ -141,11 +165,15 @@ impl Cache {
         }
     }
 
-    /// Set a value with a TTL in seconds; a failure is logged and ignored.
+    /// Set a value with a TTL in seconds; a failure is logged and ignored, and a disabled cache
+    /// skips it.
     pub async fn set<T>(&self, key: &str, value: &T, ttl_secs: u64)
     where
         T: Serialize,
     {
+        if !self.is_enabled() {
+            return;
+        }
         let serialized = match serde_json::to_string(value) {
             Ok(s) => s,
             Err(e) => {
@@ -227,6 +255,20 @@ mod tests {
         cache.set(&key, &"value", 30).await;
         assert!(cache.ping().await.is_err());
         assert!(start.elapsed() < Duration::from_secs(3));
+    }
+
+    #[tokio::test]
+    async fn disabled_cache_misses_skips_writes_and_never_connects() {
+        let cache = Cache::disabled("ib-test:");
+        assert!(!cache.is_enabled());
+        let key = cache.key("weather", &["paris"]);
+        assert_eq!(key, "ib-test:weather:paris");
+        cache.set(&key, &"value", 30).await;
+        assert_eq!(cache.get::<String>(&key).await, None);
+        assert!(cache.ping().await.is_err());
+        // No connection attempt was made, so there is no failure to back off from.
+        let state = cache.state.lock().await;
+        assert!(state.conn.is_none() && state.last_failure.is_none());
     }
 
     #[tokio::test]
