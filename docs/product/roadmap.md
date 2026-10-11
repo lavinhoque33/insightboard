@@ -18,7 +18,7 @@ they matter.
 | M2 — Widgets and editor | Five provider widgets through a cached backend proxy; GridStack editor with persisted layout | **Accepted** 2026-10-10 (owner), defects included; see the qualification below and the [baseline verification record](../development/baseline-verification.md) |
 | M3 — UI polish and contract alignment | daisyUI styling, auth and editor fixes, v1 payload contract, draft-on-add editor | **Accepted** 2026-10-10 (owner), defects included; see the qualification below and the [baseline verification record](../development/baseline-verification.md) |
 | M4 — Quality gate and hardening | Reproducible builds, passing gates, loopback defaults, safe outbound calls, real test suites, CI | **Accepted** 2026-10-10 (owner) after M4a, M4b, M4c were locally verified and CI passed on GitHub; [contract](../architecture/m4-quality-gate-contract.md) ([ADR 0002](../decisions/ADR-0002-m4-quality-gate.md)); [record](../development/m4-verification.md) |
-| M5 — Local release | A reproducible, documented, independently runnable local product | **Locally verified**, awaiting owner acceptance: M5a and M5b drills 1–10 pass ([M5 verification](../development/m5-verification.md)); [contract](../architecture/m5-local-release-contract.md) **accepted** 2026-10-10 ([ADR 0003](../decisions/ADR-0003-m5-local-release.md)) |
+| M5 — Local release | A reproducible, documented, independently runnable local product | **Accepted** 2026-10-10 (owner) after M5a and M5b were locally verified, drills 1–10 passed, and CI passed on GitHub; [contract](../architecture/m5-local-release-contract.md) ([ADR 0003](../decisions/ADR-0003-m5-local-release.md)); [record](../development/m5-verification.md) |
 | M6 — AWS readiness | Cloud adapters and an inspectable, synth-only experiment proposal, without deployment | **Planned** |
 | M7 — AWS experiment | A validated and cleaned-up cloud execution path | **Deferred**; owner approval and a $0 path required |
 
@@ -196,7 +196,7 @@ Research as needed: `research-medium` by default, `research-heavy` for cross-lay
 layout editing (backlog). Light and dark themes with a toggle joined M4c with the owner's visual overhaul
 (2026-10-10).
 
-## M5 — Local release (locally verified)
+## M5 — Local release (accepted)
 
 Scope, exit evidence, and keep-out follow plan section 12/M5 and the
 [M5 contract](../architecture/m5-local-release-contract.md) (**accepted** 2026-10-10; owner decisions 1–9 in
@@ -208,7 +208,9 @@ Scope, exit evidence, and keep-out follow plan section 12/M5 and the
 - **M5b — Release material and drills:** version `1.0.0`, `CHANGELOG.md`, runbook, README release path and
   screenshots, documented limits, drills 1–10. **Locally verified** (`cdb9359` and the records commit; evidence in
   the [M5 verification record](../development/m5-verification.md); CI run 38097611740 green). Tag `v1.0.0` only on
-  request after acceptance.
+  request.
+
+**Accepted** by the owner 2026-10-10 (version `1.0.0`). **Next:** M6 — AWS readiness.
 
 **Keep out:** cloud, registries, public hosting, domains, TLS (D21, M6), a GitHub Release object, the backlog.
 
@@ -240,6 +242,6 @@ before any other external request.
 
 ## Next action
 
-1. Owner: accept M5 (or name the gaps). On acceptance the changelog entry gets its date and M5 is marked accepted.
-2. On an explicit owner request after acceptance: annotated tag `v1.0.0` on the accepted commit, pushed over SSH.
-3. Then M6 — AWS readiness: its contract is drafted for owner review before any work.
+1. M6 — AWS readiness: draft its contract (packaging seam, synth-only IaC tool, auth seam, D21 TLS, cost and cleanup
+   proposal) for owner review before any work.
+2. On an explicit owner request: annotated tag `v1.0.0` on the accepted M5 commit, pushed over SSH.

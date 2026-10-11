@@ -11,12 +11,12 @@ entry lives in [`sessions/`](sessions/) so this file stays short as history grow
 | --- | --- |
 | Updated | 2026-10-10 (UTC) |
 | Latest session | [2026-10-10-06-m5-contract](sessions/2026-10-10-06-m5-contract.md) |
-| Milestone | M0–M4 **accepted** 2026-10-10 (M0–M3 defects included; M4 after M4a, M4b, M4c locally verified, [M4 verification record](m4-verification.md)). M5 — local release **locally verified** 2026-10-10, awaiting owner acceptance ([M5 verification record](m5-verification.md)); [contract](../architecture/m5-local-release-contract.md) **accepted** 2026-10-10 with owner decisions 1–9 ([ADR 0003](../decisions/ADR-0003-m5-local-release.md)). ADR 0001 **accepted** 2026-10-10. |
-| Last accepted task | Session 2026-10-10-06: M5a (`9a14027`, F1 fixed) and M5b (`cdb9359` version 1.0.0 and screenshots, plus the `docs(m5b)` records commit); drills 1–10 pass; CI runs 38096580273 and 38097611740 green on all four jobs. Pushed over SSH: `8cc1e54..12b1fdb`, `12b1fdb..f998146`, `f998146..cdb9359`, then the records commit. |
-| Active task | None. Waiting for the owner to accept M5. |
+| Milestone | M0–M5 **accepted** 2026-10-10 (M0–M3 defects included; M4 after M4a, M4b, M4c locally verified, [M4 verification record](m4-verification.md); M5 after M5a and M5b locally verified with drills 1–10, [M5 verification record](m5-verification.md)). Version `1.0.0`; no tag yet. Next milestone M6 — AWS readiness (**planned**, no contract). ADR 0001 **accepted** 2026-10-10. |
+| Last accepted task | Session 2026-10-10-06: M5 accepted by the owner. M5a `9a14027` (F1 fixed), M5b `cdb9359` (version 1.0.0, screenshots) and `e6abe8c` (verification record, doc fixes); CI runs 38096580273, 38097611740, 38099977195 green on all four jobs. Pushed over SSH: `8cc1e54..12b1fdb`, `12b1fdb..f998146`, `f998146..cdb9359`, `cdb9359..e6abe8c`, then the acceptance records commit. |
+| Active task | None. |
 | Active delegates / write ownership | None. |
 | Blockers | None. Standing push authorization since 2026-10-10 (scope in `.omp/AGENTS.md`); force-push, tags, releases, PRs, and visibility changes still need an explicit request. HTTPS pushes that touch `.github/workflows/` need the `workflow` OAuth scope (`gh auth refresh -s workflow`); SSH pushes work. |
-| Exact next action | Owner: accept M5 or name gaps. On acceptance: date the `CHANGELOG.md` entry (`[1.0.0] - <date>`), mark M5 accepted in the roadmap, plan, index, and checkpoint. Tag `v1.0.0` only on an explicit owner request. |
+| Exact next action | Draft the M6 — AWS readiness contract (plan section 12/M6) for owner review before any work. Tag `v1.0.0` on the accepted M5 commit only on an explicit owner request. |
 | Workspace | This workstation (Fedora 44): clone `/home/axeleratorx/PersProject/InsightBoard`, `origin` public and in sync with `main`. `.env` present (gitignored, mode 600). Compose containers `insightboard-postgres-1`, `insightboard-redis-1` on `127.0.0.1`; release app stopped (`make up` serves `127.0.0.1:8088`); images `insightboard:local` and `insightboard:1.0.0`. Backend `13e9018` debug build on `127.0.0.1:8080`; Vite on `127.0.0.1:5173`. Dev database holds drill, browser, demo, and e2e test users. Backend tests and `make e2e` need `make db-up`; Playwright Chromium installed. rustc 1.99.0 (pinned); Node 20.19.0 in `.tools/`. |
 
 ## Protocol
@@ -80,7 +80,7 @@ Create `sessions/YYYY-MM-DD-NN-short-topic.md`:
 
 | Session | Outcome |
 | --- | --- |
-| [2026-10-10-06-m5-contract](sessions/2026-10-10-06-m5-contract.md) | M5 contract and ADR 0003 accepted (port 8088); M5a and M5b locally verified, drills 1–10 pass, CI green; awaiting owner acceptance. |
+| [2026-10-10-06-m5-contract](sessions/2026-10-10-06-m5-contract.md) | M5 contract and ADR 0003 accepted (port 8088); M5a and M5b locally verified, drills 1–10 pass, CI green (`12b1fdb..e6abe8c` pushed). Owner accepted M5; version 1.0.0, no tag yet. |
 | [2026-10-10-05-m4c](sessions/2026-10-10-05-m4c.md) | M4c locally verified: CI workflow `e20a0bc` (`implement-medium`), frontend correctness `5caff27` and visual overhaul with light and dark themes plus Playwright `13e9018` (`implement-heavy` ×3); `verify` and `verify-browser` (one dialog-focus regression fixed); drills 12–16 by the main thread; CI green incl. e2e. Pushed over SSH (`a27a8de..8cc1e54`). Owner accepted M4. |
 | [2026-10-10-04-m4b](sessions/2026-10-10-04-m4b.md) | ADR 0001 accepted; `main` pushed (`42555eb`). M4b locally verified: `b20986e` (`implement-heavy` backend and contract, `implement-medium` frontend; `ajv-formats` rejected), `verify` and `verify-browser` reviews, drills 5–11 by the main thread. Owner granted standing push authorization; pushed `42555eb..20ba7ce`. |
 | [2026-10-10-03-m4a](sessions/2026-10-10-03-m4a.md) | M4a locally verified: format-only commit `d4bdca9` (`implement-light`), M4a commit `2780fc0` (`implement-medium`, main-thread fixes), `verify` review; drills 1–4 pass; local Postgres and Redis passwords rotated after a transcript exposure. Committed locally, not pushed. |

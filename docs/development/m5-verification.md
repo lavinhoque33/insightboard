@@ -4,7 +4,7 @@ Evidence for the [M5 local-release contract](../architecture/m5-local-release-co
 decisions in [ADR 0003](../decisions/ADR-0003-m5-local-release.md)). Everything below ran on this workstation (Fedora
 44, Docker 29.8.2, Compose 5.5.1) on 2026-10-10 unless it names GitHub Actions. **Observed** = run or inspected by
 the main thread; **reported** = a delegated agent's result, with what the main thread inspected stated beside it.
-Session: [2026-10-10-06](sessions/2026-10-10-06-m5-contract.md).
+Session: [2026-10-10-06](sessions/2026-10-10-06-m5-contract.md). **M5 accepted by the owner 2026-10-10.**
 
 ## M5a — packaging
 

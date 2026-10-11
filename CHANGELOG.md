@@ -4,7 +4,7 @@ All notable changes to InsightBoard. The format follows [Keep a Changelog](https
 and versions follow [Semantic Versioning](https://semver.org/). Defect IDs (D1–D31) refer to the catalogue in the
 [M0–M3 baseline contract](docs/architecture/m0-m3-baseline-contract.md) section 12.
 
-## [Unreleased] — 1.0.0
+## [1.0.0] - 2026-10-10
 
 The first release: a local, single-machine product that builds and runs from a fresh clone with Docker alone. It
 covers milestones M0–M5 (2025-10-28 to 2026-10-10); see the [roadmap](docs/product/roadmap.md) and the verification

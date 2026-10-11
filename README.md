@@ -8,7 +8,7 @@ nothing is deployed.
 - **$0 of spending.** Free provider tiers only, with keys you supply; no cloud resources.
 - **Local only.** Every service listens on `127.0.0.1`; nothing is reachable from the network.
 
-**Status:** M0–M4 are **accepted** (2026-10-10). M5 — local release is **in progress** under its
+**Status:** M0–M5 are **accepted** (2026-10-10); version `1.0.0` is the first local release, built under the M5
 [contract](docs/architecture/m5-local-release-contract.md) ([ADR 0003](docs/decisions/ADR-0003-m5-local-release.md)).
 See the [roadmap](docs/product/roadmap.md) and the [changelog](CHANGELOG.md).
 

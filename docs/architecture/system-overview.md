@@ -227,7 +227,7 @@ By area; each ID is defined in the [baseline contract](m0-m3-baseline-contract.m
 
 ## Future seams (planned)
 
-- **M5 — Local release (in progress):** one image with the backend serving the built frontend, a compose profile
+- **M5 — Local release (accepted 2026-10-10):** one image with the backend serving the built frontend, a compose profile
   bound to loopback, the runbook, and version `1.0.0`; see the [M5 contract](m5-local-release-contract.md) and the
   [runbook](../operations/runbook.md).
 - **M6 — AWS readiness (planned):** a Lambda-compatible packaging seam (for example a `lambda_http` adapter behind a
