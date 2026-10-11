@@ -103,6 +103,8 @@ secrets/
 *.key
 *.crt
 *.cert
+# Public AWS RDS CA bundle (certificates only, no keys; M6 decision 8, ADR 0004)
+!infra/certs/rds-global-bundle.pem
 
 # ============================================
 # AWS / Cloud

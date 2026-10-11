@@ -1,11 +1,12 @@
 # M6 contract: AWS readiness
 
-- Status: **proposed** 2026-10-10, awaiting the owner's choices on decisions 1–12 and the dependency list. Nothing
-  here is approved and no M6 work has started.
+- Status: **accepted** 2026-10-10. The owner approved every ★ decision (1–12), the new-dependency list, and the
+  one-time anonymous download of the public RDS CA bundle, as written; recorded in
+  [ADR 0004](../decisions/ADR-0004-m6-aws-readiness.md).
 - Sources: [project plan](../../INSIGHTBOARD_PROJECT_PLAN.md) section 4.1 (hard boundaries), section 12/M6, open
   decision 6 (section 17); [M5 contract](m5-local-release-contract.md); [system overview](system-overview.md);
   [M0–M3 baseline contract](m0-m3-baseline-contract.md) D21; [ADR 0003](../decisions/ADR-0003-m5-local-release.md);
-  draft [ADR 0004](../decisions/ADR-0004-m6-aws-readiness.md); [coding practices](../../CODING_PRACTICES.md).
+  [ADR 0004](../decisions/ADR-0004-m6-aws-readiness.md); [coding practices](../../CODING_PRACTICES.md).
 - Facts gathered on 2026-10-10 at `939c35c`. The code map came from `research-medium` M6CodeSeams (read-only). The
   public-documentation survey came from `research-medium` M6Ecosystem (web pages only, no AWS access). The main
   thread made the checks marked **observed**. Session:
