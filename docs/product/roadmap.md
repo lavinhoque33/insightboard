@@ -19,7 +19,7 @@ they matter.
 | M3 — UI polish and contract alignment | daisyUI styling, auth and editor fixes, v1 payload contract, draft-on-add editor | **Accepted** 2026-10-10 (owner), defects included; see the qualification below and the [baseline verification record](../development/baseline-verification.md) |
 | M4 — Quality gate and hardening | Reproducible builds, passing gates, loopback defaults, safe outbound calls, real test suites, CI | **Accepted** 2026-10-10 (owner) after M4a, M4b, M4c were locally verified and CI passed on GitHub; [contract](../architecture/m4-quality-gate-contract.md) ([ADR 0002](../decisions/ADR-0002-m4-quality-gate.md)); [record](../development/m4-verification.md) |
 | M5 — Local release | A reproducible, documented, independently runnable local product | **Accepted** 2026-10-10 (owner) after M5a and M5b were locally verified, drills 1–10 passed, and CI passed on GitHub; [contract](../architecture/m5-local-release-contract.md) ([ADR 0003](../decisions/ADR-0003-m5-local-release.md)); [record](../development/m5-verification.md) |
-| M6 — AWS readiness | Cloud adapters and an inspectable, synth-only experiment proposal, without deployment | **In progress**: M6a, M6b, M6c **locally verified** (drills 1–8 on this workstation; drill 9 CI pending); awaiting owner acceptance; [contract](../architecture/m6-aws-readiness-contract.md) ([ADR 0004](../decisions/ADR-0004-m6-aws-readiness.md)); [record](../development/m6-verification.md) |
+| M6 — AWS readiness | Cloud adapters and an inspectable, synth-only experiment proposal, without deployment | **In progress**: M6a, M6b, M6c **locally verified**, drills 1–9 pass (CI run 38104293526 green on all five jobs); awaiting owner acceptance; [contract](../architecture/m6-aws-readiness-contract.md) ([ADR 0004](../decisions/ADR-0004-m6-aws-readiness.md)); [record](../development/m6-verification.md) |
 | M7 — AWS experiment | A validated and cleaned-up cloud execution path | **Deferred**; owner approval and a $0 path required |
 
 ## Qualification for M0–M3
@@ -231,7 +231,7 @@ download. Slices:
   2026-10-11 (UTC).
 - **M6c — Experiment proposal and drills:** [experiment proposal](../operations/aws-experiment-proposal.md) (cost
   $18.43 a month while deployed, teardown, M7 preconditions), documentation, drills 1–9. **Locally verified**
-  2026-10-11 (UTC); drill 9 (CI) pending.
+  2026-10-11 (UTC); CI green.
 
 Evidence: [M6 verification record](../development/m6-verification.md).
 
@@ -260,6 +260,6 @@ before any other external request.
 
 ## Next action
 
-1. M6: CI green on all five jobs (drill 9), then owner acceptance of M6. M7 stays deferred; its contract would start
-   from the [experiment proposal](../operations/aws-experiment-proposal.md) preconditions.
+1. M6: owner acceptance. M7 stays deferred; its contract would start from the
+   [experiment proposal](../operations/aws-experiment-proposal.md) preconditions.
 2. Tag `v1.0.0`: done 2026-10-10 on `7c90107`.

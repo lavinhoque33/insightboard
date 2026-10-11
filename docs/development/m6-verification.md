@@ -5,7 +5,8 @@ decisions in [ADR 0004](../decisions/ADR-0004-m6-aws-readiness.md)). Everything 
 44, kernel 7.2.8, Docker 29.8.2, rustc 1.99.0, Node 20.19.0) on 2026-10-11 between 01:50 and 02:10 UTC (2026-10-10
 local), on the M6 working tree based on `50be1e2`, unless it names GitHub Actions. **Observed** = run or inspected by
 the main thread; **reported** = a delegated agent's result. No step used AWS credentials, called an AWS API, or
-deployed anything. Session: [2026-10-10-08](sessions/2026-10-10-08-m6-contract.md).
+deployed anything. Session: [2026-10-10-08](sessions/2026-10-10-08-m6-contract.md). **M6a, M6b, and M6c locally
+verified; drills 1–9 pass; owner acceptance pending.**
 
 ## M6a — backend seams
 
@@ -39,7 +40,7 @@ the CI `infra` job, and committed them together as `014b277`.
 | 6 | Template inspection (`jq` over `infra/cdk.out/InsightBoardExperiment.template.json`, 24,698 bytes) | Matches decision 7; nothing account-bound; settings and tags present; gates clean | 25 resources exactly as in the [proposal](../operations/aws-experiment-proposal.md); 0 NAT, EIP, VPC endpoint, custom resource. Function `provided.al2023`, `x86_64`, 512 MB, 15 s, no `VpcConfig`, environment keys `DATABASE_URL`, `DB_MAX_CONNECTIONS`, `GITHUB_API_TOKEN`, `JWT_SECRET`, `NEWSAPI_API_KEY`, `OPENWEATHER_API_KEY`, `RUST_LOG`, `STATIC_DIR` (8 `resolve:secretsmanager` references; `DATABASE_URL` with `sslmode=verify-full&sslrootcert=/var/task/certs/rds-global-bundle.pem`). URL auth `NONE`, `BUFFERED`, no CORS. RDS `postgres` `16`, `db.t4g.micro`, 20 GB gp3, single-AZ, public, encrypted, deletion protection off, backups 1 day, `DeleteAutomatedBackups`, `DeletionPolicy`/`UpdateReplacePolicy` `Delete`; parameter group `rds.force_ssl=1`. Security group: TCP 5432 from `0.0.0.0/0` only. Log group 14 days, `Delete`. Both secrets generated (no `SecretString`), `Delete`. Subnet zones via `Fn::GetAZs`. No 12-digit account ID, no region literal, no lookup. Every taggable resource tagged. IAM policy: `logs:CreateLogStream`, `logs:PutLogEvents` on the function's log group only. Acknowledgements: AwsSolutions EC23, RDS3, RDS10, RDS11, SMG4, VPC7 and CloudFormation-Validate W2508, W9011 each cite a decision; W3010 is `aws-cdk-lib`'s own. `cfn-lint` 1.57.2: no errors or warnings | Pass |
 | 7 | Credential hygiene | No AWS tooling or credentials; secret scan clean | No `~/.aws`; no AWS credential variables; `aws`, `cdk`, `sam`, `cargo-lambda` absent. `infra/package-lock.json`: 0 `aws-sdk`, `@aws-sdk`, `aws-cdk` CLI, or `cdk-cli` packages. Backend lambda tree: 0 `aws-sdk`, `aws-config`, `aws-sigv4`, `aws-smithy` crates. No `cdk deploy`, `cdk bootstrap`, or AWS CLI command in `infra/`, `Makefile`, or `.github/`. Secret scan of the M6 commit range: see "Publication" | Pass |
 | 8 | Proposal and docs | Every cost figure sourced and dated; docs match the code | [Experiment proposal](../operations/aws-experiment-proposal.md): paid lines from AWS pricing pages and AWS's public price list (RDS list published 2026-10-06), retrieved 2026-10-11 UTC; free-tier lines attributed to M6Ecosystem (reported 2026-10-10) or marked [MEMORY]. `local-setup`, `testing`, `system-overview`, `runbook`, README, `CHANGELOG.md`, `.env.example`, and `infra/README.md` checked against `Cargo.toml`, `config.rs`, `Dockerfile`, `backend/Dockerfile.lambda`, the `Makefile`, `ci.yml`, and `infra/src/stack.ts` | Pass |
-| 9 | CI | `backend` (with `lambda`), `web`, `e2e`, `release`, `infra` green | Pending the push; see "Publication" | Pending |
+| 9 | CI | `backend` (with `lambda`), `web`, `e2e`, `release`, `infra` green | GitHub Actions run 38104293526 on `f3d79b9`: all five jobs succeeded (02:10–02:14 UTC). Backend job: 101 passed, then 104 passed with `--features lambda`. Infra job: package 4,353,156 bytes, 18/18 tests, 0 unacknowledged findings, `cfn-lint` clean, template SHA-256 `20c21608721dc8345e4c088546b7c6e2d58146a6582fec92c42556cd8dee7dc7` | Pass |
 
 ## Observations
 
@@ -50,14 +51,23 @@ the CI `infra` job, and committed them together as `014b277`.
   backend on `127.0.0.1:8080` for about 17 seconds; the main thread restarted it from the same binary. No data was
   affected. Later cleanup killed only recorded process IDs.
 - `quinn` is listed in `Cargo.lock` but compiled by neither feature set (`cargo tree -i quinn` is empty).
+- The CI template checksum differs from the local one (drill 5) although the package size is identical: the asset
+  hash follows the zip bytes, which include file timestamps from each build [INFERENCE; the package is not
+  byte-reproducible]. The template is inspected by content, not by checksum.
 
 ## External requests
 
-- AWS public pricing pages (RDS for PostgreSQL, VPC, Secrets Manager, Lambda) and one static price-list file behind
-  the RDS page, anonymous HTTPS, 2026-10-11 UTC. No AWS API, account, or credential.
+- AWS public pricing pages (RDS for PostgreSQL, VPC, Secrets Manager, Lambda) and two fetches of one static
+  price-list file behind the RDS page (the first was saved undecoded), anonymous HTTPS, 2026-10-11 UTC. No AWS API,
+  account, or credential.
 - Docker Hub: one pull of `amazon/aws-lambda-provided:al2023` (approved in the contract's dependency list).
 - No provider was called; drill 3 and drill 4 used only loopback services.
 
 ## Publication
 
-To be completed after the push.
+- Commits: `e84ed43` (M6a backend), `014b277` (M6b infra, Makefile, CI), `f3d79b9` (M6c docs).
+- Secret scan of `50be1e2..f3d79b9` before the push (51 files): no `.env`, key, or build-output paths; none of the 9
+  `.env` values of 8 or more characters; 0 matches for private keys, AWS key IDs, GitHub tokens, JWTs, or long
+  secret assignments.
+- Pushed over SSH as `50be1e2..f3d79b9` on 2026-10-11 UTC; CI run 38104293526 green (drill 9). The records commit
+  that adds this section follows.
