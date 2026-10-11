@@ -66,6 +66,7 @@ The root [README](../README.md) summarises features, the Docker-only release pat
 | [2026-10-10-04 M4b](development/sessions/2026-10-10-04-m4b.md) | ADR 0001 accepted, push; M4b: outbound safety, rate limits, auth, error model, contract tests; drills 5–11 |
 | [2026-10-10-05 M4c](development/sessions/2026-10-10-05-m4c.md) | M4c: frontend correctness, Vitest and Playwright suites, CI, visual overhaul with light and dark themes; drills 12–16 |
 | [2026-10-10-06 M5](development/sessions/2026-10-10-06-m5-contract.md) | M5 contract accepted (ADR 0003, port 8088); M5a packaging with F1 fix; M5b version 1.0.0, changelog, runbook, README and screenshots, drills 1–10; owner accepted M5 |
+| [2026-10-10-07 README](development/sessions/2026-10-10-07-readme.md) | Root README rewritten as a product README for the GitHub landing page |
 
 ## Guides (non-authoritative)
 

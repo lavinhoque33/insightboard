@@ -10,7 +10,7 @@ entry lives in [`sessions/`](sessions/) so this file stays short as history grow
 | Field | Current state |
 | --- | --- |
 | Updated | 2026-10-10 (UTC) |
-| Latest session | [2026-10-10-06-m5-contract](sessions/2026-10-10-06-m5-contract.md) |
+| Latest session | [2026-10-10-07-readme](sessions/2026-10-10-07-readme.md) |
 | Milestone | M0–M5 **accepted** 2026-10-10 (M0–M3 defects included; M4 after M4a, M4b, M4c locally verified, [M4 verification record](m4-verification.md); M5 after M5a and M5b locally verified with drills 1–10, [M5 verification record](m5-verification.md)). Version `1.0.0`; no tag yet. Next milestone M6 — AWS readiness (**planned**, no contract). ADR 0001 **accepted** 2026-10-10. |
 | Last accepted task | Session 2026-10-10-06: M5 accepted by the owner. M5a `9a14027` (F1 fixed), M5b `cdb9359` (version 1.0.0, screenshots) and `e6abe8c` (verification record, doc fixes); CI runs 38096580273, 38097611740, 38099977195 green on all four jobs. Pushed over SSH: `8cc1e54..12b1fdb`, `12b1fdb..f998146`, `f998146..cdb9359`, `cdb9359..e6abe8c`, then the acceptance records commit. |
 | Active task | None. |
@@ -80,6 +80,7 @@ Create `sessions/YYYY-MM-DD-NN-short-topic.md`:
 
 | Session | Outcome |
 | --- | --- |
+| [2026-10-10-07-readme](sessions/2026-10-10-07-readme.md) | Root README rewritten as a product README at the owner's request (no milestone or workflow material); claims checked against source. |
 | [2026-10-10-06-m5-contract](sessions/2026-10-10-06-m5-contract.md) | M5 contract and ADR 0003 accepted (port 8088); M5a and M5b locally verified, drills 1–10 pass, CI green (`12b1fdb..e6abe8c` pushed). Owner accepted M5; version 1.0.0, no tag yet. |
 | [2026-10-10-05-m4c](sessions/2026-10-10-05-m4c.md) | M4c locally verified: CI workflow `e20a0bc` (`implement-medium`), frontend correctness `5caff27` and visual overhaul with light and dark themes plus Playwright `13e9018` (`implement-heavy` ×3); `verify` and `verify-browser` (one dialog-focus regression fixed); drills 12–16 by the main thread; CI green incl. e2e. Pushed over SSH (`a27a8de..8cc1e54`). Owner accepted M4. |
 | [2026-10-10-04-m4b](sessions/2026-10-10-04-m4b.md) | ADR 0001 accepted; `main` pushed (`42555eb`). M4b locally verified: `b20986e` (`implement-heavy` backend and contract, `implement-medium` frontend; `ajv-formats` rejected), `verify` and `verify-browser` reviews, drills 5–11 by the main thread. Owner granted standing push authorization; pushed `42555eb..20ba7ce`. |
