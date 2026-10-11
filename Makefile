@@ -25,7 +25,7 @@ APP_IMAGE := insightboard
 # Every compose call that may touch the release app includes its profile.
 COMPOSE_APP := docker compose --profile app
 
-.PHONY: help setup setup-env doctor db-up db-down db-reset backend-dev web-dev backend-check web-check e2e verify format require-env require-db require-cargo require-web-deps release up down logs backup
+.PHONY: help setup setup-env doctor db-up db-down db-reset backend-dev web-dev backend-check web-check e2e verify format require-env require-db require-cargo require-web-deps release up down logs backup lambda-build infra-check infra-synth require-lambda-zip
 
 help:
 	@printf '%s\n' \
@@ -37,6 +37,10 @@ help:
 	  '  down           Stop and remove the stack containers (app, Postgres, Redis); data volumes are kept' \
 	  '  logs           Follow the app logs' \
 	  '  backup         pg_dump the database to backups/ (gitignored, mode 600)' \
+	  'Lambda package (M6; Docker only, offline from AWS; nothing is deployed):' \
+	  '  lambda-build   Build $(LAMBDA_ZIP) (static musl bootstrap, built frontend, RDS CA bundle) in containers' \
+	  '  infra-check    npm ci, then type-check, tests, synth (cdk-nag gate), and cfn-lint for infra/; needs lambda-build first' \
+	  '  infra-synth    Synthesize infra/cdk.out offline (refuses when AWS credential variables are set); needs lambda-build first' \
 	  'Development:' \
 	  '  setup          npm ci; create .env from .env.example with generated secrets if it is absent' \
 	  '  doctor         Report tool versions, .env presence, Docker access, and whether Docker alone suffices for the release' \
@@ -187,6 +191,33 @@ backup: require-env
 	else \
 	  rm -f "$$file.partial"; printf '%s\n' 'backup failed: is Postgres running? (make db-up or make up)'; exit 1; \
 	fi
+
+# --- lambda package (M6) ----------------------------------------------------
+
+# Docker only (BuildKit): no host Rust or Node, no AWS tool or credentials. Builds the frontend
+# and a static x86_64 musl binary with --features lambda in containers (backend/Dockerfile.lambda)
+# and exports the zip, owned by the invoking user, to the gitignored backend/target/lambda/.
+# infra/certs is a named build context because the root .dockerignore excludes *.pem.
+LAMBDA_ZIP := $(BACKEND)/target/lambda/insightboard-lambda.zip
+
+lambda-build:
+	docker build --file $(BACKEND)/Dockerfile.lambda --build-arg RUST_IMAGE=$(RUST_IMAGE) \
+	  --build-context certs=infra/certs --target package \
+	  --output type=local,dest=$(dir $(LAMBDA_ZIP)) .
+	@printf 'Wrote %s (%s bytes)\n' '$(LAMBDA_ZIP)' "$$(wc -c < '$(LAMBDA_ZIP)' | tr -d ' ')"
+
+# --- infrastructure (M6, synth-only) ---------------------------------------
+
+# CDK libraries only (no CDK CLI, no deploy path). The synth refuses to run when AWS credential
+# variables are set; cfn-lint runs in a throwaway python:3.12-slim container (infra/scripts).
+require-lambda-zip:
+	@[ -f $(LAMBDA_ZIP) ] || { printf '%s\n' '$(LAMBDA_ZIP) is missing: run make lambda-build'; exit 1; }
+
+infra-check: require-lambda-zip
+	cd infra && npm ci && npm run check && npm run cfn-lint
+
+infra-synth: require-lambda-zip
+	cd infra && npm run synth
 
 # --- run --------------------------------------------------------------------
 

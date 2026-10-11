@@ -63,6 +63,13 @@ jobs:
           workspaces: backend
       - name: Backend check (fmt, clippy, test, build)
         run: make backend-check
+      # M6 decision 12: the Lambda entry point (cargo feature `lambda`) is linted and tested too.
+      - name: Clippy with the lambda feature
+        working-directory: backend
+        run: cargo clippy --locked --all-targets --features lambda -- -D warnings
+      - name: Tests with the lambda feature
+        working-directory: backend
+        run: cargo test --locked --features lambda
 
   web:
     name: web
@@ -146,6 +153,26 @@ jobs:
             frontend/e2e/playwright-report
             frontend/e2e/test-results
           retention-days: 7
+
+  # M6: Lambda package and synth-only infrastructure. No AWS credentials, secrets, or deploy:
+  # the synth refuses to run if AWS credential variables are set.
+  infra:
+    name: infra
+    runs-on: ubuntu-24.04
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+          cache-dependency-path: infra/package-lock.json
+      - name: Build the Lambda package (containers; nothing is uploaded)
+        run: make lambda-build
+      - name: Infra check (type-check, tests, synth with cdk-nag, cfn-lint)
+        run: make infra-check
 
   release:
     name: release
