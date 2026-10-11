@@ -40,7 +40,7 @@ backend does not warn about it. Through the backend, D1 (status-widget SSRF) is 
 | --- | --- | --- |
 | Docker + Compose v2 | any current (Docker 29.8.2, Compose v5.5.1 on this workstation) | Runs Postgres and Redis, and builds and runs the release image ([Run the release](#run-the-release-docker-only)). Add your user to the `docker` group so `sudo` is unnecessary (already the case here); the legacy instructions' `sudo docker` is not needed. |
 | Node.js | 20.19.0 (`.nvmrc`); `frontend/package.json` `engines.node` is `^20.19.0 \|\| >=22.12.0` | Vite 7 needs `^20.19 \|\| >=22.12`. The Makefile puts the project Node first when `.tools/node-v20.19.0-linux-x64/bin` exists and otherwise uses host Node (`make doctor` checks the version). On this workstation the project Node lives in the gitignored `.tools/node-v20.19.0-linux-x64/bin`; put it first on `PATH` (below). Host Node 24.19.0 also satisfies Vite 7. npm comes with Node; the project uses npm, not pnpm. |
-| Rust | 1.99.0, pinned by `rust-toolchain.toml` (with `rustfmt` and `clippy`); `backend/Cargo.toml` declares `rust-version = "1.89"`, the highest MSRV declared among the locked dependencies | Install [rustup](https://rustup.rs/); inside the checkout it fetches the pinned toolchain on first use. reqwest uses native TLS, so a native build needs OpenSSL development headers and `pkg-config`: **observed** on Fedora 44 that `openssl-sys` fails without `openssl-devel`. Without host Rust, `make backend-check` (and so `make verify`) falls back to a container ([testing](testing.md)), but running the backend (`make backend-dev`) and `make format` need host Rust. |
+| Rust | 1.99.0, pinned by `rust-toolchain.toml` (with `rustfmt` and `clippy`); `backend/Cargo.toml` declares `rust-version = "1.89"`, the highest MSRV declared among the locked dependencies | Install [rustup](https://rustup.rs/); inside the checkout it fetches the pinned toolchain on first use. Since M6 the backend uses rustls only (no `openssl-sys` in `cargo tree`), so a native build no longer needs OpenSSL development headers. Without host Rust, `make backend-check` (and so `make verify`) falls back to a container ([testing](testing.md)), but running the backend (`make backend-dev`) and `make format` need host Rust. |
 | make, awk | any | GNU make drives the targets below; `make setup` and `make setup-env` use `awk` and `openssl` to write `.env`. |
 | git, curl, openssl | any | `openssl` generates the JWT secret. |
 
@@ -69,6 +69,8 @@ make web-dev       # terminal 2: Vite on 127.0.0.1:5173
 | `make web-dev` | `npm run dev` in `frontend/`. |
 | `make backend-check`, `make web-check`, `make verify`, `make format` | The quality gates; see [testing](testing.md). |
 | `make e2e` | Playwright browser journeys on their own loopback ports (fixture 18090/18091, backend 8090, Vite 5175), next to running dev services; needs `make db-up`, host Rust, and a one-time `cd frontend && npx playwright install chromium`. See [testing](testing.md#browser-journeys-playwright). |
+| `make lambda-build` | M6, Docker only: builds the frontend and a static x86_64 musl `bootstrap` with `--features lambda` in containers (`backend/Dockerfile.lambda`) and writes `backend/target/lambda/insightboard-lambda.zip` (`bootstrap`, `static/`, `certs/rds-global-bundle.pem`). No AWS tool or credentials; nothing is uploaded. |
+| `make infra-check` / `make infra-synth` | M6, synth only: `npm ci`, type-check, tests, the guarded offline synth (cdk-nag gate), and `cfn-lint` in a container for `infra/`; `infra-synth` runs the synth alone. Both need `make lambda-build` first. See [`infra/README.md`](../../infra/README.md). |
 
 Manual path, when you cannot or do not want to use `make setup`: complete step 1 before starting anything, because
 compose refuses to start without the secrets.
@@ -159,7 +161,7 @@ How the release app runs (`Dockerfile`, `docker-compose.yml` service `app`, prof
 
 - **Image.** Multi-stage: `node:20.19.0-bookworm-slim` runs `npm ci` and `npm run build`; `rust:1.99.0-bookworm`
   runs `cargo build --release --locked` (migrations are embedded in the binary); the runtime is `debian:bookworm-slim`
-  with `ca-certificates`, `libssl3`, and `curl` (healthcheck) only. It ships `/app/insightboard-backend` and the built
+  with `ca-certificates` and `curl` (healthcheck) installed; the binary uses rustls and links no OpenSSL (M6). It ships `/app/insightboard-backend` and the built
   frontend in `/app/dist` (`STATIC_DIR=/app/dist`), owned by root, and runs as the unprivileged user `insightboard`
   (uid 10001). `.dockerignore` keeps `.env*` (except the examples), `.tools/`, `.git/`, `target/`, `node_modules/`,
   `dist/`, logs, Playwright output, and `backups/` out of the build context; the image holds no secret.
@@ -202,8 +204,10 @@ How the release app runs (`Dockerfile`, `docker-compose.yml` service `app`, prof
 | `APP_PUBLISH_PORT` | `8088` | Read by compose only: the host port of the release app, published on `127.0.0.1`. |
 | `POSTGRES_USER`, `POSTGRES_PASSWORD` | none, required by compose | Read by compose only; the container is initialised with them on first start. Database name is `insightboard`. |
 | `REDIS_PASSWORD` | none, required by compose | Read by compose only (`--requirepass`, and `REDISCLI_AUTH` inside the container so `docker compose exec redis redis-cli ...` works without `-a`). |
-| `DATABASE_URL` | none, required | `postgres://<POSTGRES_USER>:<POSTGRES_PASSWORD>@127.0.0.1:5432/insightboard`; same values as above. |
-| `REDIS_URL` | none, required | `redis://:<REDIS_PASSWORD>@127.0.0.1:6379`; same password as above. |
+| `DATABASE_URL` | none, required | `postgres://<POSTGRES_USER>:<POSTGRES_PASSWORD>@127.0.0.1:5432/insightboard`; same values as above. Remote databases add `?sslmode=verify-full&sslrootcert=<ca.pem>` (see TLS below). |
+| `DB_MAX_CONNECTIONS` | `10` | Postgres pool size per process, 1 to 100; anything else fails startup. The Lambda synth sets 2. |
+| `REDIS_URL` | none, required | `redis://:<REDIS_PASSWORD>@127.0.0.1:6379`; same password as above. `rediss://` for TLS (see below). Only the Lambda build (`--features lambda`) accepts it unset, which disables the cache. |
+| `SSL_CERT_FILE` | unset | Optional PEM bundle that replaces the system CA store for `rediss://` only; Postgres and the providers ignore it. |
 | `JWT_SECRET` | none, required | At least 32 bytes, or startup fails; generate with `openssl rand -hex 32` (`make setup` does). Tokens last 24 hours. |
 | `GITHUB_API_TOKEN` | empty | Optional; sent to GitHub as a bearer token when set. Blank values count as unset. |
 | `OPENWEATHER_API_KEY` | empty | Without it the weather endpoint returns 503 `{error}`. OpenWeather accepts the key only in the query string; the backend never logs request URLs. |
@@ -220,8 +224,16 @@ How the release app runs (`Dockerfile`, `docker-compose.yml` service `app`, prof
 
 `COINMARKETCAP_API_KEY`, `SENTRY_DSN`, and `AWS_REGION` were removed from `.env.example` because nothing read them.
 
-The production-style URLs commented in `.env.example` (`sslmode=require`, `rediss://`) would fail: sqlx and redis
-are built without TLS features (D21).
+**TLS (D21, M6).** One rustls stack for Postgres, Redis, and the providers; certificate verification is always on.
+
+- Postgres: `sslmode=verify-full` checks the certificate and host name against the bundled public roots plus the CA
+  in `sslrootcert`, if given. `sslmode=require` and the default `prefer` encrypt without verifying the certificate,
+  as in libpq, so use `verify-full` for any remote database. A verification failure (unknown CA, wrong host name)
+  stops startup with `could not connect to Postgres (DATABASE_URL): … invalid peer certificate …`.
+- Redis: `rediss://` verifies against the system CA store (`ca-certificates`), or against `SSL_CERT_FILE` for a
+  private CA. A verification failure is treated like an unreachable Redis: a startup warning, caching off, and
+  `/readyz` 503 until Redis answers.
+- Local development keeps the plain loopback URLs; the local Postgres offers no TLS and `prefer` falls back to plain.
 
 Frontend: `VITE_API_URL` (default `/api`). Vite binds `127.0.0.1` (`server.host` in `vite.config.ts`); the port is
 the Vite default.
@@ -324,7 +336,9 @@ docker compose exec -T redis redis-cli TTL '<key>'
 
 ## What is not set up
 
-No production or cloud configuration, TLS, or registry. The release image and compose profile are described in
+No deployment, cloud account, or registry. TLS is available for a remote Postgres and Redis (see
+[Configuration](#configuration)); the M6 Lambda package and `infra/` are build- and synth-only. The release image and
+compose profile are described in
 [Run the release](#run-the-release-docker-only). CI is `.github/workflows/ci.yml` (see [testing](testing.md#ci)). The legacy run
 instructions remain readable at
 [`manual run instructions.md` at `f15c6a3`](https://github.com/lavinhoque33/insightboard/blob/f15c6a3/manual%20run%20instructions.md);

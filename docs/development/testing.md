@@ -38,6 +38,9 @@ flush. The Vitest suites mock the API and need neither.
 | `make web-check` | In `frontend/`: `npm run lint` (ESLint with `--max-warnings 0`, then `prettier --check .`), `npm test` (`vitest run`), `npm run build` (`vue-tsc -b && vite build`) |
 | `make verify` | `backend-check` then `web-check`; works from a fresh clone after `make setup` and `make db-up` |
 | `make e2e` | Playwright browser journeys (Chromium) against the real backend with providers on a local fixture; needs `make db-up` and host Rust; not part of `verify` (see "Browser journeys") |
+| `make lambda-build` | M6: the Lambda package in containers (`backend/Dockerfile.lambda`, BuildKit): frontend build, `cargo build --release --locked --features lambda --target x86_64-unknown-linux-musl`, zip to `backend/target/lambda/insightboard-lambda.zip`; Docker only |
+| `make infra-check` | M6: in `infra/`, `npm ci`, `npm run check` (`tsc`, `node --test` assertion tests, guarded synth with the cdk-nag and CloudFormation-Validate gate), then `npm run cfn-lint` (pinned `cfn-lint` in `python:3.12-slim`); needs `make lambda-build` first |
+| `make infra-synth` | M6: the guarded synth alone, printing the template path and SHA-256 |
 | `make format` | `cargo fmt` and `npm run format` (Prettier write); needs host Rust |
 | `make setup` | `npm ci` (and a generated `.env` if absent); run once per clone before `web-check` |
 
@@ -57,6 +60,7 @@ The chain stops at the first failing step. Frontend commands use the project Nod
 | `npm audit --omit=dev` | Advisories in production dependencies |
 | `npx vitest run src/components/__tests__/BaseWidget.spec.ts` | One test file |
 | `cargo test jwt_roundtrip` | One backend test by name filter (from `backend/`; export `.env` first for database and Redis tests: `set -a; . ../.env; set +a`) |
+| `cargo clippy --locked --all-targets --features lambda -- -D warnings`, `cargo test --locked --features lambda` | The Lambda entry point and its adapter tests (from `backend/`, `.env` exported as above); CI runs both |
 
 There are no `test:watch` or `test:coverage` scripts.
 
@@ -124,8 +128,9 @@ permission and a per-ref concurrency group that cancels superseded runs. No secr
 
 - **backend** job: Postgres 16 and Redis 7 service containers bound to the runner's `127.0.0.1`, throwaway CI-only
   credentials in the workflow `env` (not secrets), the toolchain from `rust-toolchain.toml`, a cargo cache, then
-  `make backend-check`. With `GITHUB_ACTIONS=true` (set by Actions) `require-db` only checks that `DATABASE_URL`
-  and `REDIS_URL` are set, and `.env` is optional; locally the behaviour is unchanged, even with `CI=true`.
+  `make backend-check`, then clippy and tests with `--features lambda` (M6 decision 12). With `GITHUB_ACTIONS=true`
+  (set by Actions) `require-db` only checks that `DATABASE_URL` and `REDIS_URL` are set, and `.env` is optional;
+  locally the behaviour is unchanged, even with `CI=true`.
 - **web** job: Node from `.nvmrc`, `npm ci`, then `make web-check`.
 - **e2e** job: the backend job's Postgres and Redis service containers and throwaway credentials, the Rust
   toolchain and cargo cache, Node from `.nvmrc`, `npm ci`, `npx playwright install --with-deps chromium`, then
@@ -142,6 +147,9 @@ permission and a per-ref concurrency group that cancels superseded runs. No secr
   `ci-release-<time>-<random>@example.com` user registers, creates a dashboard, and lists exactly that one. On failure
   the job prints `docker compose --profile app logs app` (never `docker compose config`, never `.env`); `make down`
   always runs at the end. No provider is called.
+- **infra** job (M6): Node from `.nvmrc` with the npm cache keyed on `infra/package-lock.json`, `make lambda-build`,
+  then `make infra-check`. No services, secrets, or AWS credentials; the synth refuses to run if AWS credential
+  variables are set, and nothing is uploaded.
 
 To mirror CI locally, run `GITHUB_ACTIONS=true make backend-check` with `DATABASE_URL` and `REDIS_URL` exported.
 The release job's steps run unchanged locally (`make release`, `make up`, then the smoke commands from
@@ -153,11 +161,11 @@ Backend (`cargo test`, one binary; unit tests sit beside the code, router tests 
 
 | Area | Location | Covers |
 | --- | --- | --- |
-| Config | `config::tests` | Loopback default; required variables name themselves; CORS parsing; `JWT_SECRET` < 32 bytes rejected; base URL, timeout, and fixture-allowlist parsing (loopback `ip:port` only); `STATIC_DIR` must be an existing directory with `index.html` |
+| Config | `config::tests` | Loopback default; required variables name themselves; CORS parsing; `JWT_SECRET` < 32 bytes rejected; base URL, timeout, and fixture-allowlist parsing (loopback `ip:port` only); `STATIC_DIR` must be an existing directory with `index.html`; `DB_MAX_CONNECTIONS` bounded to 1–100; `REDIS_URL` required by the server and optional only for Lambda |
 | Auth helpers | `auth::tests` | Argon2 round trip and rejection; 24 h JWT lifetime; every invalid token is the generic `Unauthorized` |
 | Request validation | `models::user::tests`, `models::dashboard::tests`, `widgets::*::tests` | Email normalisation and validation; password length; dashboard defaults, dotted layout/settings fields, blank names; GitHub username rules; crypto id normalisation; free-text normalisation |
 | Outbound policy | `widgets::net_policy::tests`, `widgets::status::tests`, `widgets::http::tests` | Every blocked address class (loopback, unspecified, private, CGNAT, link-local and metadata, ULA, multicast, broadcast/reserved, documentation, benchmarking, IPv4-mapped/compatible, NAT64, 6to4, IETF-protocol `2001::/23`); the policy resolver rejects `localhost`; scheme/credential/length checks; IP-literal blocking incl. the hex form `0x7f000001`; exact fixture allowlist; path segments percent-encoded |
-| Cache | `cache::tests`, `tests::cache` | Key bounding (hash of long or special parts); unreachable Redis fails open within 3 s; compose Redis round trip with TTL; undecodable entries are misses; provider data shared under normalised keys (one upstream call for two users) |
+| Cache | `cache::tests`, `tests::cache` | Key bounding (hash of long or special parts); unreachable Redis fails open within 3 s; compose Redis round trip with TTL; undecodable entries are misses; provider data shared under normalised keys (one upstream call for two users); a disabled cache misses, skips writes, never connects, and calls the provider every time |
 | Rate limits | `ratelimit::tests`, `tests::rate_limit` | Burst then 429 per key; cleanup keeps recent keys; auth limited per client IP (other IPs unaffected); data limited per user after authentication (401 before 429) |
 | Middleware | `app::tests` | CORS allowlist (preflight and simple requests); server timeout → JSON 504; unknown route 404 and wrong method 405 as JSON |
 | Static serving (M5) | `tests::frontend` (full router, temporary build directory, no database) | With `STATIC_DIR`: a hashed `/assets/` file is served with `immutable` caching, the three security headers, and gzip on request; `/`, `/index.html`, `/login`, and `/dashboards/<id>` (with and without trailing slash) return `index.html` with 200 and `no-cache`, HEAD included; `/api`, `/api/`, `/api/unknown` (GET and POST), a deep unknown API path, and a missing `/assets/` file are JSON 404s, never `index.html`; `..` and `%2e%2e` paths never serve a file outside the directory; a path segment over 255 bytes or with an encoded NUL is a missing file (JSON 404 under `/assets/`, `index.html` elsewhere), never a 500; `/healthz`, `/readyz`, and `/api/dashboards` keep their JSON responses; wrong methods on API and frontend paths are JSON 405. Without `STATIC_DIR`: `/`, deep links, and asset paths stay JSON 404s |
@@ -165,10 +173,13 @@ Backend (`cargo test`, one binary; unit tests sit beside the code, router tests 
 | Dashboard routes | `tests::dashboards` (`#[sqlx::test]`) | Create without JSON fields stores `{"widgets":[]}` and `{}`; CRUD responses match the contract; blank name and invalid shapes → 422 with dotted fields; foreign dashboards 404 for GET/PUT/DELETE and invisible in the list; unparsable id 404; 101st dashboard → 409; create for a deleted user → 401; migration 003 backfills legacy `null`/`[]` values and normalises emails |
 | Providers | `tests::providers` (`mockito`) | Each widget's success output matches the contract; the shared `User-Agent` is sent; GitHub token as bearer; NewsAPI key in `X-Api-Key` and absent from the URL; city and topic query-encoded, path-like GitHub usernames rejected without an upstream call; crypto null numbers kept as `null`; upstream 500 and undecodable bodies → generic 502; slow upstream → 502 at the configured timeout for all four providers; missing keys → 503; missing/blank query values → 422 naming the parameter |
 | Status widget | `tests::status` | Blocked and invalid targets get generic classes and never reach a listening fixture; 11 URLs → 422; allowlisted fixture reached; a 302 is reported, not followed; timeout and refused connection classified; checks run five at a time; results cached per user |
-| Errors and health | `tests::errors`, `tests::health` | Malformed JSON 400, wrong content type 415, non-object/mistyped bodies 422 with details, all as `application/json`; database down → generic 500; `/healthz` without dependencies; `/readyz` 200 with both up, 503 with either down |
+| Errors and health | `tests::errors`, `tests::health` | Malformed JSON 400, wrong content type 415, non-object/mistyped bodies 422 with details, all as `application/json`; database down → generic 500; `/healthz` without dependencies; `/readyz` 200 with both up, 503 with either down; with the cache disabled, `/readyz` checks Postgres only (200 with `cache: "disabled"`, 503 when Postgres is down) |
+| Lambda adapter (M6, `--features lambda`) | `tests::lambda` | Function URL v2 events through `lambda_http` and the full router: `/healthz`, a static file, an SPA deep link, `/api/unknown` as a JSON 404; register and login limited per `sourceIp` (another address unaffected); events without a usable source address share one bucket |
 | Contract | `tests::contract` | Handler output above is validated with `jsonschema` (formats on) against `contracts/api-contract.v1.json`; the contract compiles; a deliberately broken fixture set (pre-M4b `[]` layout, `w: 0`, null settings, bad uuid, blank name, missing field, leaked error fields, raw library error text as a status class) must fail validation (drill 11) |
 
-Totals: 95 backend tests (**observed** 2026-10-10, `make verify` on this workstation at `cdb9359`; 87 before M5a). Not covered by
+Totals: 101 backend tests with default features and 104 with `--features lambda` (**observed** 2026-10-11 UTC on this
+workstation, M6 tree on `50be1e2`; 95 at `cdb9359` before M6). Infrastructure: 18 `node:test` tests in `infra/test/`
+(template resources and settings, environment-agnostic output, acknowledgements, the credential guard). Not covered by
 automated tests: the `dns_error` status class (it would need a non-resolving name, which could query external DNS)
 and live provider behaviour (manual, human-scale smoke only).
 

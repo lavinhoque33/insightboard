@@ -149,6 +149,11 @@ Delivered in order; all three are required for M6 acceptance.
          drill 1 proves it];
        - `redis://` stays plaintext.
      - The release image drops `libssl3` and keeps `ca-certificates`.
+     - Clarification (main thread, M6 review): the Dockerfile no longer installs `libssl3`, and the binary links no
+       OpenSSL (`ldd`, drill 1). `libssl3` itself stays in the image as a dependency of the Debian `curl` and
+       `ca-certificates` packages.
+     - `sslmode=require` and the default `prefer` encrypt without verifying the certificate, as in libpq; any
+       remote database uses `sslmode=verify-full`.
      - The status widget's TLS changes library. Like OpenSSL 3's defaults on bookworm, rustls accepts only TLS 1.2
        and 1.3.
    - Alternative: **native TLS everywhere.** The musl build would then need vendored OpenSSL, built from source.
@@ -174,6 +179,11 @@ Delivered in order; all three are required for M6 acceptance.
        - an explicit log group with retention;
        - project tags on every resource.
      - No Redis (decision 9). No NAT gateway, Elastic IP, CloudFront, S3, or API Gateway.
+     - Clarification (main thread, 2026-10-10, during M6b): RDS must live in a VPC, so the stack also has a minimal
+       VPC for the database only: public subnets in two zones, no NAT gateway, no VPC endpoints, no helper custom
+       resources, and one security group allowing 5432 (decision 8). The function itself stays outside it. VPCs,
+       subnets, route tables, and an internet gateway carry no charge [MEMORY]; the RDS public IPv4 address is
+       already in the cost table.
    - Alternative: **CloudFront plus S3 for the app, and a Function URL or HTTP API for `/api`.**
      - Adds caching at the edge, but more resources to keep secure and to tear down.
      - The source address becomes the CloudFront edge, so client-address trust would need its own decision.
@@ -260,7 +270,7 @@ Exact versions and feature names are fixed during implementation and recorded in
 | Log group | `/aws/lambda/<function>`, retention 14 days, removed with the stack | 5 |
 | RDS | PostgreSQL 16, `db.t4g.micro`, 20 GB gp3, single-AZ, encrypted, `rds.force_ssl=1`, backup retention 1 day, no deletion protection, no final snapshot, automated backups deleted with the instance | 5, 8 |
 | Stack | One stack, `InsightBoardExperiment`, environment-agnostic (no account or region in the template); tags `project=insightboard`, `purpose=m7-experiment` | 5 |
-| Package | `backend/target/lambda/insightboard-lambda.zip` (gitignored) containing `bootstrap` and `static/` | 2 |
+| Package | `backend/target/lambda/insightboard-lambda.zip` (gitignored) containing `bootstrap`, `static/`, and `certs/rds-global-bundle.pem` | 2 |
 | Synth output | `infra/cdk.out/` (gitignored); the template is attached to the verification record by path and checksum, not committed | 6 |
 
 ## 1. Lambda entry point (M6a; decisions 3, 6, 11)
@@ -293,10 +303,12 @@ Exact versions and feature names are fixed during implementation and recorded in
 
 - `DATABASE_URL` accepts `sslmode` and `sslrootcert`, and `REDIS_URL` accepts `rediss://`, with no code-specific URL
   handling.
-- Verification failures (an unknown CA or a hostname mismatch) stop startup with a clear log line. Clients still
-  receive only generic errors.
+- Postgres verification failures (an unknown CA or a hostname mismatch) stop startup with a clear log line. Clients
+  still receive only generic errors.
+- Redis keeps its fail-open behaviour: a TLS verification failure at startup logs a warning naming the cause, the
+  cache misses, and `/readyz` returns 503 until Redis answers (clarification, M6 review; drill 4).
 - `.env.example`, local setup, and the runbook document the TLS URL forms and how to supply a custom CA.
-- The release image drops `libssl3`, and the M5 smoke checks still pass.
+- The Dockerfile no longer installs `libssl3` (see the decision 5 clarification), and the M5 smoke checks still pass.
 
 ## 4. Cache-disabled mode (M6a; decision 9)
 
@@ -314,6 +326,10 @@ Exact versions and feature names are fixed during implementation and recorded in
   - a `README` explaining that M6 is synth-only.
 - Every cdk-nag suppression carries a written reason that names a decision in this contract (for example: RDS
   publicly accessible, decision 8; Function URL without IAM auth, decision 7).
+- The same gate covers CDK's built-in offline CloudFormation validation (`CloudFormation-Validate`). W2508 and W9011
+  (public database, open 5432) are acknowledged with decision 8 reasons; W3010 is acknowledged by `aws-cdk-lib`
+  itself when a stack reads `availabilityZones`. `cfn-lint` W3691 (major-only engine version) and W3005 (redundant
+  `DependsOn` added by CDK) are ignored on their single resource, with reasons in `infra/src/stack.ts`.
 - The template contains:
   - no account ID, no region, no secret value, and no context lookup (`fromLookup` and similar methods are
     forbidden);
@@ -365,13 +381,17 @@ get up to $200 in credits over six months, and the plan closes the account at th
 12-month free tier include 750 RDS micro hours a month. Neither is assumed: M7 must show a $0 path for the owner's
 actual account.
 
+M6c re-sourced every paid line from AWS's public pricing pages on 2026-10-11 (UTC); the figures are unchanged. The
+sourced table is in the [experiment proposal](../operations/aws-experiment-proposal.md).
+
 ### Cleanup proposal
 
 - Deleting the stack removes everything it created:
   - The RDS instance is deleted with no final snapshot, and its automated backups are deleted with it.
   - The log group is declared in the stack, because Lambda never deletes its own log groups.
-  - Secrets are deleted without a recovery window. Otherwise CDK's default schedules deletion with a recovery
-    window and the secrets linger [INFERENCE; confirmed in implementation].
+  - Secrets are deleted without a recovery window: with `DeletionPolicy: Delete`, CloudFormation deletes a secret
+    with `ForceDeleteWithoutRecovery` (AWS `DeletionPolicy` attribute reference, retrieved 2026-10-10). CDK's default
+    for secrets is `RETAIN`, so the stack sets `DESTROY` explicitly.
 - Post-teardown checklist (M7): no RDS instances, snapshots, or automated backups; no `/aws/lambda/InsightBoard*`
   log groups; no secrets, including those pending deletion; no Elastic IPs or NAT gateways. If M7 bootstraps CDK,
   the `CDKToolkit` stack and its staging bucket and repository must be removed as well.
@@ -406,7 +426,7 @@ calls an AWS API, or deploys anything.
 
 | # | Drill | Expected |
 | --- | --- | --- |
-| 1 | Default build unchanged: `make verify`, `make e2e`, `make release` and `make up` smoke; default `cargo tree` | All green. `lambda_http` and `openssl` are absent from the default tree. The image has no `libssl3`. The local plain Postgres and Redis URLs still work. |
+| 1 | Default build unchanged: `make verify`, `make e2e`, `make release` and `make up` smoke; default `cargo tree` | All green. `lambda_http` and `openssl` are absent from the default tree. The Dockerfile installs no `libssl3` and the binary links no OpenSSL (decision 5 clarification). The local plain Postgres and Redis URLs still work. |
 | 2 | `cargo clippy` and `cargo test` with `--features lambda` | Clean. The Lambda adapter tests from section 1 pass. |
 | 3 | `make lambda-build`, then run `bootstrap` in the Lambda base image with the Runtime Interface Emulator. The container joins the compose network, is published only on `127.0.0.1`, and has `REDIS_URL` unset. | Under the size limits. The following v2 events all succeed: `/healthz` returns 1.0.0; `/readyz` returns 200 with the cache disabled; `index.html` and a hashed asset come back with the correct type and body; register, create a dashboard, and read it with a throwaway account. Throwaway account and container are removed afterwards. |
 | 4 | TLS (D21): throwaway Postgres 16 and Redis 7 containers with TLS on loopback ports and a throwaway CA; the server binary with `sslmode=verify-full`, `sslrootcert`, and `rediss://` | `/readyz` 200 over TLS. A wrong CA or hostname fails with a clear log and no client leak. The throwaway containers, CA, and keys are removed (no named volumes). |
@@ -419,7 +439,8 @@ calls an AWS API, or deploys anything.
 ## 11. Out of scope
 
 - Any deploy, `cdk bootstrap`, AWS CLI, credentials, account creation or change, and spending.
-- Domains, CloudFront, WAF, API Gateway, VPCs, NAT, ElastiCache, DynamoDB, and Aurora (DSQL or Serverless).
+- Domains, CloudFront, WAF, API Gateway, VPC networking beyond the minimal public-subnet VPC that hosts RDS
+  (decision 7 clarification), NAT, ElastiCache, DynamoDB, and Aurora (DSQL or Serverless).
 - Cognito (decision 2), registration controls (an M7 precondition), and a per-application database role.
 - Forwarding-header trust, a global rate limit across instances, multiple regions, and IPv6.
 - A GitHub Release object, and the unscheduled backlog in the

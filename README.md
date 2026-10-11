@@ -140,7 +140,8 @@ make e2e      # Playwright browser journeys (first run: cd frontend && npx playw
 
 Backend tests run against the Docker Postgres and Redis, so start them with `make db-up` first. Provider calls in
 tests go to local mock servers; no test touches a real third-party API. GitHub Actions runs the backend, frontend,
-end-to-end, and Docker-image jobs on every push. See [testing](docs/development/testing.md) for details.
+end-to-end, Docker-image, and infrastructure-synth jobs on every push. See [testing](docs/development/testing.md) for
+details.
 
 ## Security and privacy
 
@@ -152,7 +153,9 @@ end-to-end, and Docker-image jobs on every push. See [testing](docs/development/
 
 ## Limitations
 
-- Designed for one person on one machine: plain HTTP on loopback, no TLS, a single instance.
+- Designed for one person on one machine: plain HTTP on loopback and a single instance. TLS to a remote Postgres or
+  Redis is supported ([configuration](docs/development/local-setup.md#configuration)), but the app itself serves
+  plain HTTP.
 - The session token is kept in the browser's `localStorage` for 24 hours; there is no token refresh or server-side
   revocation.
 - Anyone who can reach the port can register, and all browsers share one sign-in rate limit.
@@ -168,6 +171,7 @@ frontend/            Vue 3 + TypeScript client; e2e/ holds the Playwright tests 
 contracts/           JSON Schema for API payloads, shared by both test suites
 docs/                Architecture, operations runbook, development guides, decisions
 Dockerfile           Release image: the backend serving the built frontend
+infra/               Synth-only AWS CDK definition of a possible cloud experiment; nothing is deployed
 docker-compose.yml   Postgres, Redis, and the app (profile "app")
 Makefile             Setup, development, checks, and release commands
 ```

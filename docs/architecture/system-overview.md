@@ -1,11 +1,11 @@
 # System overview
 
-The runtime shape of InsightBoard as built at `f15c6a3` (M0–M3) with the M4 changes and the M5 release packaging, and
-the boundaries later milestones must preserve or restore. Product direction is in the
+The runtime shape of InsightBoard as built at `f15c6a3` (M0–M3) with the M4 changes, the M5 release packaging, and the
+M6 cloud seams, and the boundaries later milestones must preserve or restore. Product direction is in the
 [project plan](../../INSIGHTBOARD_PROJECT_PLAN.md) (sections 6–10); status is in the [roadmap](../product/roadmap.md);
 the as-built baseline and the defect list are in the [M0–M3 baseline contract](m0-m3-baseline-contract.md); M4 targets
-are in the [M4 contract](m4-quality-gate-contract.md) and the release shape in the
-[M5 contract](m5-local-release-contract.md).
+are in the [M4 contract](m4-quality-gate-contract.md), the release shape in the
+[M5 contract](m5-local-release-contract.md), and the cloud seams in the [M6 contract](m6-aws-readiness-contract.md).
 
 ## Components
 
@@ -27,7 +27,7 @@ flowchart LR
   `STATIC_DIR` with an SPA fallback, and compose runs it under profile `app` on `127.0.0.1:8088` beside the same
   Postgres and Redis (it binds `0.0.0.0:8080` only inside its container). The root `Makefile` runs setup, the
   database, the gates (`make verify`), the Playwright journeys (`make e2e`), and the release (`make release`, `up`,
-  `down`, `logs`, `backup`); GitHub Actions runs the backend, web, e2e, and release jobs on every push to `main`.
+  `down`, `logs`, `backup`); GitHub Actions runs the backend, web, e2e, release, and infra jobs on every push to `main`.
 - In development the browser talks only to the Vite dev server, which proxies `/api` to `http://127.0.0.1:8080`;
   with the release app, pages and `/api` share one origin. The backend also
   grants CORS only to the origins in `CORS_ORIGINS` (default the Vite dev origins `http://127.0.0.1:5173` and
@@ -35,7 +35,24 @@ flowchart LR
   credentials). A request from any other origin gets no `access-control-allow-origin` header (D4, fixed in M4a).
 - Every provider call is made by the backend. Keys live in the backend environment and never reach the browser.
 - `GET /healthz` is dependency-free liveness; `GET /readyz` returns 200 `{"status":"ready"}` when Postgres and Redis
-  both answer and 503 `{error}` otherwise (D19, M4b).
+  both answer and 503 `{error}` otherwise (D19, M4b). With the cache disabled (the Lambda entry point without
+  `REDIS_URL`) it checks Postgres only and returns `{"status":"ready","cache":"disabled"}`.
+- TLS (D21, M6): one rustls stack for Postgres, Redis, and the providers; the binary links no OpenSSL. Remote
+  databases use `DATABASE_URL=…?sslmode=verify-full&sslrootcert=<ca.pem>` (a failed verification stops startup) and
+  Redis uses `rediss://` (verified against the system roots or `SSL_CERT_FILE`; a failure fails open like an
+  unreachable Redis). Local development stays plain on loopback.
+
+### Lambda entry point (M6, not deployed)
+
+- `cargo build --features lambda` switches the same binary to AWS Lambda (`lambda_http`, Function URL and HTTP API
+  payload v2). Both entry points share one startup: configuration, the Postgres pool (`DB_MAX_CONNECTIONS`,
+  default 10), migrations, the cache, and the router. The Lambda path reads only the process environment (no
+  `.env`), logs without colours, and disables the cache when `REDIS_URL` is unset.
+- The per-IP auth limit keys on `requestContext.http.sourceIp`, which AWS sets from the connection; forwarding
+  headers stay untrusted. Limiter state is per execution environment.
+- `make lambda-build` packages `bootstrap` (static x86_64 musl), the built frontend, and the RDS CA bundle. `infra/`
+  synthesises the [experiment stack](../operations/aws-experiment-proposal.md) offline; nothing is deployed and no
+  AWS credentials are used.
 
 ## Request flows
 
@@ -223,15 +240,15 @@ By area; each ID is defined in the [baseline contract](m0-m3-baseline-contract.m
 | Tests | D11 (fixed: backend suites in M4b; Vitest, Playwright, and CI in M4c) |
 | Frontend editor and session | D9, D10, D22, D23, D28 (fixed in M4c) |
 | Styling, accessibility, copy | D24, D25, D27, D31 (fixed in M4c; keyboard layout editing in the backlog) |
-| Cloud readiness | D21 |
+| Cloud readiness | D21 (fixed in M6a: rustls TLS for sqlx, redis, and reqwest) |
 
 ## Future seams (planned)
 
 - **M5 — Local release (accepted 2026-10-10):** one image with the backend serving the built frontend, a compose profile
   bound to loopback, the runbook, and version `1.0.0`; see the [M5 contract](m5-local-release-contract.md) and the
   [runbook](../operations/runbook.md).
-- **M6 — AWS readiness (planned):** a Lambda-compatible packaging seam (for example a `lambda_http` adapter behind a
-  feature), synth-only IaC (tool chosen by the owner), a Cognito-compatible auth seam unless deferred, and TLS
-  features for sqlx and redis (D21). Nothing is deployed and no AWS credentials are used.
+- **M6 — AWS readiness (in progress):** the `lambda` cargo feature, rustls TLS (D21), the cache-disabled mode, and the
+  synth-only CDK package in `infra/`; Cognito is deferred to the backlog (ADR 0004). Nothing is deployed and no AWS
+  credentials are used; see the [M6 contract](m6-aws-readiness-contract.md).
 - No seam for the unscheduled backlog (background refresh, public dashboards, AI widget, S3 uploads) exists or is
   planned until the owner schedules it.

@@ -122,7 +122,8 @@ Never paste the output of `docker compose config` anywhere: it prints every secr
 
 ## Limits
 
-- Loopback only and plain HTTP; no TLS between the app, Postgres, and Redis (D21, planned for M6).
+- Loopback only and plain HTTP. The compose Postgres and Redis are reached over plain loopback connections; TLS to a
+  remote Postgres or Redis is available ([local setup](../development/local-setup.md#configuration), "TLS").
 - The session token is kept in the browser's `localStorage` for 24 hours; there is no refresh or revocation.
 - Anyone who can reach the port can register an account.
 - All clients share one authentication rate-limit bucket.

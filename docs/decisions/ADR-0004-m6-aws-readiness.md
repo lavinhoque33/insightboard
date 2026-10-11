@@ -41,7 +41,18 @@ local product must stay unchanged when cloud features are off.
 | 11 | Migrations and pool | Migrations at startup, as locally; optional `DB_MAX_CONNECTIONS` (default 10; 2 in the synth) | ★ approved |
 | 12 | CI | `backend` job adds `--features lambda`; new `infra` job; no credentials or secrets | ★ approved |
 
-Exact versions and feature names are added here as each slice lands.
+### As implemented (M6a and M6b, 2026-10-10)
+
+| Area | Exact versions and features |
+| --- | --- |
+| Lambda entry point | `lambda_http` 1.3.1 (optional, `default-features = false`, `apigw_http`) behind cargo feature `lambda = ["dep:lambda_http"]`; resolves `lambda_runtime` 1.4.0 and `aws_lambda_events` 1.2.0. No AWS SDK crate in either tree. |
+| sqlx 0.8.6 | `tls-rustls-ring-webpki` added; `sslrootcert=` adds a CA to the bundled webpki roots |
+| redis 0.27.6 | `tokio-rustls-comp` added; trust from `rustls-native-certs` 0.7.3, so `SSL_CERT_FILE` replaces the system store for Redis only |
+| reqwest 0.12.28 | `default-features = false` with `json`, `rustls-tls`, `charset`, `http2` |
+| TLS stack | rustls 0.23.45 with ring 0.17.14, tokio-rustls 0.26.6, hyper-rustls 0.27.10 |
+| `Cargo.lock` | Removed: `openssl`, `openssl-sys`, `openssl-macros`, `native-tls`, `hyper-tls`, `tokio-native-tls`, `foreign-types`, `tempfile`, `rustix` and others. `openssl-probe` moved from 0.2.1 to 0.1.6 (pure Rust, through `rustls-native-certs`). `quinn` is listed but compiled by neither feature set (`cargo tree -i quinn` is empty). |
+| `infra/` | `aws-cdk-lib` 2.273.0, `constructs` 10.8.1, `cdk-nag` 3.0.2 (v3 `Validations` plugin API), `typescript` ~5.9.3, `@types/node` 20.19.43; `cfn-lint` 1.57.2 in `python:3.12-slim` |
+| Package | `backend/Dockerfile.lambda` builds `x86_64-unknown-linux-musl` in `rust:1.99.0-bookworm` with `musl-tools`; the zip holds `bootstrap` (static-pie), `static/`, and `certs/rds-global-bundle.pem` |
 
 ## Consequences
 
@@ -53,8 +64,13 @@ Exact versions and feature names are added here as each slice lands.
   - A one-time, anonymous download of AWS's public RDS CA bundle: done 2026-10-10 from
     `https://truststore.pki.rds.amazonaws.com/global/global-bundle.pem` into `infra/certs/rds-global-bundle.pem`
     (111 certificates, 169,984 bytes, SHA-256 `fe45bbebf92ad3e27a583bbb2ddd1553c521ed4d49af5514dc0a40372ea5395c`).
-- **Release image:** it loses `libssl3`. The status widget and the providers move from OpenSSL to rustls; both
-  accept TLS 1.2 and 1.3 only.
+- **Release image:** the Dockerfile no longer installs `libssl3` and the binary links no OpenSSL; `libssl3` stays in
+  the image only as a dependency of Debian's `curl` and `ca-certificates`. The status widget and the providers move
+  from OpenSSL to rustls; both accept TLS 1.2 and 1.3 only.
+- **Readiness contract:** `/readyz` gains an optional `cache: "disabled"` field (Lambda without `REDIS_URL`);
+  `contracts/api-contract.v1.json` and `apiContract.ts` changed together.
+- **Redis TLS:** a verification failure stays fail-open (warning, cache misses, `/readyz` 503), as for an
+  unreachable Redis; a Postgres verification failure stops startup.
 - **Default build:** the repository gains no deploy path. `cdk deploy`, `cdk bootstrap`, and the AWS CLI stay
   forbidden until an approved M7 contract.
 - **Cognito:** it stays in the plan's section 5 backlog.

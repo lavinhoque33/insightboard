@@ -4,6 +4,32 @@ All notable changes to InsightBoard. The format follows [Keep a Changelog](https
 and versions follow [Semantic Versioning](https://semver.org/). Defect IDs (D1–D31) refer to the catalogue in the
 [M0–M3 baseline contract](docs/architecture/m0-m3-baseline-contract.md) section 12.
 
+## [Unreleased]
+
+### Added
+
+- An AWS Lambda entry point behind the off-by-default cargo feature `lambda` (Function URL and HTTP API payload v2;
+  the per-IP sign-in limit uses the request's source address). `make lambda-build` packages a static x86_64 musl
+  `bootstrap`, the built frontend, and the RDS CA bundle using Docker only. Nothing is deployed.
+- `infra/`: a synth-only AWS CDK v2 definition of a possible experiment (one Lambda function with a Function URL,
+  RDS PostgreSQL, Secrets Manager), checked by cdk-nag, assertion tests, and `cfn-lint`, and refusing to run with AWS
+  credentials set. `make infra-check` and `make infra-synth`; the
+  [experiment proposal](docs/operations/aws-experiment-proposal.md) lists its cost and teardown.
+- `DB_MAX_CONNECTIONS` (Postgres pool size, default 10).
+- `/readyz` reports `"cache": "disabled"` when the Lambda build runs without `REDIS_URL`.
+- CI lints and tests the `lambda` feature and runs a new `infra` job.
+
+### Changed
+
+- One TLS stack: rustls for Postgres, Redis, and the providers. The binary links no OpenSSL, the image no longer
+  installs `libssl3` explicitly, and a native build no longer needs OpenSSL headers. Like the OpenSSL defaults before
+  it, the status widget accepts TLS 1.2 and 1.3 only.
+
+### Fixed
+
+- TLS to a remote Postgres (`sslmode=verify-full`, `sslrootcert`) and Redis (`rediss://`, `SSL_CERT_FILE`) now works
+  (D21).
+
 ## [1.0.0] - 2026-10-10
 
 The first release: a local, single-machine product that builds and runs from a fresh clone with Docker alone. It
@@ -57,4 +83,5 @@ records under [`docs/development/`](docs/development/).
   no TLS (D21, planned for M6), the token in `localStorage`, open registration on the local port, and one shared
   authentication rate-limit bucket.
 
+[Unreleased]: https://github.com/lavinhoque33/insightboard/compare/v1.0.0...HEAD
 [1.0.0]: https://github.com/lavinhoque33/insightboard/tree/v1.0.0
