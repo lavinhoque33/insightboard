@@ -46,7 +46,7 @@ Screenshots use demo data from a local fixture, not live providers.
 
 ## Run the release (Docker only)
 
-Needs Docker with Compose, `make`, `openssl`, and Git; no Rust or Node on the host.
+Needs Docker with Compose, `make`, `openssl`, `awk`, and Git; no Rust or Node on the host.
 
 ```sh
 git clone https://github.com/lavinhoque33/insightboard.git

@@ -1,11 +1,11 @@
 # System overview
 
-The runtime shape of InsightBoard as built at `f15c6a3` (M0–M3) with the M4a and M4b changes, and the boundaries
-later milestones must preserve or restore. Product direction is in the [project plan](../../INSIGHTBOARD_PROJECT_PLAN.md)
-(sections 6–10); status is in the [roadmap](../product/roadmap.md); the as-built baseline and the defect list are in
-the [M0–M3 baseline contract](m0-m3-baseline-contract.md); M4 targets are in the
-[M4 contract](m4-quality-gate-contract.md). The M4b items below are **implemented but unverified** until the main
-thread records them in the M4 verification record.
+The runtime shape of InsightBoard as built at `f15c6a3` (M0–M3) with the M4 changes and the M5 release packaging, and
+the boundaries later milestones must preserve or restore. Product direction is in the
+[project plan](../../INSIGHTBOARD_PROJECT_PLAN.md) (sections 6–10); status is in the [roadmap](../product/roadmap.md);
+the as-built baseline and the defect list are in the [M0–M3 baseline contract](m0-m3-baseline-contract.md); M4 targets
+are in the [M4 contract](m4-quality-gate-contract.md) and the release shape in the
+[M5 contract](m5-local-release-contract.md).
 
 ## Components
 
@@ -22,11 +22,14 @@ flowchart LR
     API -->|"public http(s) URLs only (D1, M4b)"| ST["Status targets"]
 ```
 
-- The backend and frontend run natively; Postgres and Redis are the only containers (`docker-compose.yml`). There is
-  no Dockerfile and no production build path. The root `Makefile` runs setup, the database, the gates
-  (`make verify`), and the Playwright journeys (`make e2e`); GitHub Actions runs the backend, web, and e2e jobs on
-  every push to `main`.
-- The browser talks only to the Vite dev server; Vite proxies `/api` to `http://127.0.0.1:8080`. The backend also
+- In development the backend and frontend run natively and Postgres and Redis are containers (`docker-compose.yml`).
+  The release (M5) is one image built from the root `Dockerfile`: the backend serves the built frontend from
+  `STATIC_DIR` with an SPA fallback, and compose runs it under profile `app` on `127.0.0.1:8088` beside the same
+  Postgres and Redis (it binds `0.0.0.0:8080` only inside its container). The root `Makefile` runs setup, the
+  database, the gates (`make verify`), the Playwright journeys (`make e2e`), and the release (`make release`, `up`,
+  `down`, `logs`, `backup`); GitHub Actions runs the backend, web, e2e, and release jobs on every push to `main`.
+- In development the browser talks only to the Vite dev server, which proxies `/api` to `http://127.0.0.1:8080`;
+  with the release app, pages and `/api` share one origin. The backend also
   grants CORS only to the origins in `CORS_ORIGINS` (default the Vite dev origins `http://127.0.0.1:5173` and
   `http://localhost:5173`; methods GET, POST, PUT, DELETE; headers `Authorization` and `Content-Type`; no
   credentials). A request from any other origin gets no `access-control-allow-origin` header (D4, fixed in M4a).
@@ -224,9 +227,9 @@ By area; each ID is defined in the [baseline contract](m0-m3-baseline-contract.m
 
 ## Future seams (planned)
 
-- **M5 — Local release (planned):** release builds (`cargo build --release`, `vite build`), app containers or a
-  compose profile bound to loopback, a runbook. The backend would serve or sit beside the built frontend; the choice
-  is made in M5 preparation.
+- **M5 — Local release (in progress):** one image with the backend serving the built frontend, a compose profile
+  bound to loopback, the runbook, and version `1.0.0`; see the [M5 contract](m5-local-release-contract.md) and the
+  [runbook](../operations/runbook.md).
 - **M6 — AWS readiness (planned):** a Lambda-compatible packaging seam (for example a `lambda_http` adapter behind a
   feature), synth-only IaC (tool chosen by the owner), a Cognito-compatible auth seam unless deferred, and TLS
   features for sqlx and redis (D21). Nothing is deployed and no AWS credentials are used.

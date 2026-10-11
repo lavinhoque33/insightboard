@@ -160,7 +160,7 @@ Backend (`cargo test`, one binary; unit tests sit beside the code, router tests 
 | Cache | `cache::tests`, `tests::cache` | Key bounding (hash of long or special parts); unreachable Redis fails open within 3 s; compose Redis round trip with TTL; undecodable entries are misses; provider data shared under normalised keys (one upstream call for two users) |
 | Rate limits | `ratelimit::tests`, `tests::rate_limit` | Burst then 429 per key; cleanup keeps recent keys; auth limited per client IP (other IPs unaffected); data limited per user after authentication (401 before 429) |
 | Middleware | `app::tests` | CORS allowlist (preflight and simple requests); server timeout → JSON 504; unknown route 404 and wrong method 405 as JSON |
-| Static serving (M5) | `tests::frontend` (full router, temporary build directory, no database) | With `STATIC_DIR`: a hashed `/assets/` file is served with `immutable` caching, the three security headers, and gzip on request; `/`, `/index.html`, `/login`, and `/dashboards/<id>` (with and without trailing slash) return `index.html` with 200 and `no-cache`, HEAD included; `/api`, `/api/`, `/api/unknown` (GET and POST), a deep unknown API path, and a missing `/assets/` file are JSON 404s, never `index.html`; `..` and `%2e%2e` paths never serve a file outside the directory; `/healthz`, `/readyz`, and `/api/dashboards` keep their JSON responses; wrong methods on API and frontend paths are JSON 405. Without `STATIC_DIR`: `/`, deep links, and asset paths stay JSON 404s |
+| Static serving (M5) | `tests::frontend` (full router, temporary build directory, no database) | With `STATIC_DIR`: a hashed `/assets/` file is served with `immutable` caching, the three security headers, and gzip on request; `/`, `/index.html`, `/login`, and `/dashboards/<id>` (with and without trailing slash) return `index.html` with 200 and `no-cache`, HEAD included; `/api`, `/api/`, `/api/unknown` (GET and POST), a deep unknown API path, and a missing `/assets/` file are JSON 404s, never `index.html`; `..` and `%2e%2e` paths never serve a file outside the directory; a path segment over 255 bytes or with an encoded NUL is a missing file (JSON 404 under `/assets/`, `index.html` elsewhere), never a 500; `/healthz`, `/readyz`, and `/api/dashboards` keep their JSON responses; wrong methods on API and frontend paths are JSON 405. Without `STATIC_DIR`: `/`, deep links, and asset paths stay JSON 404s |
 | Auth routes | `tests::auth` (`#[sqlx::test]`) | Register/login/me match the contract; email normalised; duplicate (case-insensitive) → 409; three concurrent duplicate registrations → one 201 and two 409; invalid input → 422 details; wrong password and unknown email → same generic 401; `/me` for a deleted user → 401 |
 | Dashboard routes | `tests::dashboards` (`#[sqlx::test]`) | Create without JSON fields stores `{"widgets":[]}` and `{}`; CRUD responses match the contract; blank name and invalid shapes → 422 with dotted fields; foreign dashboards 404 for GET/PUT/DELETE and invisible in the list; unparsable id 404; 101st dashboard → 409; create for a deleted user → 401; migration 003 backfills legacy `null`/`[]` values and normalises emails |
 | Providers | `tests::providers` (`mockito`) | Each widget's success output matches the contract; the shared `User-Agent` is sent; GitHub token as bearer; NewsAPI key in `X-Api-Key` and absent from the URL; city and topic query-encoded, path-like GitHub usernames rejected without an upstream call; crypto null numbers kept as `null`; upstream 500 and undecodable bodies → generic 502; slow upstream → 502 at the configured timeout for all four providers; missing keys → 503; missing/blank query values → 422 naming the parameter |
@@ -168,7 +168,7 @@ Backend (`cargo test`, one binary; unit tests sit beside the code, router tests 
 | Errors and health | `tests::errors`, `tests::health` | Malformed JSON 400, wrong content type 415, non-object/mistyped bodies 422 with details, all as `application/json`; database down → generic 500; `/healthz` without dependencies; `/readyz` 200 with both up, 503 with either down |
 | Contract | `tests::contract` | Handler output above is validated with `jsonschema` (formats on) against `contracts/api-contract.v1.json`; the contract compiles; a deliberately broken fixture set (pre-M4b `[]` layout, `w: 0`, null settings, bad uuid, blank name, missing field, leaked error fields, raw library error text as a status class) must fail validation (drill 11) |
 
-Totals: 94 backend tests (**observed** 2026-10-10, `make verify` on this workstation after M5a; 87 before). Not covered by
+Totals: 95 backend tests (**observed** 2026-10-10, `make verify` on this workstation at `cdb9359`; 87 before M5a). Not covered by
 automated tests: the `dns_error` status class (it would need a non-resolving name, which could query external DNS)
 and live provider behaviour (manual, human-scale smoke only).
 
@@ -182,10 +182,10 @@ Before M4a (**observed** 2026-10-10 on this workstation at `354e06c`; details in
 [baseline verification record](baseline-verification.md)): `npm audit --omit=dev` found 8 issues (7 high, 1
 moderate; full audit 17), `cargo fmt --check` failed on 67 hunks (D13, reformatted in `d4bdca9`), and clippy failed
 on 2 dead-code errors (D13). M4a removed the dead code, added ESLint, bumped dependencies to clear the audits
-(D14), and committed `Cargo.lock` (D12); the M4a results are recorded in `m4-verification.md` once the main thread
-writes it. Still open in the gates: the daisyUI beta dependency (M4c, D24), CI (M4c), and the test suites in
-"Target test architecture". The legacy 2026-03-03 audit **reported** `npm audit` with 0 findings on a previous
-workstation.
+(D14), and committed `Cargo.lock` (D12); M4b and M4c closed the rest (daisyUI stable 5 for D24, CI, and the suites
+in "Target test architecture"). Results are in the [M4 verification record](m4-verification.md); the release drills
+are in the [M5 verification record](m5-verification.md). The legacy 2026-03-03 audit **reported** `npm audit` with
+0 findings on a previous workstation.
 
 ## Manual drills
 

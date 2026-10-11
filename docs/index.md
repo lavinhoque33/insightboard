@@ -4,7 +4,8 @@ InsightBoard is a personal dashboard builder: accounts, owner-scoped dashboards,
 GridStack grid, served by a Rust/Axum API with Postgres and Redis and a Vue 3 client. M0–M3 are **accepted**
 (2026-10-10, defects included, after baseline drills B0–B12 on this workstation). M4 — Quality gate and hardening
 is **accepted** (2026-10-10, owner): slices M4a, M4b, and M4c locally verified, CI green on GitHub. M5 — local
-release is **in progress** under its accepted [contract](architecture/m5-local-release-contract.md).
+release is **locally verified** under its accepted [contract](architecture/m5-local-release-contract.md) and awaits
+owner acceptance ([M5 verification](development/m5-verification.md)).
 
 ## Start here
 
@@ -57,13 +58,14 @@ The root [README](../README.md) summarises features, the Docker-only release pat
 | [Testing](development/testing.md) | Evidence vocabulary, `make` gates and the container fallback, current suites, drill conventions, M4 test targets |
 | [Baseline verification](development/baseline-verification.md) | M0–M3 evidence: 2026-10-10 automated baseline, drill results B0–B12 |
 | [M4 verification](development/m4-verification.md) | M4 drill evidence by slice; M4a, M4b, M4c locally verified; M4 accepted 2026-10-10 |
+| [M5 verification](development/m5-verification.md) | M5 evidence: M5a packaging checks and F1 fix, M5b drills 1–10, screenshots provenance; locally verified, awaiting owner acceptance |
 | [Session handoff](development/session-handoff.md) | Current checkpoint, protocol, template, session index; entries under `development/sessions/` |
 | [2026-10-10-01 workflow onboarding](development/sessions/2026-10-10-01-workflow-onboarding.md) | The session that moved InsightBoard onto this workflow |
 | [2026-10-10-02 B0 loopback and drills](development/sessions/2026-10-10-02-b0-loopback-and-drills.md) | Decision 4 (D3 fix), host toolchain, and baseline drills B0–B12 |
 | [2026-10-10-03 M4a](development/sessions/2026-10-10-03-m4a.md) | M4a: reformat, gates, CORS, config, audit fixes, Makefile, LICENSE; drills 1–4 |
 | [2026-10-10-04 M4b](development/sessions/2026-10-10-04-m4b.md) | ADR 0001 accepted, push; M4b: outbound safety, rate limits, auth, error model, contract tests; drills 5–11 |
 | [2026-10-10-05 M4c](development/sessions/2026-10-10-05-m4c.md) | M4c: frontend correctness, Vitest and Playwright suites, CI, visual overhaul with light and dark themes; drills 12–16 |
-| [2026-10-10-06 M5](development/sessions/2026-10-10-06-m5-contract.md) | M5 contract drafted and accepted (ADR 0003); M5a packaging |
+| [2026-10-10-06 M5](development/sessions/2026-10-10-06-m5-contract.md) | M5 contract accepted (ADR 0003, port 8088); M5a packaging with F1 fix; M5b version 1.0.0, changelog, runbook, README and screenshots, drills 1–10 |
 
 ## Guides (non-authoritative)
 

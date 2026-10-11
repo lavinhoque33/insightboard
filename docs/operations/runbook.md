@@ -38,7 +38,8 @@ make up          # starts postgres, redis, and app; waits until all are healthy
 Open `http://127.0.0.1:8088`, register an account, and create a dashboard. Migrations run automatically when the app
 starts.
 
-`make doctor` reports which prerequisites are present and whether Docker alone is enough.
+`make doctor` reports which prerequisites are present and whether Docker alone is enough (the `release:` line). It
+exits non-zero when development tools such as Node are missing; that does not affect the release path.
 
 ## Provider keys
 
@@ -127,4 +128,6 @@ Never paste the output of `docker compose config` anywhere: it prints every secr
 - All clients share one authentication rate-limit bucket.
 - One instance on one machine; no automatic backups; development, test, and release data share one database.
 - Weather and News need the owner's free provider keys.
+- The status widget checks only public `http`/`https` addresses; loopback, private, link-local, and metadata
+  addresses are refused.
 - Moving and resizing widgets needs a mouse or touch; keyboard layout editing is in the backlog.
