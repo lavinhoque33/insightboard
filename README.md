@@ -12,6 +12,17 @@ nothing is deployed.
 [contract](docs/architecture/m5-local-release-contract.md) ([ADR 0003](docs/decisions/ADR-0003-m5-local-release.md)).
 See the [roadmap](docs/product/roadmap.md) and the [changelog](CHANGELOG.md).
 
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="docs/assets/screenshots/editor-dark.webp">
+  <img alt="A dashboard with weather, crypto, GitHub, news, and status widgets on the grid editor" src="docs/assets/screenshots/editor-light.webp">
+</picture>
+
+| Dashboards | Configure a widget | 390 px | Sign in |
+| --- | --- | --- | --- |
+| ![Dashboard list with layout previews](docs/assets/screenshots/dashboards-light.webp) | ![Configuration dialog for a weather widget, dark theme](docs/assets/screenshots/configure-dark.webp) | ![Dashboard on a 390 px phone, dark theme](docs/assets/screenshots/mobile-dark.webp) | ![Sign-in page](docs/assets/screenshots/login-light.webp) |
+
+Screenshots use demo data from a local fixture, not live providers.
+
 ## Features
 
 - **Accounts:** register and sign in with email and password (Argon2); sessions last 24 hours and return you to the
@@ -79,6 +90,8 @@ current results are in [testing](docs/development/testing.md).
 - Anyone who can reach the port can register; all clients share one sign-in rate-limit bucket.
 - One instance on one machine; no automatic backups (`make backup` is manual).
 - Weather and News need your own free provider keys.
+- The status widget checks only public `http`/`https` addresses; loopback, private, link-local, and metadata
+  addresses are refused.
 - Moving and resizing widgets needs a mouse or touch; keyboard layout editing is in the backlog.
 
 The defect catalogue D1–D31 and how each was resolved are in the
