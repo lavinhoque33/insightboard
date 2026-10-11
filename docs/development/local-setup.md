@@ -117,7 +117,7 @@ compose refuses to start without the secrets.
    unparsable `APP_HOST`, `APP_PORT`, `CORS_ORIGINS`, base URL, timeout, rate limit, or fixture entry also fails
    startup with an error naming it; an unreachable Postgres exits with an error. An unreachable Redis only logs a
    warning: caching stays off until Redis answers. Check it with `curl -s http://127.0.0.1:8080/healthz`
-   (`{"status":"ok","service":"insightboard-backend","version":"1.0.0"}`; it checks no dependency) and
+   (`{"status":"ok","service":"insightboard-backend","version":"1.1.0"}`; it checks no dependency) and
    `curl -s http://127.0.0.1:8080/readyz` (`{"status":"ready"}` when Postgres and Redis answer, 503 otherwise).
 5. **Run the frontend** (terminal 2).
 

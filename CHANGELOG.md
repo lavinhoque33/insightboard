@@ -6,6 +6,12 @@ and versions follow [Semantic Versioning](https://semver.org/). Defect IDs (D1â€
 
 ## [Unreleased]
 
+## [1.1.0] - 2026-10-11
+
+AWS readiness (M6, accepted 2026-10-11): TLS to a remote Postgres and Redis, a Lambda build of the same app, and a
+synth-only infrastructure definition with a cost and teardown proposal. Nothing is deployed; local use is unchanged.
+See the [M6 verification record](docs/development/m6-verification.md).
+
 ### Added
 
 - An AWS Lambda entry point behind the off-by-default cargo feature `lambda` (Function URL and HTTP API payload v2;
@@ -83,5 +89,6 @@ records under [`docs/development/`](docs/development/).
   no TLS (D21, planned for M6), the token in `localStorage`, open registration on the local port, and one shared
   authentication rate-limit bucket.
 
-[Unreleased]: https://github.com/lavinhoque33/insightboard/compare/v1.0.0...HEAD
+[Unreleased]: https://github.com/lavinhoque33/insightboard/compare/v1.1.0...HEAD
+[1.1.0]: https://github.com/lavinhoque33/insightboard/compare/v1.0.0...v1.1.0
 [1.0.0]: https://github.com/lavinhoque33/insightboard/tree/v1.0.0
