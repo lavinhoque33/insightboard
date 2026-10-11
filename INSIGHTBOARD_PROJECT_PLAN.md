@@ -464,7 +464,7 @@ Permission to change code is not permission for any of these.
 3. **License:** decided 2026-10-10 — MIT (M4 decision 16); `LICENSE` committed in M4a (`2780fc0`).
 4. **Provider keys for B5:** decided 2026-10-10 — free-tier keys, entered by the owner into `.env`.
 5. **M5:** decided 2026-10-10 — one application image with a compose profile (the backend serves the frontend);
-   version `1.0.0` and tag `v1.0.0` on request after acceptance ([ADR 0003](docs/decisions/ADR-0003-m5-local-release.md)).
+   version `1.0.0`, tagged `v1.0.0` on `7c90107` at the owner's request after acceptance ([ADR 0003](docs/decisions/ADR-0003-m5-local-release.md)).
 6. **M6:** IaC tool; whether Cognito lands in M6 or stays in the backlog.
 7. **Backlog:** which section 5 items, if any, become milestones.
 

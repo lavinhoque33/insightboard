@@ -207,10 +207,11 @@ Scope, exit evidence, and keep-out follow plan section 12/M5 and the
   (`9a14027`; verify finding F1 fixed; CI run 38096580273 release job green).
 - **M5b — Release material and drills:** version `1.0.0`, `CHANGELOG.md`, runbook, README release path and
   screenshots, documented limits, drills 1–10. **Locally verified** (`cdb9359` and the records commit; evidence in
-  the [M5 verification record](../development/m5-verification.md); CI run 38097611740 green). Tag `v1.0.0` only on
-  request.
+  the [M5 verification record](../development/m5-verification.md); CI run 38097611740 green).
 
-**Accepted** by the owner 2026-10-10 (version `1.0.0`). **Next:** M6 — AWS readiness.
+**Accepted** by the owner 2026-10-10 (version `1.0.0`). Annotated tag `v1.0.0` on `7c90107` (code identical to the
+accepted `e6abe8c`; dated changelog and product README added), pushed at the owner's request. **Next:** M6 — AWS
+readiness.
 
 **Keep out:** cloud, registries, public hosting, domains, TLS (D21, M6), a GitHub Release object, the backlog.
 
@@ -244,4 +245,4 @@ before any other external request.
 
 1. M6 — AWS readiness: draft its contract (packaging seam, synth-only IaC tool, auth seam, D21 TLS, cost and cleanup
    proposal) for owner review before any work.
-2. On an explicit owner request: annotated tag `v1.0.0` on the accepted M5 commit, pushed over SSH.
+2. Tag `v1.0.0`: done 2026-10-10 on `7c90107`.

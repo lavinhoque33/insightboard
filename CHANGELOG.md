@@ -56,3 +56,5 @@ records under [`docs/development/`](docs/development/).
 - Known limits are listed in the [README](README.md) and the [runbook](docs/operations/runbook.md): loopback only,
   no TLS (D21, planned for M6), the token in `localStorage`, open registration on the local port, and one shared
   authentication rate-limit bucket.
+
+[1.0.0]: https://github.com/lavinhoque33/insightboard/tree/v1.0.0
